@@ -9,7 +9,10 @@ class NeuronRegion(Region):
         self.num_us_per_timestep = num_us_per_timestep
         self.num_synapse_types = num_synapse_types
         self.params = params
-        
+    
+    #--------------------------------------------------------------------------
+    # Region methods
+    #--------------------------------------------------------------------------
     def sizeof(self, vertex_slice):
         """Get the size requirements of the region in bytes.
 
@@ -67,5 +70,11 @@ class NeuronRegion(Region):
         
         # Write parameter slice as string
         fp.write(param_slice.tostring())
-        
+    
+    #--------------------------------------------------------------------------
+    # Properties
+    #--------------------------------------------------------------------------
+    @property
+    def num_neurons(self):
+        return len(self.params)
         

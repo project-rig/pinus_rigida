@@ -4,7 +4,7 @@ from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace, simplify
 from . import simulator
 from .recording import Recorder
-from rig.neuron_region import NeuronRegion
+from rig.neural_population import NeuralPopulation
 
 
 class Assembly(common.Assembly):
@@ -76,12 +76,12 @@ class Population(common.Population):
         record_datatype = ",".join(zip(*self.celltype.neuron_region_map)[1])
       
         # Build a numpy record array large enough for all neurons
-        neuron_region_records = numpy.empty(self.size, dtype=(record_datatype))
-        for f, n in zip(neuron_region_records.dtype.names, self.celltype.neuron_region_map):
+        parameter_records = numpy.empty(self.size, dtype=(record_datatype))
+        for f, n in zip(parameter_records.dtype.names, self.celltype.neuron_region_map):
             # If this map entry has a constant value, 
             # Write it into field for all neurons
             if len(n) == 2:
-                neuron_region_records[f][:] = n[0]
+                parameter_records[f][:] = n[0]
             # Otherwise
             else:
                 assert len(n) == 3
@@ -90,22 +90,24 @@ class Population(common.Population):
                 parameter = parameter_space[n[0]]
                 
                 # Apply translation function to parameter and write into field
-                neuron_region_records[f] = n[2](parameter)
+                parameter_records[f] = n[2](parameter)
         
-        
-        print neuron_region_records
-        test_neuron_region = NeuronRegion(1000, 2, neuron_region_records)
-        with open("test_neuron.bin", "wb") as test_file:
-            test_neuron_region.write_subregion_to_file(slice(4), test_file, 
-                key=0, synapse_type_input_shifts=[1, 1])
+        # **TODO** pick correct population class
+        self._spinnaker_population = NeuralPopulation(self.celltype, parameter_records)
         
         # Build incoming projections
+        # **NOTE** this will 
         for i in self.incoming_projections:
             i.build()
+            
+        with open("blob.dat", "wb") as f:
+            self._spinnaker_population.write_to_file(f)
     
     def convergent_connect(self, projection, presynaptic_indices, postsynaptic_index,
                             **connection_parameters):
-        print projection, presynaptic_indices, postsynaptic_index, connection_parameters
+        self._spinnaker_population.convergent_connect(projection, presynaptic_indices, 
+                                                      postsynaptic_index,
+                                                      **connection_parameters)
         
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,
