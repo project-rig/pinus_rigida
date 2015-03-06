@@ -1,34 +1,29 @@
 import numpy as np
 import struct
-from collections import namedtuple
 from rig.regions.region import Region
+
+ROW_HEADER_BYTES = 3 * 4
 
 # Number of bits for various synapse components
 INDEX_BITS = 8
 DELAY_BITS = 4
 WEIGHT_BITS = 16
+TYPE_BITS = 1
 
 # Masks for various synapse components
 INDEX_MASK = (1 << INDEX_BITS) - 1
 DELAY_MASK = (1 << DELAY_BITS) - 1
 
 INDEX_TYPE_BITS = INDEX_BITS + TYPE_BITS
-    
-# Define a named tuple type to contain arrays for mask, weight and delay
-SynapticMatrix = namedtuple("SynapticMatrix", ["mask", "weight", "delay"])
 
 #------------------------------------------------------------------------------
 # SynapticMatrixRegion
 #------------------------------------------------------------------------------
 class SynapticMatrixRegion(Region):
-    def __init__(self):
-        # Dictionary of synaptic matrices associated with each incoming connection
-        self.matrices = {}
-       
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice):
+    def sizeof(self, vertex_slice, **formatter_args):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -36,16 +31,35 @@ class SynapticMatrixRegion(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-
+        formatter_args : optional
+            Arguments which will be passed to the (optional) formatter along
+            with each value that is being written.
+            
         Returns
         -------
         int
             The number of bytes required to store the data in the given slice
             of the region.
         """
+        matrices = formatter_args["matrices"]
+        matrix_placements = formatter_args["matrix_placements"]
+        row_sizes = formatter_args["row_sizes"]
         
-        pass
-
+        # Loop through all incoming synaptic matrices
+        total_size = 0
+        for p, m in matrices.iteritems():
+            # Get placement for this matrix
+            placement = matrix_placements[p]
+            
+            # Get size of a row of matrix from table
+            table_row_size = row_sizes[placement.row_size_index]
+            
+            # Multiply by number of rows to get matrix size and add this and 
+            # Number of subsequent padding bytes to the total size
+            total_size += (table_row_size * m.shape[1]) + placement.padding_bytes
+        
+        return total_size
+    
     def write_subregion_to_file(self, vertex_slice, fp, **formatter_args):
         """Write a portion of the region to a file applying the formatter.
 
@@ -61,29 +75,35 @@ class SynapticMatrixRegion(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
+        matrices = formatter_args["matrices"]
+        matrix_placements = formatter_args["matrix_placements"]
+        row_sizes = formatter_args["row_sizes"]
         weight_scale = formatter_args["weight_scale"]
-        
-        # **TODO** write base address
-        
+   
         # Loop through all incoming synaptic matrices
-        for i, m in self.matrices.iteritems():
+        for p, m in matrices.iteritems():
+            # Get placement for this matrix
+            placement = matrix_placements[p]
+            
             # Get slice of matrices for vertex
-            # **TODO** use record array
-            sub_mask = m.mask[:,vertex_slice]
-            sub_delay = m.delay[:,vertex_slice]
-            sub_weight = m.weight[:,vertex_slice]
-            
+            sub_matrix = m[:,vertex_slice]
+       
             # Get maximum row length of this synaptic matrix
+            sub_mask = sub_matrix["mask"]
             row_lengths = sub_mask.sum(1)
-            max_row_length = max(row_lengths)
             
-            print "Max row length:%u" % max_row_length
+            # Get padded row length from row size table
+            padded_row_length = row_sizes[placement.row_size_index]
+            
+            print "Padded row length:%u" % padded_row_length
            
             # Build 1D arrays of post-synaptic neuron indices, weights and delays
             # **TODO** synapse types**
+            sparse_weight = sub_matrix["weight"][sub_mask]
+            sparse_delay = sub_matrix["delay"][sub_mask]
             post_indices = np.where(sub_mask == True)[1].astype(np.uint32)
-            weights = np.rint(sub_weight[sub_mask] * weight_scale).astype(np.uint32)
-            delays = sub_delay[sub_mask].astype(np.uint32)
+            weights = np.rint(sparse_weight * weight_scale).astype(np.uint32)
+            delays = sparse_delay.astype(np.uint32)
             
             # Mask and shift these together to build 32-bit synaptic words
             synapse_words = ((post_indices & INDEX_MASK) | 
@@ -91,7 +111,7 @@ class SynapticMatrixRegion(Region):
                 weights << (32 - WEIGHT_BITS)).astype(np.uint32)
             
             # Determine how much weach row will need to be padded by
-            row_pad_length = max_row_length - row_lengths
+            row_pad_length = padded_row_length - row_lengths
             
             # Cumulatively sum these to get the indices where rows end and
             # Duplicate these indices for the number of padding entries required
@@ -99,39 +119,12 @@ class SynapticMatrixRegion(Region):
             where_to_pad = np.repeat(row_end_indices, row_pad_length)
             
             # Insert padding of zero at these locations
-            padded_synapse_words = np.insert(synapse_words, where_to_pad, 0).reshape((sub_mask.shape[1], max_row_length))
-            
-            print padded_synapse_words
-    
-    #--------------------------------------------------------------------------
-    # Public methods
-    #--------------------------------------------------------------------------
-    def convergent_connect(self, projection, pre_indices, post_index, 
-                           **parameters):
-        # **TODO** assemblies
-        
-        # If there's not already a synaptic matrix 
-        # Associated with pre-synaptic population
-        if projection.pre not in self.matrices:
-            # Get shape of connection matrix
-            shape = (len(projection.pre), len(projection.post))
-            
-            # Add synaptic matrix to dictionary
-            # **NOTE** weights are kept floating point as 
-            # Scale cannot be determined at this stage
-            self.matrices[projection.pre] = SynapticMatrix(
-                mask=np.zeros(shape, dtype=bool),
-                weight=np.empty(shape, dtype=float),
-                delay=np.empty(shape, dtype=np.uint8))
-        
-        # Quantise delay into timesteps
-        quantised_delay = int(round(parameters["delay"]))
-        
-        # Set mask, weight and delay for column
-        # **TODO** use record array
-        matrix = self.matrices[projection.pre]
-        matrix.mask[pre_indices, post_index] = True
-        matrix.weight[pre_indices, post_index] = parameters["weight"]
-        matrix.delay[pre_indices, post_index] = quantised_delay
+            synapse_words = np.insert(synapse_words, where_to_pad, 0)
 
-        
+            # Write to file
+            fp.write(synapse_words.tostring())
+            
+            # Seek forward by padding bytes 
+            # **NOTE** 1 = SEEK_CUR
+            fp.seek(placement.padding_bytes, 1)
+    

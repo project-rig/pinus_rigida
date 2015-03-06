@@ -73,8 +73,9 @@ class Population(common.Population):
         parameter_space.evaluate(simplify=False)
         
         # Build numpy record datatype for neuron region
+        # **TODO** this probably doesn't need to be a string
         record_datatype = ",".join(zip(*self.celltype.neuron_region_map)[1])
-      
+        
         # Build a numpy record array large enough for all neurons
         parameter_records = numpy.empty(self.size, dtype=(record_datatype))
         for f, n in zip(parameter_records.dtype.names, self.celltype.neuron_region_map):
@@ -96,12 +97,14 @@ class Population(common.Population):
         self._spinnaker_population = NeuralPopulation(self.celltype, parameter_records)
         
         # Build incoming projections
-        # **NOTE** this will 
+        # **NOTE** this will result to multiple calls to convergent_connect
         for i in self.incoming_projections:
             i.build()
             
         with open("blob.dat", "wb") as f:
-            self._spinnaker_population.write_to_file(f)
+            key = 0
+            vertex_slice = slice(0, self.size)
+            self._spinnaker_population.write_to_file(key, vertex_slice, f)
     
     def convergent_connect(self, projection, presynaptic_indices, postsynaptic_index,
                             **connection_parameters):
