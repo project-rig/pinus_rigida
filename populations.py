@@ -8,6 +8,7 @@ from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace, simplify
 from . import simulator
 from .recording import Recorder
+from rig.utils.contexts import ContextMixin, Required
 from spinnaker.neural_population import NeuralPopulation
 
 class Assembly(common.Assembly):
@@ -47,7 +48,7 @@ class PopulationView(common.PopulationView):
 
 
 
-class Population(common.Population):
+class Population(common.Population, ContextMixin):
     __doc__ = common.Population.__doc__
     _simulator = simulator
     _recorder_class = Recorder
@@ -57,6 +58,9 @@ class Population(common.Population):
                  initial_values={}, label=None):
         __doc__ = common.Population.__doc__
         super(Population, self).__init__(size, cellclass, cellparams, structure, initial_values, label)
+        
+        # Initialise the context stack
+        ContextMixin.__init__(self, {})
         
         # Create empty list to hold incoming projections
         self.incoming_projections = []
@@ -80,9 +84,7 @@ class Population(common.Population):
         vertex_resources = [resources] * len(vertex_slices)
         return vertex_slices, vertex_resources
     
-    def build(self, population_vertices):
-        print("BUILDING POPULATION")
-        
+    def create_spinnaker_population(self):
         if isinstance(self.celltype, StandardCellType):
             parameter_space = self.celltype.native_parameters
         else:
@@ -92,43 +94,31 @@ class Population(common.Population):
         # Evaluate parameter space
         parameter_space.evaluate(simplify=False)
         
-        # Build numpy record datatype for neuron region
-        # **TODO** this probably doesn't need to be a string - could use np.uint8 style things throughout
-        record_datatype = ",".join(zip(*self.celltype.neuron_region_map)[1])
-        
-        # Build a numpy record array large enough for all neurons
-        parameter_records = numpy.empty(self.size, dtype=(record_datatype))
-        for f, n in zip(parameter_records.dtype.names, self.celltype.neuron_region_map):
-            # If this map entry has a constant value, 
-            # Write it into field for all neurons
-            if len(n) == 2:
-                parameter_records[f][:] = n[0]
-            # Otherwise
-            else:
-                assert len(n) == 3
-                
-                # Extract correctly named parameter
-                parameter = parameter_space[n[0]]
-                
-                # Apply translation function to parameter and write into field
-                parameter_records[f] = n[2](parameter)
-        
         # **TODO** pick correct population class
-        self._spinnaker_population = NeuralPopulation(self.celltype, parameter_records)
+        return self.get_new_context(spinnaker_population=NeuralPopulation(self.celltype, parameter_space))
+
+    @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
+    def expand_incoming_connection(self, **kwargs):
+        # Extract spinnaker population from kwargs
+        spinnaker_population = kwargs.pop("spinnaker_population")
         
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
         for i in self.incoming_projections:
             i.build()
-
-        # Loop through vertices
-        for v in population_vertices:
-            with open("vertex_%s.dat" % self.label, "wb") as f:
-                self._spinnaker_population.write_to_file(v[1], v[0], f)
+            
+    @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
+    def spinnaker_population(self, **kwargs):
+        return kwargs.pop("spinnaker_population")
     
+    @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
     def convergent_connect(self, projection, presynaptic_indices, postsynaptic_index,
                             **connection_parameters):
-        self._spinnaker_population.convergent_connect(projection, presynaptic_indices, 
+        # Extract spinnaker population from kwargs
+        spinnaker_population = connection_parameters.pop("spinnaker_population")
+        
+        # Create connections within spinnaker population
+        spinnaker_population.convergent_connect(projection, presynaptic_indices, 
                                                       postsynaptic_index,
                                                       **connection_parameters)
         

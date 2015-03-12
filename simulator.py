@@ -1,11 +1,12 @@
+# Import modules
 import itertools
-
-import rig
+import os
+from rig import machine
 
 # Import classes
 from pyNN import common
 from rig.bitfield import BitField
-from rig.machine_control.machine_controller import MachineController
+from rig.machine_control.machine_controller import MachineController, MemoryIO
 from rig.netlist import Net
 from rig.place_and_route import wrapper
 
@@ -16,7 +17,7 @@ def generate_nets_and_keys(pre_pop, post, population_vertices):
     net_keys = []
     for pre_vert in population_vertices[pre_pop]:
         # Add key to list
-        net_keys.append(pre_vert.keyspace)
+        net_keys.append((pre_vert.key, pre_vert.mask))
         
         # If post-synaptic population is an assembly
         if isinstance(post, common.Assembly):
@@ -43,6 +44,14 @@ class Vertex:
         self.vertex_slice = vertex_slice
         self.keyspace = parent_keyspace(population_index=population_index, 
             vertex_index=vertex_index)
+    
+    @property
+    def key(self):
+        return self.keyspace.get_value(tag="routing")
+    
+    @property
+    def mask(self):
+        return self.keyspace.get_mask(tag="routing")
 
 #------------------------------------------------------------------------------
 # ID
@@ -98,14 +107,17 @@ class State(common.control.BaseState):
         
         # Create a 32-bit keyspace
         keyspace = BitField(32)
-        keyspace.add_field("population_index")
-        keyspace.add_field("vertex_index")
-        keyspace.add_field("neuron_id", length=10, start_at=0)
+        keyspace.add_field("population_index", tags="routing")
+        keyspace.add_field("vertex_index", tags="routing")
+        keyspace.add_field("neuron_id", length=10, start_at=0, tags="application")
+        
+        # Get directory of backend
+        backend_dir = os.path.dirname(__file__)
         
         # Loop through populations
         population_vertices = {}
-        vertices_applications = {}
-        vertices_resources = {}
+        vertex_applications = {}
+        vertex_resources = {}
         for pidx, pop in enumerate(self.populations):  
             # Partition population to get slices and resources for each vertex
             slices, resources = pop.partition()
@@ -116,16 +128,18 @@ class State(common.control.BaseState):
             # Add resultant list of vertex tuples to dictionary
             population_vertices[pop] = vertices
             
-            # **TEMP** get application from celltype - needs to take STDP name munging into account
-            application = pop.celltype.__class__.__name__
+            # **TEMP** get application from celltype
+            # **TODO* path to aplx, take STDP name munging into account
+            application = os.path.join(backend_dir, "model_binaries", pop.celltype.__class__.__name__ + ".aplx")
+            print application
             
             # Loop through vertices and their correspondign resources again
             for v, r in zip(vertices, resources):
                 # Add application to dictionary
-                vertices_applications[v] = application
+                vertex_applications[v] = application
                 
                 # Add resources to dictionary
-                vertices_resources[v] = r
+                vertex_resources[v] = r
         
         # Finalise keyspace fields
         keyspace.assign_fields()
@@ -145,7 +159,8 @@ class State(common.control.BaseState):
                     # Add to global lists
                     nets.extend(vertex_nets)
                     net_keys.update(zip(vertex_nets, vertex_net_keys))
-            # Otherwise, just 
+            # Otherwise, it's a single population
+            # **TODO** population view
             else:
                 # Generate list of nets and their key coming from this population
                 vertex_nets, vertex_net_keys = generate_nets_and_keys(
@@ -156,24 +171,60 @@ class State(common.control.BaseState):
                 net_keys.update(zip(vertex_nets, vertex_net_keys))
             
         print("Connecting to SpiNNaker")
+        
         # Get machine controller from connected SpiNNaker board
         machine_controller = MachineController(self.spinnaker_hostname)
+        # **TODO** some sensible/ideally standard with Nengo booting behaviour
+        machine_controller.boot(2, 2)
         
         # Retrieve a machine object
-        machine = machine_controller.get_machine()
-        print("Found %ux%u chip machine" % (machine.width, machine.height))
+        spinnaker_machine = machine_controller.get_machine()
+        
+        print("Found %ux%u chip machine" % 
+            (spinnaker_machine.width, spinnaker_machine.height))
         
         print("Placing and routing")
         
         # Place-and-route
         placements, allocations, application_map, routing_tables = wrapper(
-            vertices_resources, vertices_applications, nets, net_keys, machine)
+            vertex_resources, vertex_applications, nets, net_keys, spinnaker_machine)
         
-        print placements, allocations, application_map, routing_tables
+        #print placements, allocations, application_map, routing_tables
         print("Writing vertices")
         
         # Build populations
         for pop, vertices in population_vertices.iteritems():
-            pop.build(vertices)
+            # Create a spinnaker population
+            with pop.create_spinnaker_population():
+                # Expand any incoming connections
+                pop.expand_incoming_connection()
+                
+                # Loop through vertices
+                for v in vertices:
+                    # Get placement and allocation
+                    vertex_placement = placements[v]
+                    vertex_allocation = allocations[v]
 
+                    # Get core this vertex should be run on 
+                    core = vertex_allocation[machine.Cores]
+                    assert (core.stop - core.start) == 1
+                    
+                    # Select placed chip
+                    with machine_controller(x=vertex_placement[0], y=vertex_placement[1]):
+                        # Allocate a suitable memory block for this vertex and get memory io
+                        # **NOTE** this is tagged by core
+                        memory_io = machine_controller.sdram_alloc_as_io(
+                            pop.spinnaker_population().get_size(v.vertex_slice), tag=core.start)
+                        
+                        # Write the vertex to file
+                        pop.spinnaker_population().write_to_file(v.key, v.vertex_slice, memory_io)
+        
+        # Load routing tables and applications
+        print("Loading routing tables")
+        machine_controller.load_routing_tables(routing_tables)
+        print("Loading applications")
+        machine_controller.load_application(application_map)
+        
+        
+        
 state = State()
