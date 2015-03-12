@@ -21,37 +21,23 @@ class NeuralPopulation(object):
     
     def __init__(self, cell_type, parameter_records):
         # Dictionary of synaptic matrices associated with each pre-synaptic population
+        # **TODO** a matrix is required for each population per synapse-type, plastic and fixed
         self.matrices = {}
         
         # List of regions
         self.regions = [None] * 16
+        #self.regions[0] = SystemRegion()
         self.regions[1] = NeuronRegion(1000, len(cell_type.receptor_types), 
                                        parameter_records)
+        #self.regions[2] = SynapseRegion()
         self.regions[3] = RowSizeRegion()
         self.regions[4] = MasterPopulationArrayRegion()
         self.regions[5] = SynapticMatrixRegion()
-    
-    
-    
-    def get_vertex_slices(self):
-        """Write a portion of the region to a file applying the formatter.
+        #self.regions[6] = PlasticityRegion()
+        #self.regions[7] = SpikeRecordingRegion()
+        #self.regions[8] = VoltageRecordingRegion()
+        #self.regions[9] = CurrentRecordingRegion()
 
-        Parameters
-        ----------
-        vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
-            elements of the region should be included.
-        fp : file-like object
-            The file-like object to which data from the region will be written.
-            This must support a `write` method.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
-        """
-        # * Estimate synaptic matrix size based on equal division of connector
-        # * Estimate DTCM usage based on number of synapse types and number of neurons
-        slices = [ slice(0, 10), slice(10, 20) ]
-    
     def write_to_file(self, key, vertex_slice, fp):
        
         # Get optimal list of row sizes for this vertex
@@ -75,14 +61,19 @@ class NeuralPopulation(object):
             "matrix_placements": matrix_placements
         }
         
-        # Write regions
+        # Calculate region size
+        print("Calculating size")
         vertex_size_bytes = 0
-        for r in self.regions:
+        for i, r in enumerate(self.regions):
             if r is not None:
-                vertex_size_bytes += r.sizeof(vertex_slice, **formatter)
+                region_size_bytes = r.sizeof(vertex_slice, **formatter)
+                print("Region %u - %u bytes" % (i, region_size_bytes))
+                
+                vertex_size_bytes += region_size_bytes
         
-        print("Vertex %u bytes" % vertex_size_bytes)
+        print("= %u bytes" % vertex_size_bytes)
         
+        # **TODO** sark-allocate regions and get magical file object
         # Write regions
         for r in self.regions:
             if r is not None:
@@ -109,5 +100,5 @@ class NeuralPopulation(object):
         quantised_delay = int(round(parameters["delay"]))
 
         # Set mask, weight and delay for column
-        # **TODO** use record array
+        # **TODO** different matrix for each connection type
         self.matrices[projection.pre][pre_indices, post_index] = (True, quantised_delay, parameters["weight"])

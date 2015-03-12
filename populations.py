@@ -1,11 +1,14 @@
+# Import modules
 import numpy
+from rig import machine
 from pyNN import common
+
+# Import classes
 from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace, simplify
 from . import simulator
 from .recording import Recorder
-from rig.neural_population import NeuralPopulation
-
+from spinnaker.neural_population import NeuralPopulation
 
 class Assembly(common.Assembly):
     _simulator = simulator
@@ -61,19 +64,36 @@ class Population(common.Population):
         # Add population to simulator
         self._simulator.state.populations.append(self)
     
-    def build(self):
+    def partition(self):
+        # **TODO** pick correct population class
+        neurons_per_vertex = NeuralPopulation.MAX_CELLS
+        
+        # **TODO** estimate SDRAM usage for incoming projections
+        resources = { machine.Cores: 1 }
+        
+        # Build lists of start and end indices of slices
+        slice_starts = range(0, self.size, neurons_per_vertex)
+        slice_ends = [min(s + neurons_per_vertex, self.size) for s in slice_starts]
+        
+        # Zip starts and ends together into list of slices and pair these with resources
+        vertex_slices = [slice(s, e) for s, e in zip(slice_starts, slice_ends)]
+        vertex_resources = [resources] * len(vertex_slices)
+        return vertex_slices, vertex_resources
+    
+    def build(self, population_vertices):
         print("BUILDING POPULATION")
+        
         if isinstance(self.celltype, StandardCellType):
             parameter_space = self.celltype.native_parameters
         else:
             parameter_space = self.celltype.parameter_space
         parameter_space.shape = (self.size,)
-        
+
         # Evaluate parameter space
         parameter_space.evaluate(simplify=False)
         
         # Build numpy record datatype for neuron region
-        # **TODO** this probably doesn't need to be a string
+        # **TODO** this probably doesn't need to be a string - could use np.uint8 style things throughout
         record_datatype = ",".join(zip(*self.celltype.neuron_region_map)[1])
         
         # Build a numpy record array large enough for all neurons
@@ -100,11 +120,11 @@ class Population(common.Population):
         # **NOTE** this will result to multiple calls to convergent_connect
         for i in self.incoming_projections:
             i.build()
-            
-        with open("blob.dat", "wb") as f:
-            key = 0
-            vertex_slice = slice(0, self.size)
-            self._spinnaker_population.write_to_file(key, vertex_slice, f)
+
+        # Loop through vertices
+        for v in population_vertices:
+            with open("vertex_%s.dat" % self.label, "wb") as f:
+                self._spinnaker_population.write_to_file(v[1], v[0], f)
     
     def convergent_connect(self, projection, presynaptic_indices, postsynaptic_index,
                             **connection_parameters):

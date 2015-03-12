@@ -31,11 +31,10 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
           max_delay=DEFAULT_MAX_DELAY, **extra_params):
     common.setup(timestep, min_delay, max_delay, **extra_params)
     simulator.state.clear()
-    simulator.state.dt = timestep  # move to common.setup?
+    simulator.state.dt = timestep
     simulator.state.min_delay = min_delay
     simulator.state.max_delay = max_delay
-    simulator.state.mpi_rank = extra_params.get('rank', 0)
-    simulator.state.num_processes = extra_params.get('num_processes', 1)
+    simulator.state.spinnaker_hostname = extra_params["spinnaker_hostname"]
     return rank()
 
 def end(compatible_output=True):

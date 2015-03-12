@@ -20,6 +20,9 @@ class Projection(common.Projection):
                                    connector, synapse_type, source, receptor_type,
                                    space, label)
         
+        # Add projection to simulator
+        self._simulator.state.projections.append(self)
+        
         # If post-synaptic population in an assembly
         if isinstance(self.post, common.Assembly):
             assert self.post._homogeneous_synapses, "Inhomogeneous assemblies not yet supported"
