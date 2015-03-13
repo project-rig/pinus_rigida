@@ -35,6 +35,7 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
     simulator.state.min_delay = min_delay
     simulator.state.max_delay = max_delay
     simulator.state.spinnaker_hostname = extra_params["spinnaker_hostname"]
+    simulator.state.realtime_proportion = extra_params.get("realtime_proportion", 1.0)
     return rank()
 
 def end(compatible_output=True):

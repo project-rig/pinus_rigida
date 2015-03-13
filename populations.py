@@ -83,8 +83,10 @@ class Population(common.Population, ContextMixin):
         vertex_slices = [slice(s, e) for s, e in zip(slice_starts, slice_ends)]
         vertex_resources = [resources] * len(vertex_slices)
         return vertex_slices, vertex_resources
-    
-    def create_spinnaker_population(self):
+
+    def create_spinnaker_population(self, simulation_timestep_us, 
+                                    hardware_timestep_us, 
+                                    duration_timestep):
         if isinstance(self.celltype, StandardCellType):
             parameter_space = self.celltype.native_parameters
         else:
@@ -95,7 +97,8 @@ class Population(common.Population, ContextMixin):
         parameter_space.evaluate(simplify=False)
         
         # **TODO** pick correct population class
-        return self.get_new_context(spinnaker_population=NeuralPopulation(self.celltype, parameter_space))
+        return self.get_new_context(spinnaker_population=NeuralPopulation(self.celltype, parameter_space, 
+            simulation_timestep_us, hardware_timestep_us, duration_timestep))
 
     @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
     def expand_incoming_connection(self, **kwargs):

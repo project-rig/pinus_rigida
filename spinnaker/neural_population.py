@@ -6,7 +6,7 @@ from master_population_array_region import MasterPopulationArrayRegion
 from neuron_region import NeuronRegion
 from row_size_region import RowSizeRegion
 from synaptic_matrix_region import SynapticMatrixRegion
-
+from system_region import SystemRegion
 
 MATRIX_DATATYPE = { 
     "names":[ "mask", "delay", "weight" ], 
@@ -19,7 +19,8 @@ MATRIX_DATATYPE = {
 class NeuralPopulation(object):
     MAX_CELLS = 256
     
-    def __init__(self, cell_type, parameter_space):
+    def __init__(self, cell_type, parameter_space, simulation_timestep_us, 
+                 hardware_timestep_us, duration_timestep):
         # Build numpy record datatype for neuron region
         # **TODO** this probably doesn't need to be a string - could use np.uint8 style things throughout
         record_datatype = ",".join(zip(*cell_type.neuron_region_map)[1])
@@ -47,7 +48,9 @@ class NeuralPopulation(object):
         
         # List of regions
         self.regions = [None] * 16
-        #self.regions[0] = SystemRegion()
+        self.regions[0] = SystemRegion(hardware_timestep_us, duration_timestep, 
+                spike_recording_region_size=0, voltage_recording_region_size=0, 
+                gsyn_recording_region_size=0, num_profiling_samples=0)
         self.regions[1] = NeuronRegion(1000, len(cell_type.receptor_types), 
                                        parameter_records)
         #self.regions[2] = SynapseRegion()

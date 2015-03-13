@@ -102,8 +102,19 @@ class State(common.control.BaseState):
         self.t_start = 0
         self.segment_counter += 1
     
-    def _build(self):
-        print("Partitioning vertices")
+    def _build(self, duration_ms):
+        # Convert timestep to microseconds
+        simulation_timestep_us = int(round(1000.0 * self.dt))
+        
+        # Divide by realtime proportion to get hardware timestep 
+        hardware_timestep_us = int(round(float(simulation_timestep_us) /
+                                         float(self.realtime_proportion)))
+        
+        # Determine how long simulation is in timesteps
+        duration_timesteps = int(round(float(runtime_ms) / float(self.dt)))
+        
+        print("Simulating for %u %uus timesteps using a hardware timestep of %uus" % 
+            (duration_timesteps, simulation_timestep_us, hardware_timestep_us))
         
         # Create a 32-bit keyspace
         keyspace = BitField(32)
@@ -114,6 +125,7 @@ class State(common.control.BaseState):
         # Get directory of backend
         backend_dir = os.path.dirname(__file__)
         
+        print("Partitioning vertices")
         # Loop through populations
         population_vertices = {}
         vertex_applications = {}
@@ -195,7 +207,9 @@ class State(common.control.BaseState):
         # Build populations
         for pop, vertices in population_vertices.iteritems():
             # Create a spinnaker population
-            with pop.create_spinnaker_population():
+            with pop.create_spinnaker_population(simulation_timestep_us, 
+                                                 hardware_timestep_us, 
+                                                 duration_timesteps):
                 # Expand any incoming connections
                 pop.expand_incoming_connection()
                 
@@ -215,6 +229,7 @@ class State(common.control.BaseState):
                         # **NOTE** this is tagged by core
                         memory_io = machine_controller.sdram_alloc_as_io(
                             pop.spinnaker_population().get_size(v.vertex_slice), tag=core.start)
+                        print("\tMemory begins at %08x" % memory_io.address)
                         
                         # Write the vertex to file
                         pop.spinnaker_population().write_to_file(v.key, v.vertex_slice, memory_io)
