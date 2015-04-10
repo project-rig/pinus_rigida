@@ -6,6 +6,10 @@
 
 // Common includes
 #include "config.h"
+#include "log.h"
+
+// Synapse processor includes
+#include "ring_buffer.h"
 
 //-----------------------------------------------------------------------------
 // Enumerations
@@ -25,6 +29,8 @@ static bool dma_busy;
 static uint32_t dma_row_buffer[2][MAX_POST_NEURONS];
 static uint32_t dma_row_buffer_index;
 static uint32_t tick;
+
+static uint32_t *output_buffers[2];
 
 //-----------------------------------------------------------------------------
 // Module inline functions
@@ -46,6 +52,24 @@ static inline void dma_swap_row_buffers()
 
 //-----------------------------------------------------------------------------
 // Module functions
+//-----------------------------------------------------------------------------
+static bool read_output_buffer_region(uint32_t *region, uint32_t flags)
+{
+  // Copy two output buffer pointers from region
+  memcpy(output_buffers, region, 2 * sizeof(uint32_t*));
+  
+#if LOG_LEVEL <= LOG_LEVEL_INFO
+  LOG_PRINT(LOG_LEVEL_INFO, "output_buffer\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  for (uint32_t i = 0; i < 2; i++)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p\n", i, output_buffers[i]);
+  }
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+#endif
+  
+  return true;
+}
 //-----------------------------------------------------------------------------
 static bool read_sdram_data(uint32_t *base_address, uint32_t flags)
 {
@@ -77,7 +101,7 @@ static bool read_sdram_data(uint32_t *base_address, uint32_t flags)
   }
   
   // Read output buffer region
-  if(!ring_buffer_read_output_buffer_region(
+  if(!read_output_buffer_region(
     config_get_region_start(region_output_buffer, base_address), 
     flags))
   {
@@ -114,7 +138,6 @@ static void setup_next_dma_row_read()
   dma_busy = false;
 }
 
-
 //-----------------------------------------------------------------------------
 // Event handler functions
 //-----------------------------------------------------------------------------
@@ -132,11 +155,11 @@ static void dma_transfer_done(uint unused, uint tag)
   }
   else if(tag == dma_tag_output_write)
   {
-    ring_buffer_output_write_complete();
+    ring_buffer_clear_output_buffer(tick);
   }
   else if(tag != dma_tag_row_write)
   {
-    LOG_PRINT_ERROR("Dma transfer done with unknown tag %u\n", tag);
+    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u\n", tag);
   }
 }
 //-----------------------------------------------------------------------------
@@ -148,7 +171,20 @@ void timer_tick(uint unused0, uint unused1)
   // Increment tick counter
   tick++;
   
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)\n", 
+    tick, (tick % 2), output_buffers[tick % 2]);
   
+  // Get output buffer from 'back' of ring-buffer
+  ring_buffer_t *output_buffer;
+  uint32_t output_buffer_bytes;
+  ring_buffer_get_output_buffer(tick, &output_buffer, &output_buffer_bytes);
+  
+  // DMA output buffer into correct output buffer for this timer tick
+  spin1_dma_transfer(dma_tag_output_write,
+    output_buffers[tick % 2],
+    output_buffer),
+    DMA_WRITE,
+    output_buffer_bytes);
 }
 
 //-----------------------------------------------------------------------------
@@ -162,7 +198,7 @@ void c_main()
   // If reading SDRAM data fails
   if(!read_sdram_data(base_address, 0))
   {
-    LOG_PRINT_ERROR("Error reading SDRAM data\n");
+    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data\n");
     return;
   }
   
@@ -172,6 +208,9 @@ void c_main()
   dma_busy = false;
   dma_row_buffer_index = 0;
   tick = UINT32_MAX;
+  
+  // Initialize ring-buffer
+  ring_buffer_init();
   
   // Register callbacks
   spin1_callback_on(MC_PACKET_RECEIVED, mc_packet_received, -1);

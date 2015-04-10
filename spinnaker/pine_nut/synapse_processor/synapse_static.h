@@ -1,0 +1,4 @@
+#ifndef SYNAPSE_STATIC_H
+#define SYNAPSE_STATIC_H
+
+#endif  // SYNAPSE_STATIC_H

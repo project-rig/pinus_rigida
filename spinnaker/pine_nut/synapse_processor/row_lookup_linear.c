@@ -1,5 +1,11 @@
+#include "row_lookup_linear.h"
+
+// Standard includes
+#include <string.h>
+
 // Common includes
 #include "config.h"
+#include "log.h"
 
 // Synapse processor includes
 #include "synapse_processor.h"
@@ -24,14 +30,14 @@ static bool read_row_size_region(uint32_t *region, uint32_t flags)
   // Copy row size table
   memcpy(row_size, region, sizeof(uint32_t) * ROW_SIZE_TABLE_SIZE;
 
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-  LOG_PRINT_TRACE("row_size\n");
-  LOG_PRINT_TRACE("------------------------------------------\n");
+#if LOG_LEVEL <= LOG_LEVEL_INFO
+  LOG_PRINT(LOG_LEVEL_INFO, "row_size\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
   for(uint32_t i = 0; i < ROW_SIZE_TABLE_SIZE; i++)
   {
-    LOG_PRINT_TRACE("\tindex %2u, size = %3u\n", i, row_size[i]);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tindex %2u, size = %3u\n", i, row_size[i]);
   }
-  LOG_PRINT_TRACE("------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
 #endif
   
   return true;
@@ -42,20 +48,20 @@ static bool read_master_population_region(uint32_t *region, uint32_t flags)
   // Copy master population table
   memcpy(master_population, region, sizeof(uint16_t) * MASTER_POPULATION_SIZE);
 
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-  LOG_PRINT_TRACE("master_population\n");
-  LOG_PRINT_TRACE("------------------------------------------\n");
+#if LOG_LEVEL <= LOG_LEVEL_INFO
+  LOG_PRINT(LOG_LEVEL_INFO, "master_population\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
   for (uint32_t i = 0; i < MASTER_POPULATION_MAX; i++)
   {
     uint32_t mp = (uint32_t)(master_population[i]);
     uint32_t s  = mp & 0x7;
     if (s != 0)
     {
-      LOG_PRINT_TRACE("index %d, entry: %4u ( 13 bits = %04x), size = %3u\n",
+      LOG_PRINT(LOG_LEVEL_INFO, "\tindex %u, entry: %4u (13 bits = %04x), size = %3u\n",
         i, mp, mp >> 3, row_size_table [s]);
     }
   }
-  LOG_PRINT_TRACE("------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
 #endif
   
   return true;
@@ -101,7 +107,7 @@ bool row_lookup_get_address(uint32_t key, uint32_t *address, uint32_t *size_byte
 
   if(s == 0)
   {
-    LOG_PRINT_WARNING("Spike %u (= %x): population not found in master population table", key, key);
+    LOG_PRINT(LOG_LEVEL_WARN, "Spike %u (= %x): population not found in master population table", key, key);
   }
   else
   {
@@ -113,7 +119,7 @@ bool row_lookup_get_address(uint32_t key, uint32_t *address, uint32_t *size_byte
     // **NOTE** 1024 converts from kilobyte offset to byte offset
     uint32_t population_offset = d * 1024;
 
-    LOG_PRINT_TRACE("stride = %u, neuron offset = %u, population offset = %u, base = %08x, size = %u\n", 
+    LOG_PRINT(LOG_LEVEL_TRACE, "stride = %u, neuron offset = %u, population offset = %u, base = %08x, size = %u\n", 
       stride, neuron_offset, population_offset, synaptic_row_base, *size_bytes);
     
     // Return address
