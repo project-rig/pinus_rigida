@@ -1,6 +1,9 @@
 #ifndef LOG_H
 #define LOG_H
 
+// Sark includes
+#include <sark.h>
+
 //-----------------------------------------------------------------------------
 // Macros
 //-----------------------------------------------------------------------------
@@ -16,12 +19,12 @@
 #endif
 
 // Log print function
-#define LOG_PRINT(level, s, ...)                    \
-  do                                                \
-  {                                                 \
-#if level >= LOG_LEVEL                              \
-    io_printf(IO_BUF, "["#level"]"s, ##__VA_ARGS__);\
-#endif  // level >= LOG_LEVEL                       \
-  } while (0)
-
+#define LOG_PRINT(level, s, ...)                            \
+  do                                                        \
+  {                                                         \
+    if(level >= LOG_LEVEL)                                  \
+    {                                                       \
+      io_printf(IO_BUF, "[" #level "] " s, ##__VA_ARGS__);  \
+    }                                                       \
+  } while(false)
 #endif  // LOG_H

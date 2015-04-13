@@ -3,13 +3,26 @@
 // Standard includes
 #include <stdbool.h>
 #include <stdint.h>
+#include <string.h>
+
+// Spin1 includes
+#include <spin1_api.h>
 
 // Common includes
-#include "config.h"
-#include "log.h"
+#include "../common/config.h"
+#include "../common/log.h"
+#include "../common/spike_input_buffer.h"
+#include "../common/utils.h"
 
 // Synapse processor includes
 #include "ring_buffer.h"
+
+//-----------------------------------------------------------------------------
+// Macros
+//-----------------------------------------------------------------------------
+#ifndef SPIKE_INPUT_BUFFER_SIZE
+  #define SPIKE_INPUT_BUFFER_SIZE 256
+#endif
 
 //-----------------------------------------------------------------------------
 // Enumerations
@@ -26,7 +39,7 @@ typedef enum dma_tag_e
 // Module variables
 //-----------------------------------------------------------------------------
 static bool dma_busy;
-static uint32_t dma_row_buffer[2][MAX_POST_NEURONS];
+static uint32_t dma_row_buffer[2][SYNAPSE_MAX_ROW_WORDS + 1];
 static uint32_t dma_row_buffer_index;
 static uint32_t tick;
 
@@ -55,6 +68,8 @@ static inline void dma_swap_row_buffers()
 //-----------------------------------------------------------------------------
 static bool read_output_buffer_region(uint32_t *region, uint32_t flags)
 {
+  USE(flags);
+  
   // Copy two output buffer pointers from region
   memcpy(output_buffers, region, 2 * sizeof(uint32_t*));
   
@@ -115,11 +130,11 @@ static void setup_next_dma_row_read()
 {
   // If there's more incoming spikes
   uint32_t spike;
-  if(next_spike(&s))
+  if(spike_input_buffer_next_spike(&spike))
   {
     // Decode spike to get address of destination synaptic row
     uint32_t *address;
-    uint32_t *size_bytes;
+    uint32_t size_bytes;
     if(row_lookup_get_address(spike, &address, &size_bytes) != NULL)
     {
       // Write the SDRAM address and originating spike to the beginning of dma buffer
@@ -140,6 +155,34 @@ static void setup_next_dma_row_read()
 
 //-----------------------------------------------------------------------------
 // Event handler functions
+//-----------------------------------------------------------------------------
+static void mc_packet_received (uint key, uint payload)
+{
+  USE(payload);
+
+  LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u\n", 
+    key, tick, dma_busy);
+
+  // If there was space to add spike to incoming spike queue
+  if(spike_input_buffer_add_spike(key))
+  {
+    // If we're not already processing synaptic dmas, flag pipeline as busy and trigger a user event
+    if(!dma_busy)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike\n");
+      
+      if(spin1_trigger_user_event(0, 0))
+      {
+        dma_busy = true;
+      } 
+      else 
+      {
+        LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event\n");
+      }
+    }
+  } 
+
+}
 //-----------------------------------------------------------------------------
 static void dma_transfer_done(uint unused, uint tag)
 {
@@ -163,6 +206,15 @@ static void dma_transfer_done(uint unused, uint tag)
   }
 }
 //-----------------------------------------------------------------------------
+void user_event(uint unused0, uint unused1)
+{
+  USE(unused0);
+  USE(unused1);
+
+  // Setup next row read
+  setup_next_dma_row_read();
+}
+//-----------------------------------------------------------------------------
 void timer_tick(uint unused0, uint unused1)
 {
   USE(unused0);
@@ -175,14 +227,14 @@ void timer_tick(uint unused0, uint unused1)
     tick, (tick % 2), output_buffers[tick % 2]);
   
   // Get output buffer from 'back' of ring-buffer
-  ring_buffer_t *output_buffer;
+  ring_buffer_entry_t *output_buffer;
   uint32_t output_buffer_bytes;
   ring_buffer_get_output_buffer(tick, &output_buffer, &output_buffer_bytes);
   
   // DMA output buffer into correct output buffer for this timer tick
   spin1_dma_transfer(dma_tag_output_write,
     output_buffers[tick % 2],
-    output_buffer),
+    output_buffer,
     DMA_WRITE,
     output_buffer_bytes);
 }
@@ -209,8 +261,9 @@ void c_main()
   dma_row_buffer_index = 0;
   tick = UINT32_MAX;
   
-  // Initialize ring-buffer
+  // Initialize modules
   ring_buffer_init();
+  spike_input_buffer_init(SPIKE_INPUT_BUFFER_SIZE);
   
   // Register callbacks
   spin1_callback_on(MC_PACKET_RECEIVED, mc_packet_received, -1);

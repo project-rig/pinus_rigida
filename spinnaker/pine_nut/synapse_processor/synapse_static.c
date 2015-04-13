@@ -1,7 +1,8 @@
 #include "synapse_static.h"
 
 // Common includes
-#include "log.h"
+#include "../common/log.h"
+#include "../common/utils.h"
 
 // Synapse processor includes
 #include "ring_buffer.h"
@@ -25,7 +26,9 @@ static inline uint32_t *row_synaptic_words(uint32_t *row)
 //-----------------------------------------------------------------------------
 bool synapse_read_sdram_data(uint32_t *base_address, uint32_t flags)
 {
-  
+  USE(base_address);
+  USE(flags);
+  return true;
 }
 //-----------------------------------------------------------------------------
 void synapse_process_row(uint32_t tick, uint32_t *row)
@@ -45,10 +48,10 @@ void synapse_process_row(uint32_t tick, uint32_t *row)
 
     // Extract components from this word
     uint32_t delay = synapse_format_delay(synaptic_word);
-    uint32_t type_index = synapse_format_type_index(synaptic_word);
+    uint32_t index = synapse_format_index(synaptic_word);
     weight_word_t weight = synapse_format_weight(synaptic_word);
   
     // Add weight to ring-buffer
-    ring_buffer_add_weight(delay + tick, type_index, weight)
+    ring_buffer_add_weight(delay + tick, index, weight);
   }
 }

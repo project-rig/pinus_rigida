@@ -40,23 +40,26 @@
  *    $Log$
  *
  */
+#include "spike_input_buffer.h"
 
-#include "common-impl.h"
-#include "spikes_impl.h"
+// SARK includes
+#include <sark.h>
 
-#ifdef DEBUG
-#include "spin-print.h"
-#endif /*DEBUG*/
+//-----------------------------------------------------------------------------
+// Global variables
+//-----------------------------------------------------------------------------
+uint32_t *spike_input_buffer = NULL;
+uint32_t spike_input_buffer_size = 0;
 
-spike_t*   buffer;
-uint buffer_size;
+uint32_t spike_input_buffer_output = 0;
+uint32_t spike_input_buffer_input = 0;
+uint32_t spike_input_buffer_overflows = 0;
+uint32_t spike_input_buffer_underflows = 0;
 
-index_t   output;
-index_t   input;
-counter_t overflows;
-counter_t underflows;
-
-// initialize_spike_buffer
+//-----------------------------------------------------------------------------
+// Global functions
+//-----------------------------------------------------------------------------
+// spike_input_buffer_init
 //
 // This function initializes the input spike buffer.
 // It configures:
@@ -68,18 +71,17 @@ counter_t underflows;
 //
 // If underflows is ever non-zero, then there is a problem with this code.
 
-void initialize_spike_buffer (uint size)
+void spike_input_buffer_init(uint32_t size)
 {
-  buffer = (spike_t *) sark_alloc(1, size * sizeof(spike_t));
-  buffer_size = size;
-  input      = size - 1;
-  output     = 0;
-  overflows  = 0;
-  underflows = 0;
+  spike_input_buffer = (uint32_t*)sark_alloc(1, size * sizeof(uint32_t));
+  spike_input_buffer_size = size;
+  spike_input_buffer_input = size - 1;
+  spike_input_buffer_output = 0;
+  spike_input_buffer_overflows = 0;
+  spike_input_buffer_underflows = 0;
 }
-
-#ifdef DEBUG
-void print_buffer (void)
+//-----------------------------------------------------------------------------
+/*void print_buffer (void)
 {
   counter_t n = allocated();
   index_t   a;
@@ -94,5 +96,4 @@ void print_buffer (void)
   }
  
   printf ("------------------------------------------------\n");
-}
-#endif /*DEBUG*/
+}*/

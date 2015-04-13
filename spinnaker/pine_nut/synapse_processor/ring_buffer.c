@@ -6,7 +6,7 @@
 //-----------------------------------------------------------------------------
 // Global variables
 //-----------------------------------------------------------------------------
-ring_entry_t ring_buffer[RING_BUFFER_SIZE];
+ring_buffer_entry_t ring_buffer[RING_BUFFER_SIZE];
 
 //-----------------------------------------------------------------------------
 // Global functions
@@ -14,14 +14,14 @@ ring_entry_t ring_buffer[RING_BUFFER_SIZE];
 bool ring_buffer_init()
 {
   // Zero ring-buffer
-  memset(ring_buffer, 0, RING_BUFFER_SIZE * sizeof(ring_entry_t));
+  memset(ring_buffer, 0, RING_BUFFER_SIZE * sizeof(ring_buffer_entry_t));
   return true;
 }
 //-----------------------------------------------------------------------------
 void ring_buffer_clear_output_buffer(uint32_t tick)
 {
   // Get output buffer for specified tick
-  ring_buffer_t *output_buffer;
+  ring_buffer_entry_t *output_buffer;
   uint32_t output_buffer_bytes;
   ring_buffer_get_output_buffer(tick, &output_buffer, &output_buffer_bytes);
   

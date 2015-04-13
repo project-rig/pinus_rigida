@@ -2,6 +2,7 @@
 #define CONFIG_H
 
 // Standard includes
+#include <stdbool.h>
 #include <stdint.h>
 
 //-----------------------------------------------------------------------------
@@ -14,7 +15,7 @@ uint32_t *config_get_base_address();
 bool config_read_header(uint32_t *base_address, uint32_t *version, uint32_t flags);
 
 // Get the address of region n within the SDRAM data beginning at base_address
-uint32_t *config_get_region_start(uint32_t n, uint32_t *base_address)
+uint32_t *config_get_region_start(uint32_t n, uint32_t *base_address);
 
 // Read system region including application-specific words from region data
 bool config_read_system_region(uint32_t *region, uint32_t flags, 
