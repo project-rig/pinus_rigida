@@ -156,7 +156,7 @@ static void setup_next_dma_row_read()
 //-----------------------------------------------------------------------------
 // Event handler functions
 //-----------------------------------------------------------------------------
-static void mc_packet_received (uint key, uint payload)
+static void mc_packet_received(uint key, uint payload)
 {
   USE(payload);
 
@@ -273,5 +273,4 @@ void c_main()
   
   // Start simulation
   spin1_start(SYNC_WAIT);
-  
 }
