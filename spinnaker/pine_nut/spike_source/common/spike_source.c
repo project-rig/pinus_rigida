@@ -3,16 +3,20 @@
 // Standard includes
 #include <string.h>
 
+// Spin1 includes
+#include <spin1_api.h>
+
 // Common includes
-#include "../common/config.h"
-#include "../common/log.h"
+#include "../../common/config.h"
+#include "../../common/log.h"
+#include "../../common/utils.h"
 
 //-----------------------------------------------------------------------------
 // Global variables
 //-----------------------------------------------------------------------------
 uint32_t spike_source_key = 0;
 uint32_t spike_source_num_sources = 0;
-uint32_t spike_source_app_words[application_word_max];
+uint32_t spike_source_app_words[app_word_max];
 
 //-----------------------------------------------------------------------------
 // Module variables
@@ -34,7 +38,7 @@ static bool read_sdram_data(uint32_t *base_address, uint32_t flags)
   // Read system region
   if(!config_read_system_region(
     config_get_region_start(region_system, base_address), 
-    flags, spike_source_app_words, app_word_max))
+    flags, app_word_max, spike_source_app_words))
   {
     return false;
   }
@@ -55,13 +59,12 @@ static void timer_tick(uint unused0, uint unused1)
   
   // Increment tick counter
   tick++;
-
-  log_info("Timer tick %u", tick);
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u\n", tick);
 
   // If a fixed number of simulation ticks are specified and these have passed
-  if (simulation_ticks != UINT32_MAX && tick >= simulation_ticks)
+  if (tick != UINT32_MAX && tick >= tick)
   {
-    log_info("Simulation complete.\n");
+    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
 
     // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
     //recording_finalise();
@@ -92,8 +95,8 @@ static void timer_tick(uint unused0, uint unused1)
     }
 #endif  // SPIKE_SOURCE_SEND_OUT_SPIKES
 
-    reset_out_spikes ();*/
-  }
+    reset_out_spikes ();
+  }*/
 }
 
 //-----------------------------------------------------------------------------
@@ -117,7 +120,7 @@ void c_main()
   tick = UINT32_MAX;
 
   // Set timer tick (in microseconds)
-  spin1_set_timer_tick(timer_period);
+  spin1_set_timer_tick(spike_source_app_words[app_word_timer_period]);
 
   // Register callbacks
   spin1_callback_on(TIMER_TICK, timer_tick, 2);
