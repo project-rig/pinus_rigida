@@ -45,6 +45,8 @@ static uint32_t tick;
 
 static uint32_t *output_buffers[2];
 
+static uint32_t app_words[app_word_max];
+
 //-----------------------------------------------------------------------------
 // Module inline functions
 //-----------------------------------------------------------------------------
@@ -98,7 +100,7 @@ static bool read_sdram_data(uint32_t *base_address, uint32_t flags)
   // Read system region
   if(!config_read_system_region(
     config_get_region_start(region_system, base_address), 
-    flags, 0, NULL))
+    flags, app_word_max, app_words))
   {
     return false;
   }
@@ -198,6 +200,7 @@ static void dma_transfer_done(uint unused, uint tag)
   }
   else if(tag == dma_tag_output_write)
   {
+    // This timesteps output has been written from the ring-buffer so we can now zero it
     ring_buffer_clear_output_buffer(tick);
   }
   else if(tag != dma_tag_row_write)
@@ -206,7 +209,7 @@ static void dma_transfer_done(uint unused, uint tag)
   }
 }
 //-----------------------------------------------------------------------------
-void user_event(uint unused0, uint unused1)
+static void user_event(uint unused0, uint unused1)
 {
   USE(unused0);
   USE(unused1);
@@ -215,13 +218,24 @@ void user_event(uint unused0, uint unused1)
   setup_next_dma_row_read();
 }
 //-----------------------------------------------------------------------------
-void timer_tick(uint unused0, uint unused1)
+static void timer_tick(uint unused0, uint unused1)
 {
   USE(unused0);
   USE(unused1);
   
   // Increment tick counter
   tick++;
+  
+  // If a fixed number of simulation ticks are specified and these have passed
+  if (app_words[app_word_simulation_duration] != UINT32_MAX 
+    && tick >= app_words[app_word_simulation_duration])
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
+
+    // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
+    //recording_finalise();
+    spin1_exit(0);
+  }
   
   LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)\n", 
     tick, (tick % 2), output_buffers[tick % 2]);
@@ -264,6 +278,9 @@ void c_main()
   // Initialize modules
   ring_buffer_init();
   spike_input_buffer_init(SPIKE_INPUT_BUFFER_SIZE);
+  
+  // Set timer tick (in microseconds)
+  spin1_set_timer_tick(app_words[app_word_timer_period]);
   
   // Register callbacks
   spin1_callback_on(MC_PACKET_RECEIVED, mc_packet_received, -1);

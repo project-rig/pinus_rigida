@@ -11,20 +11,12 @@
 //-----------------------------------------------------------------------------
 // Enumerations
 //-----------------------------------------------------------------------------
-// Indexes of synapse executable regions
-typedef enum region_e
-{
-  region_system             = 0,
-  region_spike_source       = 8,
-  region_record_spikes      = 14,
-  region_profiler           = 17,
-} region_e;
-
 // Indexes of application words
 typedef enum app_word_e
 {
   app_word_spike_history_recording_region_size,
   app_word_key,
+  app_word_simulation_duration,
   app_word_timer_period,
   app_word_num_sources,
   app_word_max,

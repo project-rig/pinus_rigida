@@ -80,6 +80,12 @@ bool spike_source_read_sdram_data(uint32_t *base_address, uint32_t flags)
   
   // Allocate correctly sized DMA buffer
   dma_buffer = (uint32_t*)spin1_malloc(spike_block_size_words * sizeof(uint32_t));
+  if(dma_buffer == NULL)
+  {
+    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte DMA buffer\n", 
+      spike_block_size_words * sizeof(uint32_t));
+    return false;
+  }
   
   // If the next spike occurs in the 1st timestep
   if(next_spike_tick == 0)

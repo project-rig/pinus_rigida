@@ -62,7 +62,8 @@ static void timer_tick(uint unused0, uint unused1)
   LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u\n", tick);
 
   // If a fixed number of simulation ticks are specified and these have passed
-  if (tick != UINT32_MAX && tick >= tick)
+  if (spike_source_app_words[app_word_simulation_duration] != UINT32_MAX 
+    && tick >= spike_source_app_words[app_word_simulation_duration])
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
 

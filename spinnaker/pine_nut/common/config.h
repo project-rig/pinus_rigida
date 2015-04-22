@@ -6,6 +6,28 @@
 #include <stdint.h>
 
 //-----------------------------------------------------------------------------
+// Enumerations
+//-----------------------------------------------------------------------------
+// Indexes of executable regions
+typedef enum region_e
+{
+  region_system             = 0,
+  region_neuron             = 1,
+  region_synapse_shaping    = 2,
+  region_row_size           = 3,
+  region_master_population  = 4,
+  region_synaptic_matrix    = 5,
+  region_plasticity         = 6,
+  region_input_buffer       = 7,
+  region_output_buffer      = 8,
+  region_spike_source       = 9,
+  region_record_spikes      = 10,
+  region_record_analogue_1  = 11,
+  region_record_analogue_2  = 12,
+  region_profiler           = 15,
+} region_e;
+
+//-----------------------------------------------------------------------------
 // Global functions
 //-----------------------------------------------------------------------------
 // Get the base address of this core's SDRAM data using allocation tag
