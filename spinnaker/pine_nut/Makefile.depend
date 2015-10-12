@@ -1,5 +1,6 @@
 LIBRARIES = -lspin1_api
-CFLAGS += -Wall -Wextra -Ofast -fno-rtti -nodefaultlibs
+CFLAGS += -Wall -Wextra -Ofast  -fno-rtti
+LFLAGS += -nodefaultlibs
 APP_DIR = ../../model_binaries
 BUILDDIR = build
 

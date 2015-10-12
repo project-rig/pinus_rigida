@@ -1,10 +1,8 @@
 #include "config.h"
 
-// Standard includes
-#include <cstring>
-
 // Common includes
 #include "log.h"
+#include "spinnaker.h"
 
 //-----------------------------------------------------------------------------
 // Common::Config
@@ -20,9 +18,10 @@ bool Config::VerifyHeader(uint32_t *baseAddress, uint32_t, uint32_t &version) co
   }
 
   version = baseAddress[1]; // version number extracted.
-
+  #include <sark.h>
   LOG_PRINT(LOG_LEVEL_INFO, "Magic = %08x, version = %u.%u", baseAddress[0],
     baseAddress[1] >> 16, baseAddress[1] & 0xFFFF);
+
   return true;
 }
 //-----------------------------------------------------------------------------
@@ -38,7 +37,7 @@ bool Config::ReadSystemRegion(uint32_t *region, uint32_t,
   // Copy application words
   if(numApplicationWords > 0)
   {
-    memcpy(applicationWords, &region[2],
+    spin1_memcpy(applicationWords, &region[2],
       numApplicationWords * sizeof(uint32_t));
   }
 

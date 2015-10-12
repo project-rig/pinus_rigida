@@ -1,11 +1,7 @@
-#ifndef LOG_H
-#define LOG_H
+#pragma once
 
-// Sark includes
-extern "C"
-{
-  #include <sark.h>
-}
+// Common includes
+#include "spinnaker.h"
 
 //-----------------------------------------------------------------------------
 // Macros
@@ -30,4 +26,3 @@ extern "C"
       io_printf(IO_BUF, "[" #level "] " s, ##__VA_ARGS__);  \
     }                                                       \
   } while(false)
-#endif  // LOG_H

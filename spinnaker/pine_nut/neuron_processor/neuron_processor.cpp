@@ -1,19 +1,10 @@
 #include "neuron_processor.h"
 
-// Standard includes
-#include <cstring>
-
-// Sark includes
-extern "C"
-{
-  #include <sark.h>
-  #include <spin1_api.h>
-}
-
 // Common includes
 #include "../common/config.h"
 #include "../common/fixed_point_number.h"
 #include "../common/log.h"
+#include "../common/spinnaker.h"
 
 // **TEMP** include using compiler
 #include "config/lif_curr_exp.h"
@@ -63,7 +54,7 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   }
   
   // Copy neuron data into newly allocated array
-  memcpy(g_NeuronMutableState, region, mutableNeuronBytes);
+  spin1_memcpy(g_NeuronMutableState, region, mutableNeuronBytes);
 
   // Allocate array for neuron's mutable state
   uint32_t immutableNeuronBytes = sizeof(Neuron::ImmutableState) * g_AppWords[AppWordNumNeurons];
@@ -76,7 +67,7 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   }
 
   // Copy neuron data into newly allocated array
-  memcpy(g_NeuronImmutableState, region, immutableNeuronBytes);
+  spin1_memcpy(g_NeuronImmutableState, region, immutableNeuronBytes);
   
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
   LOG_PRINT(LOG_LEVEL_TRACE, "neurons\n");

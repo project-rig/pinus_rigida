@@ -1,10 +1,6 @@
 #include "lif_curr.h"
 
-// Sark includes
-extern "C"
-{
-  #include <sark.h>
-}
+#include "../../common/spinnaker.h"
 
 //-----------------------------------------------------------------------------
 // LIFCurr
