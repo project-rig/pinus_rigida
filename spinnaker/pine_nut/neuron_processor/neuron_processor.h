@@ -1,19 +1,30 @@
-#ifndef NEURON_PROCESSOR_H
-#define NEURON_PROCESSOR_H
+#pragma once
 
-
+namespace NeuronProcessor
+{
 //-----------------------------------------------------------------------------
 // Enumerations
 //-----------------------------------------------------------------------------
-// Indexes of application words
-typedef enum app_word_e
+// Indices or regions
+enum Region
 {
-  app_word_key,
-  app_word_simulation_duration,
-  app_word_timer_period,
-  app_word_timestep,
-  app_word_num_neurons,
-  app_word_max,
-} app_word_e;
+  RegionSystem          = 0,
+  RegionNeuron          = 1,
+  RegionSynapseShaping  = 2,
+  RegionRecordSpikes    = 10,
+  RegionRecordAnalogue1 = 11,
+  RegionRecordAnalogue2 = 12,
+  RegionProfiler        = 17,
+};
 
-#endif  // NEURON_PROCESSOR_H
+// Indexes of application words
+enum AppWord
+{
+  AppWordKey,
+  AppWordSimulationDuration,
+  AppWordTimerPeriod,
+  AppWordNumNeurons,
+  AppWordMax,
+};
+
+};  // namespace NeuronProcessor

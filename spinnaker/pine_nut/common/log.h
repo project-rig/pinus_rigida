@@ -2,7 +2,10 @@
 #define LOG_H
 
 // Sark includes
-#include <sark.h>
+extern "C"
+{
+  #include <sark.h>
+}
 
 //-----------------------------------------------------------------------------
 // Macros
