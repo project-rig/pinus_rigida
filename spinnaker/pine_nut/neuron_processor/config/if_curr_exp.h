@@ -1,12 +1,12 @@
 #pragma once
 
 // Model includes
-#include "../neuron_models/lif_curr.h"
+#include "../neuron_models/if_curr.h"
 
 namespace NeuronProcessor
 {
 //-----------------------------------------------------------------------------
 // Typedefines
 //-----------------------------------------------------------------------------
-typedef NeuronModels::LIFCurr Neuron;
+typedef NeuronModels::IFCurr Neuron;
 };

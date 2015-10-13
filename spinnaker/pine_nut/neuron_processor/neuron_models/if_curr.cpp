@@ -1,4 +1,4 @@
-#include "lif_curr.h"
+#include "if_curr.h"
 
 #include "../../common/spinnaker.h"
 
@@ -9,7 +9,7 @@ namespace NeuronProcessor
 {
 namespace NeuronModels
 {
-void LIFCurr::Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState)
+void IFCurr::Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState)
 {
   io_printf(stream, "Mutable state:\n");
   io_printf(stream, "V_Membrane       = %11.4k [mV]\n", mutableState.m_V_Membrane);

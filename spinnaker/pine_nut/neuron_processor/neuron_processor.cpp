@@ -6,8 +6,7 @@
 #include "../common/log.h"
 #include "../common/spinnaker.h"
 
-// **TEMP** include using compiler
-#include "config/lif_curr_exp.h"
+#include "config/if_curr_exp.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;
@@ -165,6 +164,9 @@ static void TimerTick(uint tick, uint)
 //-----------------------------------------------------------------------------
 // Entry point
 //-----------------------------------------------------------------------------
+extern "C" void __aeabi_unwind_cpp_pr0(void){}
+extern "C" void __aeabi_unwind_cpp_pr1(void){}
+
 extern "C" void c_main()
 {
   // Get this core's base address using alloc tag

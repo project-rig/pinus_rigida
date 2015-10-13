@@ -1,7 +1,10 @@
+# Get absolute path of THIS make file i.e. the pine_nut directory
+PINE_NUT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+
 LIBRARIES = -lspin1_api
-CFLAGS += -Wall -Wextra -Ofast  -fno-rtti
+CFLAGS += -Wall -Wextra -Ofast -fno-rtti
 LFLAGS += -nodefaultlibs
-APP_DIR = ../../model_binaries
+APP_DIR = $(PINE_NUT)/../../model_binaries
 BUILDDIR = build
 
-include ../Makefile.common
+include $(PINE_NUT)/Makefile.common
