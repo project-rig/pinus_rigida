@@ -2,7 +2,7 @@
 PINE_NUT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 LIBRARIES = -lspin1_api
-CFLAGS += -Wall -Wextra -Ofast -fno-rtti
+CFLAGS += -Wall -Wextra -Ofast -fno-rtti -fno-exceptions
 LFLAGS += -nodefaultlibs
 APP_DIR = $(PINE_NUT)/../../model_binaries
 BUILDDIR = build

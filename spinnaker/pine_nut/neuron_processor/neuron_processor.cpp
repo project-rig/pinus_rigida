@@ -164,9 +164,6 @@ static void TimerTick(uint tick, uint)
 //-----------------------------------------------------------------------------
 // Entry point
 //-----------------------------------------------------------------------------
-extern "C" void __aeabi_unwind_cpp_pr0(void){}
-extern "C" void __aeabi_unwind_cpp_pr1(void){}
-
 extern "C" void c_main()
 {
   // Get this core's base address using alloc tag
