@@ -58,6 +58,17 @@ class NeuronVertex:
         return self.keyspace.get_mask(tag="routing")
 
 #------------------------------------------------------------------------------
+# SynapseVertex
+#------------------------------------------------------------------------------
+class SynapseVertex:
+    def __init__(self, post_neuron_slice):
+        self.post_neuron_slice = post_neuron_slice
+        self.incoming_connections = []
+
+    def add_connection(self, pre_neuron_vertex, projection):
+        self.incoming_connections.append((pre_neuron_vertex, projection))
+
+#------------------------------------------------------------------------------
 # ID
 #------------------------------------------------------------------------------
 class ID(int, common.IDMixin):
@@ -167,6 +178,9 @@ class State(common.control.BaseState):
         print("Partitioning synapse vertices")
 
         # Now all neuron vertices are partioned, loop through populations again
+        # **TODO** make this process iterative so if result of there are more than
+        # 15 synapse processors for each neuron processor, split more and try again
+        pop_synapse_vertices = {}
         for pop in self.populations:
             print "Population:", pop
 
@@ -180,7 +194,8 @@ class State(common.control.BaseState):
                 # Add this population to the associated list
                 pop_synapse_types[synapse_type].append(p)
 
-            # Loop through newly partioned projections
+            # Loop through newly partioned incoming projections
+            synapse_vertices = []
             for synapse_type, projections in iteritems(pop_synapse_types):
                 # Slice post-synaptic neurons evenly based on synapse type
                 post_slices = evenly_slice(
@@ -200,7 +215,8 @@ class State(common.control.BaseState):
                     print "\t\tPost slice:", post_slice
 
                     # Loop through all projections of this type
-                    synapse_processor_event_rate = 0.0
+                    synapse_vertex_event_rate = 0.0
+                    synapse_vertex = SynapseVertex(post_slice)
                     for projection in projections:
                         print "\t\t\tProjection:", projection
 
@@ -220,30 +236,45 @@ class State(common.control.BaseState):
                             # Use this to calculate event rate
                             synaptic_event_rate = total_synapses * mean_pre_firing_rate
 
+                            # **TODO** SDRAM estimation
                             print "\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f" % (total_synapses, synaptic_event_rate)
 
+                            # Add this connection to the synapse vertex
+                            synapse_vertex.add_connection(pre_vertex, projection)
+
                             # Add event rate to total for current synapse processor
-                            synapse_processor_event_rate += synaptic_event_rate
+                            synapse_vertex_event_rate += synaptic_event_rate
 
                             # If it's more than this type of synapse processor can handle
-                            if synapse_processor_event_rate > synapse_type[0].max_synaptic_event_rate:
+                            if synapse_vertex_event_rate > synapse_type[0].max_synaptic_event_rate:
+                                # Add current synapse vertex to list
+                                synapse_vertices.append(synapse_vertex)
 
-                                # Reset event rate
-                                synapse_processor_event_rate = 0.0
+                                # Create replacement and reset event rate
+                                synapse_vertex = SynapseVertex(post_slice)
+                                synapse_vertex_event_rate = 0.0
 
-                        # Estimate the number of synapses this projection is
-                        # going to create within this post-synaptic slice
-                        #total_synapses = sum([p.estimate_num_synapses(post_slice)
-                        #                    for p in projections])
+                    # If the last synapse vertex created had any incoming connections
+                    if len(synapse_vertex.incoming_connections) > 0:
+                        synapse_vertices.append(synapse_vertex)
+                    print "\t\t\t%u synapse vertices" % len(synapse_vertices)
 
-                        # Estimate the synaptic event rate these synapses will cause
-                        #
+            print "\t\t%u synapse vertices" % len(synapse_vertices)
 
-                        #print "\t", post_slice, total_synapses, synaptic_event_rate
+            # Add synapse vertices to dictionary
+            pop_synapse_vertices[pop] = synapse_vertices
 
-        
+            # Loop through synapse vertices
+            for v in synapse_vertices:
+                # Add application to dictionary
+                vertex_applications[v] = synapse_application
+
+                # Add resources to dictionary
+                vertex_resources[v] = { machine.Cores: 1 }
+
         # Finalise keyspace fields
         keyspace.assign_fields()
+        
         assert False
         # Loop through all projections in simulation
         nets = []
