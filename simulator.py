@@ -1,14 +1,18 @@
 # Import modules
 import itertools
+import math
 import os
 from rig import machine
 
 # Import classes
+from collections import defaultdict
 from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.machine_controller import MachineController, MemoryIO
 from rig.netlist import Net
 from rig.place_and_route import wrapper
+from six import iteritems
+from utils import evenly_slice
 
 name = "SpiNNaker"
 
@@ -37,11 +41,11 @@ def generate_nets_and_keys(pre_pop, post, population_vertices):
     return nets, net_keys
 
 #------------------------------------------------------------------------------
-# Vertex
+# NeuronVertex
 #------------------------------------------------------------------------------
-class Vertex:
-    def __init__(self, parent_keyspace, vertex_slice, population_index, vertex_index):
-        self.vertex_slice = vertex_slice
+class NeuronVertex:
+    def __init__(self, parent_keyspace, neuron_slice, population_index, vertex_index):
+        self.neuron_slice = neuron_slice
         self.keyspace = parent_keyspace(population_index=population_index, 
             vertex_index=vertex_index)
     
@@ -77,14 +81,14 @@ class State(common.control.BaseState):
 
     def run(self, simtime):
         # Build data
-        self._build()
+        self._build(simtime)
         
         self.t += simtime
         self.running = True
         
     def run_until(self, tstop):
         # Build data
-        self._build()
+        self._build(tstop - self.t)
         
         self.t = tstop
         self.running = True
@@ -111,7 +115,7 @@ class State(common.control.BaseState):
                                          float(self.realtime_proportion)))
         
         # Determine how long simulation is in timesteps
-        duration_timesteps = int(round(float(runtime_ms) / float(self.dt)))
+        duration_timesteps = int(round(float(duration_ms) / float(self.dt)))
         
         print("Simulating for %u %uus timesteps using a hardware timestep of %uus" % 
             (duration_timesteps, simulation_timestep_us, hardware_timestep_us))
@@ -125,37 +129,122 @@ class State(common.control.BaseState):
         # Get directory of backend
         backend_dir = os.path.dirname(__file__)
         
-        print("Partitioning vertices")
+        print("Partitioning neuron vertices")
+
         # Loop through populations
-        population_vertices = {}
+        pop_neuron_vertices = {}
         vertex_applications = {}
         vertex_resources = {}
-        for pidx, pop in enumerate(self.populations):  
+        for pop_id, pop in enumerate(self.populations):
+            print "Population:", pop
+
             # Partition population to get slices and resources for each vertex
-            slices, resources = pop.partition()
+            neuron_slices, neuron_resources = pop.partition()
             
-            # Build vertices by allocating a keyspace for each vertex
-            vertices = [Vertex(keyspace, vslice, pidx, vidx) for vidx, vslice in enumerate(slices)]
+            # Build neuron vertices for each slice allocating a keyspace for each vertex
+            neuron_vertices = [NeuronVertex(keyspace, neuron_slice, pop_id, vert_id)
+                               for vert_id, neuron_slice in enumerate(neuron_slices)]
             
-            # Add resultant list of vertex tuples to dictionary
-            population_vertices[pop] = vertices
+            # Add resultant list of vertices to dictionary
+            pop_neuron_vertices[pop] = neuron_vertices
             
-            # **TEMP** get application from celltype
-            # **TODO* path to aplx, take STDP name munging into account
-            application = os.path.join(backend_dir, "model_binaries", pop.celltype.__class__.__name__ + ".aplx")
-            print application
+            # Get neuron application name
+            # **THINK** is there any point in doing anything cleverer than this
+            neuron_application = os.path.join(
+                backend_dir, "model_binaries",
+                "neuron_processor_" + pop.celltype.__class__.__name__.lower() + ".aplx")
+
+            print("\tNeuron application:%s" % neuron_application)
             
-            # Loop through vertices and their correspondign resources again
-            for v, r in zip(vertices, resources):
+            # Loop through neuron vertices and their corresponding resources
+            for v, r in zip(neuron_vertices, neuron_resources):
                 # Add application to dictionary
-                vertex_applications[v] = application
-                
+                vertex_applications[v] = neuron_application
+
                 # Add resources to dictionary
                 vertex_resources[v] = r
+
+        print("Partitioning synapse vertices")
+
+        # Now all neuron vertices are partioned, loop through populations again
+        for pop in self.populations:
+            print "Population:", pop
+
+            # Partition incoming projections to this population by type
+            pop_synapse_types = defaultdict(list)
+            for p in pop.incoming_projections:
+                # Build a tuple identifying which synapse
+                # type this projection requires
+                synapse_type = (p.synapse_type.__class__, p.receptor_type)
+
+                # Add this population to the associated list
+                pop_synapse_types[synapse_type].append(p)
+
+            # Loop through newly partioned projections
+            for synapse_type, projections in iteritems(pop_synapse_types):
+                # Slice post-synaptic neurons evenly based on synapse type
+                post_slices = evenly_slice(
+                    pop.size, synapse_type[0].max_post_neurons_per_core)
+
+                print "\tSynapse type:", synapse_type[0].__name__, synapse_type[1]
+
+                # Get synapse application name
+                # **THINK** is there any point in doing anything cleverer than this
+                synapse_application = os.path.join(
+                    backend_dir, "model_binaries",
+                    "synapse_processor_" + synapse_type[0].__name__.lower() + ".aplx")
+                print("\t\tSynapse application:%s" % synapse_application)
+
+                # Loop through the post-slices
+                for post_slice in post_slices:
+                    print "\t\tPost slice:", post_slice
+
+                    # Loop through all projections of this type
+                    synapse_processor_event_rate = 0.0
+                    for projection in projections:
+                        print "\t\t\tProjection:", projection
+
+                        # **TODO** nengo-style configuration system
+                        mean_pre_firing_rate = 10.0
+
+                        # Loop through the vertices which the pre-synaptic
+                        # population has been partitioned into
+                        for pre_vertex in pop_neuron_vertices[projection.pre]:
+                            print "\t\t\t\tPre slice:", pre_vertex.neuron_slice
+
+                            # Estimate number of synapses the connection between
+                            # The pre and the post-slice of neurons will contain
+                            total_synapses = projection.estimate_num_synapses(
+                                pre_vertex.neuron_slice, post_slice)
+
+                            # Use this to calculate event rate
+                            synaptic_event_rate = total_synapses * mean_pre_firing_rate
+
+                            print "\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f" % (total_synapses, synaptic_event_rate)
+
+                            # Add event rate to total for current synapse processor
+                            synapse_processor_event_rate += synaptic_event_rate
+
+                            # If it's more than this type of synapse processor can handle
+                            if synapse_processor_event_rate > synapse_type[0].max_synaptic_event_rate:
+
+                                # Reset event rate
+                                synapse_processor_event_rate = 0.0
+
+                        # Estimate the number of synapses this projection is
+                        # going to create within this post-synaptic slice
+                        #total_synapses = sum([p.estimate_num_synapses(post_slice)
+                        #                    for p in projections])
+
+                        # Estimate the synaptic event rate these synapses will cause
+                        #
+
+                        #print "\t", post_slice, total_synapses, synaptic_event_rate
+
         
         # Finalise keyspace fields
         keyspace.assign_fields()
-        
+        assert False
         # Loop through all projections in simulation
         nets = []
         net_keys = {}
@@ -183,7 +272,7 @@ class State(common.control.BaseState):
                 net_keys.update(zip(vertex_nets, vertex_net_keys))
             
         print("Connecting to SpiNNaker")
-        
+
         # Get machine controller from connected SpiNNaker board
         machine_controller = MachineController(self.spinnaker_hostname)
         # **TODO** some sensible/ideally standard with Nengo booting behaviour
@@ -228,11 +317,11 @@ class State(common.control.BaseState):
                         # Allocate a suitable memory block for this vertex and get memory io
                         # **NOTE** this is tagged by core
                         memory_io = machine_controller.sdram_alloc_as_io(
-                            pop.spinnaker_population().get_size(v.vertex_slice), tag=core.start)
+                            pop.spinnaker_population().get_size(v.neuron_slice), tag=core.start)
                         print("\tMemory begins at %08x" % memory_io.address)
                         
                         # Write the vertex to file
-                        pop.spinnaker_population().write_to_file(v.key, v.vertex_slice, memory_io)
+                        pop.spinnaker_population().write_to_file(v.key, v.neuron_slice, memory_io)
         
         # Load routing tables and applications
         print("Loading routing tables")

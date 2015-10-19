@@ -11,12 +11,13 @@ really running simulations.
 import logging
 from pyNN import common
 from pyNN.common.control import DEFAULT_MAX_DELAY, DEFAULT_TIMESTEP, DEFAULT_MIN_DELAY
-from pyNN.connectors import *
+
 from pyNN.recording import *
 ##from . import simulator
 import simulator
 from .standardmodels.cells import *
 from .standardmodels.synapses import *
+from .connectors import *
 from .populations import Population, PopulationView, Assembly
 from .projections import Projection
 

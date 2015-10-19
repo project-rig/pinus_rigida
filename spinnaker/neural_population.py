@@ -17,7 +17,7 @@ MATRIX_DATATYPE = {
 # NeuralPopulation
 #------------------------------------------------------------------------------
 class NeuralPopulation(object):
-    MAX_CELLS = 256
+    MAX_CELLS = 1024
     
     def __init__(self, cell_type, parameter_space, simulation_timestep_us, 
                  hardware_timestep_us, duration_timestep):
@@ -51,7 +51,8 @@ class NeuralPopulation(object):
         self.regions[0] = SystemRegion(hardware_timestep_us, duration_timestep, 
                 spike_recording_region_size=0, voltage_recording_region_size=0, 
                 gsyn_recording_region_size=0, num_profiling_samples=0)
-        self.regions[1] = NeuronRegion(1000, len(cell_type.receptor_types), 
+        self.regions[1] = NeuronRegion(simulation_timestep_us, 
+                                       len(cell_type.receptor_types), 
                                        parameter_records)
         #self.regions[2] = SynapseRegion()
         self.regions[3] = RowSizeRegion()

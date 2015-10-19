@@ -12,6 +12,14 @@ class StaticSynapse(synapses.StaticSynapse):
         ("delay", "delay"),
     )
 
+    # How many post-synaptic neurons per core can a
+    # SpiNNaker synapse_processor of this type handle
+    max_post_neurons_per_core = 1024
+
+    # Assuming relatively long row length, at what rate can a SpiNNaker
+    # synapse_processor of this type process synaptic events (hZ)
+    max_synaptic_event_rate = 5E6
+
     def _get_minimum_delay(self):
         d = state.min_delay
         if d == "auto":

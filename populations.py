@@ -10,6 +10,7 @@ from . import simulator
 from .recording import Recorder
 from rig.utils.contexts import ContextMixin, Required
 from spinnaker.neural_population import NeuralPopulation
+from utils import evenly_slice
 
 class Assembly(common.Assembly):
     _simulator = simulator
@@ -69,18 +70,14 @@ class Population(common.Population, ContextMixin):
         self._simulator.state.populations.append(self)
     
     def partition(self):
-        # **TODO** pick correct population class
+        # Slice population evenly
+        # **TODO** pick based on timestep and neuron model
         neurons_per_vertex = NeuralPopulation.MAX_CELLS
-        
+        vertex_slices = evenly_slice(self.size, neurons_per_vertex)
+
+        # Create a resource to accompany each slice
         # **TODO** estimate SDRAM usage for incoming projections
         resources = { machine.Cores: 1 }
-        
-        # Build lists of start and end indices of slices
-        slice_starts = range(0, self.size, neurons_per_vertex)
-        slice_ends = [min(s + neurons_per_vertex, self.size) for s in slice_starts]
-        
-        # Zip starts and ends together into list of slices and pair these with resources
-        vertex_slices = [slice(s, e) for s, e in zip(slice_starts, slice_ends)]
         vertex_resources = [resources] * len(vertex_slices)
         return vertex_slices, vertex_resources
 
@@ -97,29 +94,23 @@ class Population(common.Population, ContextMixin):
         parameter_space.evaluate(simplify=False)
         
         # **TODO** pick correct population class
-        return self.get_new_context(spinnaker_population=NeuralPopulation(self.celltype, parameter_space, 
-            simulation_timestep_us, hardware_timestep_us, duration_timestep))
+        return self.get_new_context(spinnaker_population=NeuralPopulation(
+            self.celltype, parameter_space, simulation_timestep_us, hardware_timestep_us, duration_timestep))
 
-    @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
-    def expand_incoming_connection(self, **kwargs):
-        # Extract spinnaker population from kwargs
-        spinnaker_population = kwargs.pop("spinnaker_population")
-        
+    @ContextMixin.use_contextual_arguments()
+    def expand_incoming_connection(self, spinnaker_population):
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
         for i in self.incoming_projections:
             i.build()
             
-    @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
-    def spinnaker_population(self, **kwargs):
-        return kwargs.pop("spinnaker_population")
+    @ContextMixin.use_contextual_arguments()
+    def spinnaker_population(self, spinnaker_population):
+        return spinnaker_population
     
-    @ContextMixin.use_named_contextual_arguments(spinnaker_population=Required)
+    @ContextMixin.use_contextual_arguments()
     def convergent_connect(self, projection, presynaptic_indices, postsynaptic_index,
-                            **connection_parameters):
-        # Extract spinnaker population from kwargs
-        spinnaker_population = connection_parameters.pop("spinnaker_population")
-        
+                            spinnaker_population, **connection_parameters):
         # Create connections within spinnaker population
         spinnaker_population.convergent_connect(projection, presynaptic_indices, 
                                                       postsynaptic_index,

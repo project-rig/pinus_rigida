@@ -40,7 +40,7 @@ class Projection(common.Projection):
         # connect the populations
         # **TODO** this may already have been connected by another assembled post population
         self._connector.connect(self)
-        
+    
     def __len__(self):
         raise NotImplementedError
 
@@ -59,3 +59,6 @@ class Projection(common.Projection):
         # **TODO** what about population-views? add to their parent?
         else:
             self.post.convergent_connect(self, presynaptic_indices, postsynaptic_index, **connection_parameters)
+
+    def estimate_num_synapses(self, pre_slice, post_slice):
+        return self._connector.estimate_num_synapses(pre_slice, post_slice)
