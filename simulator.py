@@ -16,27 +16,30 @@ from utils import evenly_slice
 
 name = "SpiNNaker"
 
-def generate_nets_and_keys(pre_pop, post, population_vertices):
+def generate_nets_and_keys(pre_pop, post, pop_neuron_vertices,
+                           pop_synapse_vertices):
+    # Loop through vertices that contain
+    # The neurons of the pre-synaptic population
     nets = []
     net_keys = []
-    for pre_vert in population_vertices[pre_pop]:
+    for pre_vert in pop_neuron_vertices[pre_pop]:
         # Add key to list
         net_keys.append((pre_vert.key, pre_vert.mask))
         
         # If post-synaptic population is an assembly
         if isinstance(post, common.Assembly):
-            # Add the vertices that make up each 
-            # Population in assembly to list
+            # Add the vertices that contain each post-synaptic
+            # population in the assembly's synapses to list
             sink_vertices = []
             for post_pop in post.populations:
-                sinks.extend(population_vertices[post_pop])
+                sinks.extend(pop_synapse_vertices[post_pop])
             nets.append(Net(pre_vert, sink_vertices))
 
-        # Otherwise, just add a single net connecting pre-vertex 
-        # To all vertices in post-synaptic population
+        # Otherwise, just add a single net connecting pre-vertex to all
+        # vertices contain the post-synaptic population's synapses
         # **TODO** population views
         else:
-            nets.append(Net(pre_vert, population_vertices[post]))
+            nets.append(Net(pre_vert, pop_synapse_vertices[post]))
 
     return nets, net_keys
 
@@ -274,8 +277,7 @@ class State(common.control.BaseState):
 
         # Finalise keyspace fields
         keyspace.assign_fields()
-        
-        assert False
+
         # Loop through all projections in simulation
         nets = []
         net_keys = {}
@@ -286,7 +288,8 @@ class State(common.control.BaseState):
                  for pre_pop in proj.pre.populations:
                     # Generate list of nets and their key coming from this population
                     vertex_nets, vertex_net_keys = generate_nets_and_keys(
-                        pre_pop, proj.post, population_vertices)
+                        pre_pop, proj.post,
+                        pop_neuron_vertices, pop_synapse_vertices)
                     
                     # Add to global lists
                     nets.extend(vertex_nets)
@@ -296,14 +299,16 @@ class State(common.control.BaseState):
             else:
                 # Generate list of nets and their key coming from this population
                 vertex_nets, vertex_net_keys = generate_nets_and_keys(
-                    proj.pre, proj.post, population_vertices)
+                    proj.pre, proj.post,
+                    pop_neuron_vertices, pop_synapse_vertices)
                 
                 # Add to global lists
                 nets.extend(vertex_nets)
                 net_keys.update(zip(vertex_nets, vertex_net_keys))
             
         print("Connecting to SpiNNaker")
-
+        
+        assert False
         # Get machine controller from connected SpiNNaker board
         machine_controller = MachineController(self.spinnaker_hostname)
         # **TODO** some sensible/ideally standard with Nengo booting behaviour
