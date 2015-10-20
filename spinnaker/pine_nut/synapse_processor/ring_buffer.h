@@ -1,74 +1,69 @@
-#ifndef RING_BUFFER_H
-#define RING_BUFFER_H
-
-// Standard includes
-#include <stdbool.h>
-#include <stdint.h>
-
-// Common includes
-#include "../common/utils.h"
-
-// Synapse processor includes
-#include "synapse_format.h"
+#pragma once
 
 //-----------------------------------------------------------------------------
-// Macros
+// SynapseProcessor::RingBufferBase
 //-----------------------------------------------------------------------------
-#ifndef RING_ENTRY_BITS
-  #define RING_ENTRY_BITS 32
-#endif
-
-#ifdef  SYNAPSE_WEIGHTS_SIGNED
-  typedef INT(RING_ENTRY_BITS)  ring_buffer_entry_t;
-#else
-  typedef UINT(RING_ENTRY_BITS) ring_buffer_entry_t;
-#endif
-
-#define RING_BUFFER_SIZE  (1 << (SYNAPSE_DELAY_BITS + SYNAPSE_INDEX_BITS))
-
-//-----------------------------------------------------------------------------
-// Global variables
-//-----------------------------------------------------------------------------
-extern ring_buffer_entry_t ring_buffer[RING_BUFFER_SIZE];
-
-//-----------------------------------------------------------------------------
-// Inline functions
-//-----------------------------------------------------------------------------
-static inline uint32_t ring_buffer_offset_time(uint32_t tick)
+namespace SynapseProcessor
 {
-  return ((tick & SYNAPSE_DELAY_MASK) << SYNAPSE_INDEX_BITS);
-}
-//-----------------------------------------------------------------------------
-static inline uint32_t ring_buffer_offset_type_index(uint32_t tick, uint32_t index)
+template<typename T, typename S>
+class RingBufferBase
 {
-  return ring_buffer_offset_time(tick) | index; 
-}
-//-----------------------------------------------------------------------------
-static inline void ring_buffer_add_weight(uint32_t tick, uint32_t index, 
-  weight_word_t weight)
-{
-  // Calculate ring buffer offset
-  uint32_t offset = ring_buffer_offset_type_index(tick, index);
+public:
+  typedef T Type;
 
-  // Add value to ring-buffer
-  ring_buffer[offset] = ring_buffer[offset] + weight;
-}
-//-----------------------------------------------------------------------------
-static inline void ring_buffer_get_output_buffer(uint32_t tick, 
-  ring_buffer_entry_t **buffer, uint32_t *buffer_bytes)
-{
-  // Calculate ring-buffer offset for this time
-  uint32_t offset = ring_buffer_offset_time(tick);
-  
-  // Return buffer and buffer size in bytes
-  *buffer = ring_buffer + offset;
-  *buffer_bytes = sizeof(ring_buffer_entry_t) * (1 << SYNAPSE_INDEX_BITS);
-}
+  //-----------------------------------------------------------------------------
+  // Constants
+  //-----------------------------------------------------------------------------
+  static const unsigned int OutputBufferSize = (1 << S::NumIndexBits);
+  static const unsigned int Size = (1 << (S::NumDelayBits + S::NumIndexBits));
+
+  //-----------------------------------------------------------------------------
+  // Public API
+  //-----------------------------------------------------------------------------
+  void AddWeight(unsigned int tick, unsigned int index,
+    Type weight)
+  {
+    // Calculate ring buffer offset
+    uint32_t offset = OffsetTypeIndex(tick, index);
+
+    // Add value to ring-buffer
+    m_Data[offset] += weight;
+  }
+
+  const Type *GetOutputBuffer(uint32_t tick) const
+  {
+    // Calculate ring-buffer offset for this time
+    unsigned int offset = OffsetTime(tick);
+
+    return &m_Data[offset];
+  }
+
+private:
+  //-----------------------------------------------------------------------------
+  // Static methods
+  //-----------------------------------------------------------------------------
+  static unsigned int OffsetTime(unsigned int tick)
+  {
+    return ((tick & S::DelayMask) << S::NumIndexBits);
+  }
+
+  static unsigned int OffsetTypeIndex(unsigned int tick, unsigned int index)
+  {
+    return OffsetTime(tick) | index;
+  }
+
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
+  Type m_Data[Size];
+};
+} // SynapseProcessor
+
 
 //-----------------------------------------------------------------------------
 // Global functions
 //-----------------------------------------------------------------------------
-bool ring_buffer_init();
-void ring_buffer_clear_output_buffer(uint32_t tick);
+//bool ring_buffer_init();
+//void ring_buffer_clear_output_buffer(uint32_t tick);
 
-#endif  // RING_BUFFER_H
+//#endif  // RING_BUFFER_H

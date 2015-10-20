@@ -1,91 +1,83 @@
-#ifndef SPIKES_INPUT_BUFFER_H
-#define SPIKES_INPUT_BUFFER_H
-
-// Standard includes
-#include <stdbool.h>
-#include <stdint.h>
+#pragma once
 
 //-----------------------------------------------------------------------------
-// Global variables
+// Common::SpikeInputBufferBase
 //-----------------------------------------------------------------------------
-extern uint32_t *spike_input_buffer;
-extern uint32_t spike_input_buffer_size;
-
-extern uint32_t spike_input_buffer_output;
-extern uint32_t spike_input_buffer_input;
-extern uint32_t spike_input_buffer_overflows;
-extern uint32_t spike_input_buffer_underflows;
-
-//-----------------------------------------------------------------------------
-// Inline functions
-//-----------------------------------------------------------------------------
-// unallocated
-//
-// Returns the number of buffer slots currently unallocated
-static inline uint32_t spike_input_buffer_unallocated()
-{ 
-  return ((spike_input_buffer_input - spike_input_buffer_output) % 
-    spike_input_buffer_size); 
-}
-//-----------------------------------------------------------------------------
-// allocated
-//
-// Returns the number of buffer slots currently allocated
-static inline uint32_t spike_input_buffer_allocated()
-{ 
-  return ((spike_input_buffer_output - spike_input_buffer_input - 1) % 
-    spike_input_buffer_size); 
-}
-//-----------------------------------------------------------------------------
-// The following two functions are used to determine whether a
-// buffer can have an element extracted/inserted respectively.
-static inline bool spike_input_buffer_non_empty()
-{ 
-  return (spike_input_buffer_allocated() > 0);
-}
-//-----------------------------------------------------------------------------
-static inline bool spike_input_buffer_non_full()
+namespace Common
 {
-  return (spike_input_buffer_unallocated() > 0); 
-}
-//-----------------------------------------------------------------------------
-static inline bool spike_input_buffer_add_spike(uint32_t e)
+template<unsigned int Size>
+class SpikeInputBufferBase
 {
-  bool success = spike_input_buffer_non_full();
-
-  if (success) 
+public:
+  SpikeInputBufferBase() : m_Input(Size - 1), m_Output(0), m_NumOverflows(0), m_NumUnderflows(0)
   {
-    spike_input_buffer[spike_input_buffer_input] = e;
-    spike_input_buffer_input = (spike_input_buffer_input - 1) % spike_input_buffer_size;
-  }
-  else
-  {
-    spike_input_buffer_overflows++;
   }
 
-  return success;
-}
-//-----------------------------------------------------------------------------
-static inline bool spike_input_buffer_next_spike(uint32_t *e)
-{
-  bool success = spike_input_buffer_non_empty();
-
-  if (success) 
+  //-----------------------------------------------------------------------------
+  // Public API
+  //-----------------------------------------------------------------------------
+  unsigned int GetUnallocated() const
   {
-    *e = spike_input_buffer[spike_input_buffer_output];
-    spike_input_buffer_output = (spike_input_buffer_output - 1) % spike_input_buffer_size;
+    return ((m_Input - m_Output) % Size);
   }
-  else
+
+  unsigned int GetAllocated() const
   {
-    spike_input_buffer_underflows++;
+    return ((m_Output - m_Input - 1) % Size);
   }
-  
-  return (success);
-}
 
-//-----------------------------------------------------------------------------
-// Global functions
-//-----------------------------------------------------------------------------
-void spike_input_buffer_init(uint32_t size);
+  bool NonEmpty() const
+  {
+    return (GetAllocated() > 0);
+  }
 
-#endif  // SPIKES_INPUT_BUFFER_H
+  bool NonFull() const
+  {
+    return (GetUnallocated() > 0);
+  }
+
+  bool AddSpike(uint32_t key)
+  {
+    bool success = NonFull();
+    if (success)
+    {
+      m_Buffer[m_Input] = key;
+      m_Input = (m_Input - 1) % Size;
+    }
+    else
+    {
+      m_NumOverflows++;
+    }
+
+    return success;
+  }
+
+  bool GetNextSpike(uint32_t *e)
+  {
+    bool success = NonEmpty();
+    if (success)
+    {
+      *e = m_Buffer[m_Output];
+      m_Output = (m_Output - 1) % Size;
+    }
+    else
+    {
+      m_NumUnderflows++;
+    }
+
+    return success;
+  }
+
+private:
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
+  uint32_t m_Buffer[Size];
+  unsigned int m_Input;
+  unsigned int m_Output;
+
+  unsigned int m_NumOverflows;
+  unsigned int m_NumUnderflows;
+
+};
+} // Common

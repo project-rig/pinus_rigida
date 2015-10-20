@@ -30,10 +30,10 @@ enum DMATag
 // Module level variables
 //----------------------------------------------------------------------------
 Common::Config g_Config;
-uint32_t g_AppWords[NeuronProcessor::AppWordMax];
+uint32_t g_AppWords[AppWordMax];
 
-NeuronProcessor::Neuron::MutableState *g_NeuronMutableState = NULL;
-NeuronProcessor::Neuron::ImmutableState *g_NeuronImmutableState = NULL;
+Neuron::MutableState *g_NeuronMutableState = NULL;
+Neuron::ImmutableState *g_NeuronImmutableState = NULL;
 
 //----------------------------------------------------------------------------
 // Functions

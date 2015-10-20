@@ -1,125 +1,123 @@
 #include "synapse_processor.h"
 
-// Standard includes
-#include <stdbool.h>
-#include <stdint.h>
-#include <string.h>
-
-// Spin1 includes
-#include <spin1_api.h>
-
 // Common includes
 #include "../common/config.h"
 #include "../common/log.h"
-#include "../common/spike_input_buffer.h"
-#include "../common/utils.h"
+#include "../common/spinnaker.h"
 
-// Synapse processor includes
-#include "ring_buffer.h"
+// Configuration include
+#include "config.h"
 
-//-----------------------------------------------------------------------------
-// Macros
-//-----------------------------------------------------------------------------
-#ifndef SPIKE_INPUT_BUFFER_SIZE
-  #define SPIKE_INPUT_BUFFER_SIZE 256
-#endif
+// Namespaces
+using namespace SynapseProcessor;
 
 //-----------------------------------------------------------------------------
-// Enumerations
+// Anonymous namespace
 //-----------------------------------------------------------------------------
-// DMA tags
-typedef enum dma_tag_e
+namespace
 {
-  dma_tag_row_read      = 0,
-  dma_tag_row_write     = 1,
-  dma_tag_output_write  = 2,
-} dma_tag_e;
+//----------------------------------------------------------------------------
+// Enumerations
+//----------------------------------------------------------------------------
+enum DMATag
+{
+  DMATagRowRead,
+  DMATagRowWrite,
+  DMATagOutputWrite,
+};
+
+//----------------------------------------------------------------------------
+// Module level variables
+//----------------------------------------------------------------------------
+Common::Config g_Config;
+RingBuffer g_RingBuffer;
+SpikeInputBuffer g_SpikeInputBuffer;
+
+uint32_t g_AppWords[AppWordMax];
+
+uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
 //-----------------------------------------------------------------------------
 // Module variables
 //-----------------------------------------------------------------------------
-static bool dma_busy;
+/*static bool dma_busy;
 static uint32_t dma_row_buffer[2][SYNAPSE_MAX_ROW_WORDS + 1];
 static uint32_t dma_row_buffer_index;
-static uint32_t tick;
 
 static uint32_t *output_buffers[2];
 
-static uint32_t app_words[app_word_max];
 
 //-----------------------------------------------------------------------------
 // Module inline functions
 //-----------------------------------------------------------------------------
-static inline uint32_t *dma_current_row_buffer() 
+inline uint32_t *dma_current_row_buffer()
 {
   return (dma_row_buffer[dma_row_buffer_index]);
 }
 //-----------------------------------------------------------------------------
-static inline uint32_t *dma_next_row_buffer()
+inline uint32_t *dma_next_row_buffer()
 {
-  return (dma_row_buffer[dma_row_buffer_index ^ 1]); 
+  return (dma_row_buffer[dma_row_buffer_index ^ 1]);
 }
 //-----------------------------------------------------------------------------
-static inline void dma_swap_row_buffers()
+inline void dma_swap_row_buffers()
 {
-  dma_row_buffer_index ^= 1; 
+  dma_row_buffer_index ^= 1;
 }
-
+*/
 //-----------------------------------------------------------------------------
 // Module functions
 //-----------------------------------------------------------------------------
-static bool read_output_buffer_region(uint32_t *region, uint32_t flags)
+bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
 {
-  USE(flags);
-  
   // Copy two output buffer pointers from region
-  memcpy(output_buffers, region, 2 * sizeof(uint32_t*));
-  
+  spin1_memcpy(g_OutputBuffers, region, 2 * sizeof(uint32_t*));
+
 #if LOG_LEVEL <= LOG_LEVEL_INFO
   LOG_PRINT(LOG_LEVEL_INFO, "output_buffer\n");
   LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
   for (uint32_t i = 0; i < 2; i++)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p\n", i, output_buffers[i]);
+    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p\n", i, g_OutputBuffers[i]);
   }
   LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
 #endif
-  
+
   return true;
 }
 //-----------------------------------------------------------------------------
-static bool read_sdram_data(uint32_t *base_address, uint32_t flags)
+bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 {
-  // Read data header
+  // Verify data header
   uint32_t version;
-  if(!config_read_header(base_address, &version, flags))
+  if(!g_Config.VerifyHeader(baseAddress, flags, version))
   {
     return false;
   }
 
   // Read system region
-  if(!config_read_system_region(
-    config_get_region_start(region_system, base_address), 
-    flags, app_word_max, app_words))
+  if(!g_Config.ReadSystemRegion(
+    Common::Config::GetRegionStart(baseAddress, RegionSystem),
+    flags, AppWordMax, g_AppWords))
   {
     return false;
   }
-  
+
   // Read row-lookup type-dependent regions
-  if(!row_lookup_read_sdram_data(base_address, flags))
+  /*if(!row_lookup_read_sdram_data(base_address, flags))
   {
     return false;
   }
-  
+
   // Read synapse type-dependent regions
   if(!synapse_read_sdram_data(base_address, flags))
   {
     return false;
-  }
-  
+  }*/
+
   // Read output buffer region
-  if(!read_output_buffer_region(
-    config_get_region_start(region_output_buffer, base_address), 
+  if(!ReadOutputBufferRegion(
+    Common::Config::GetRegionStart(baseAddress, RegionOutputBuffer),
     flags))
   {
     return false;
@@ -128,107 +126,94 @@ static bool read_sdram_data(uint32_t *base_address, uint32_t flags)
   return true;
 }
 //-----------------------------------------------------------------------------
-static void setup_next_dma_row_read()
+void SetupNextDMARowRead()
 {
   // If there's more incoming spikes
   uint32_t spike;
-  if(spike_input_buffer_next_spike(&spike))
+  if(g_SpikeInputBuffer.GetNextSpike(&spike))
   {
     // Decode spike to get address of destination synaptic row
-    uint32_t *address;
-    uint32_t size_bytes;
-    if(row_lookup_get_address(spike, &address, &size_bytes) != NULL)
+    /*uint32_t *address;
+    uint32_t sizeBytes;
+    if(row_lookup_get_address(spike, &address, &sizeBytes) != NULL)
     {
       // Write the SDRAM address and originating spike to the beginning of dma buffer
       dma_current_row_buffer()[0] = (uint32_t)address;
 
       // Start a DMA transfer to fetch this synaptic row into current buffer
-      spin1_dma_transfer(dma_tag_row_read, address, &dma_current_row_buffer()[1], DMA_READ, size_bytes);
+      spin1_dma_transfer(dma_tag_row_read, address, &dma_current_row_buffer()[1], DMA_READ, sizeBytes);
 
       // Flip DMA buffers
       dma_swap_row_buffers();
-      
+
       return;
-    }
+    }*/
   }
 
-  dma_busy = false;
+  //dma_busy = false;
 }
 
 //-----------------------------------------------------------------------------
 // Event handler functions
 //-----------------------------------------------------------------------------
-static void mc_packet_received(uint key, uint payload)
+void MCPacketReceived(uint key, uint)
 {
-  USE(payload);
-
-  LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u\n", 
-    key, tick, dma_busy);
+  //LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u\n",
+  //  key, tick, dma_busy);
 
   // If there was space to add spike to incoming spike queue
-  if(spike_input_buffer_add_spike(key))
+  if(g_SpikeInputBuffer.AddSpike(key))
   {
     // If we're not already processing synaptic dmas, flag pipeline as busy and trigger a user event
-    if(!dma_busy)
+    /*if(!dma_busy)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike\n");
-      
+
       if(spin1_trigger_user_event(0, 0))
       {
         dma_busy = true;
-      } 
-      else 
+      }
+      else
       {
         LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event\n");
       }
-    }
-  } 
+    }*/
+  }
 
 }
 //-----------------------------------------------------------------------------
-static void dma_transfer_done(uint unused, uint tag)
+void DMATransferDone(uint, uint tag)
 {
-  USE(unused);
-  
-  if(tag == dma_tag_row_read)
+  if(tag == DMATagRowRead)
   {
     // Process row
-    synapse_process_row(tick, dma_next_row_buffer() + 1);
-    
+    //synapse_process_row(tick, dma_next_row_buffer() + 1);
+
     // Setup next row read
-    setup_next_dma_row_read();
+    SetupNextDMARowRead();
   }
-  else if(tag == dma_tag_output_write)
+  else if(tag == DMATagOutputWrite)
   {
     // This timesteps output has been written from the ring-buffer so we can now zero it
-    ring_buffer_clear_output_buffer(tick);
+    //ring_buffer_clear_output_buffer(tick);
   }
-  else if(tag != dma_tag_row_write)
+  else if(tag != DMATagRowWrite)
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u\n", tag);
   }
 }
 //-----------------------------------------------------------------------------
-static void user_event(uint unused0, uint unused1)
+void UserEvent(uint, uint)
 {
-  USE(unused0);
-  USE(unused1);
-
   // Setup next row read
-  setup_next_dma_row_read();
+  SetupNextDMARowRead();
 }
 //-----------------------------------------------------------------------------
-static void timer_tick(uint unused0, uint unused1)
+void TimerTick(uint tick, uint)
 {
-  USE(unused0);
-  USE(unused1);
-  
-  // Increment tick counter
-  tick++;
-  
   // If a fixed number of simulation ticks are specified and these have passed
-  if (app_words[app_word_simulation_duration] != UINT32_MAX 
-    && tick >= app_words[app_word_simulation_duration])
+  if(g_Config.GetSimulationTicks() != UINT32_MAX
+    && tick >= g_Config.GetSimulationTicks())
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
 
@@ -236,58 +221,55 @@ static void timer_tick(uint unused0, uint unused1)
     //recording_finalise();
     spin1_exit(0);
   }
-  
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)\n", 
-    tick, (tick % 2), output_buffers[tick % 2]);
-  
+
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)\n",
+    tick, (tick % 2), g_OutputBuffers[tick % 2]);
+
   // Get output buffer from 'back' of ring-buffer
-  ring_buffer_entry_t *output_buffer;
-  uint32_t output_buffer_bytes;
-  ring_buffer_get_output_buffer(tick, &output_buffer, &output_buffer_bytes);
-  
+  const RingBuffer::Type *pOutputBuffer = g_RingBuffer.GetOutputBuffer(tick);
+
   // DMA output buffer into correct output buffer for this timer tick
-  spin1_dma_transfer(dma_tag_output_write,
-    output_buffers[tick % 2],
-    output_buffer,
-    DMA_WRITE,
-    output_buffer_bytes);
+  //spin1_dma_transfer(DMATagOutputWrite,
+  //  g_OutputBuffers[tick % 2],
+  //  output_buffer,
+  //  DMA_WRITE,
+  //  output_buffer_bytes);
 }
+} // anonymous namespace
 
 //-----------------------------------------------------------------------------
 // Entry point
 //-----------------------------------------------------------------------------
-void c_main()
+extern "C" void c_main()
 {
-  // Get this core's base address
-  uint32_t *base_address = config_get_base_address();
-  
+  // Get this core's base address using alloc tag
+  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+
   // If reading SDRAM data fails
-  if(!read_sdram_data(base_address, 0))
+  if(!ReadSDRAMData(baseAddress, 0))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data\n");
     return;
   }
-  
-  // Initialise 
+
+  // Initialise
   // **NOTE** tick is initialized to UINT32_MAX as ticks are advanced at
   // The START of each timer tick so it will be zeroed once time 'starts'
-  dma_busy = false;
-  dma_row_buffer_index = 0;
-  tick = UINT32_MAX;
-  
+  //dma_busy = false;
+  //dma_row_buffer_index = 0;
+
   // Initialize modules
-  ring_buffer_init();
-  spike_input_buffer_init(SPIKE_INPUT_BUFFER_SIZE);
-  
-  // Set timer tick (in microseconds)
-  spin1_set_timer_tick(app_words[app_word_timer_period]);
-  
+  //ring_buffer_init();
+
+  // Set timer tick (in microseconds) in both timer and
+  spin1_set_timer_tick(g_AppWords[SynapseProcessor::AppWordTimerPeriod]);
+
   // Register callbacks
-  spin1_callback_on(MC_PACKET_RECEIVED, mc_packet_received, -1);
-  spin1_callback_on(DMA_TRANSFER_DONE,  dma_transfer_done,  0);
-  spin1_callback_on(USER_EVENT,         user_event,         0);
-  spin1_callback_on(TIMER_TICK,         timer_tick,         2);
-  
+  spin1_callback_on(MC_PACKET_RECEIVED, MCPacketReceived, -1);
+  spin1_callback_on(DMA_TRANSFER_DONE,  DMATransferDone,   0);
+  spin1_callback_on(USER_EVENT,         UserEvent,         0);
+  spin1_callback_on(TIMER_TICK,         TimerTick,         2);
+
   // Start simulation
   spin1_start(SYNC_WAIT);
 }

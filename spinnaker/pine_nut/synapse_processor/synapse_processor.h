@@ -1,27 +1,27 @@
-#ifndef SYNAPSE_PROCESSOR_H
-#define SYNAPSE_PROCESSOR_H
+#pragma once
 
+namespace SynapseProcessor
+{
 //-----------------------------------------------------------------------------
 // Enumerations
 //-----------------------------------------------------------------------------
 // Indexes of synapse executable regions
-typedef enum region_e
+enum Region
 {
-  region_system             = 0,
-  region_row_size           = 3,
-  region_master_population  = 4,
-  region_synaptic_matrix    = 5,
-  region_plasticity         = 6,
-  region_output_buffer      = 7,
-  region_profiler           = 17,
-} region_e;
+  RegionSystem              = 0,
+  RegionKeyLookup           = 4,
+  RegionSynapticMatrix      = 5,
+  RegionPlasticity          = 6,
+  RegionOutputBuffer        = 7,
+  RegionProfiler            = 17,
+};
 
 // Indexes of application words
-typedef enum app_word_e
+enum AppWord
 {
-  app_word_simulation_duration,
-  app_word_timer_period,
-  app_word_max,
-} app_word_e;
+  AppWordSimulationDuration,
+  AppWordTimerPeriod,
+  AppWordMax,
+};
 
-#endif  // SYNAPSE_PROCESSOR_H
+} // SynapseProcessor
