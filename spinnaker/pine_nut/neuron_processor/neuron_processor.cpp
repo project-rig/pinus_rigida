@@ -6,10 +6,12 @@
 #include "../common/log.h"
 #include "../common/spinnaker.h"
 
-#include "config/if_curr_exp.h"
+// Configuration include
+#include "config.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;
+using namespace NeuronProcessor;
 
 //-----------------------------------------------------------------------------
 // Anonymous namespace
@@ -32,13 +34,10 @@ uint32_t g_AppWords[NeuronProcessor::AppWordMax];
 
 NeuronProcessor::Neuron::MutableState *g_NeuronMutableState = NULL;
 NeuronProcessor::Neuron::ImmutableState *g_NeuronImmutableState = NULL;
-}
 
-//-----------------------------------------------------------------------------
-// NeuronProcessor functions
-//-----------------------------------------------------------------------------
-namespace NeuronProcessor
-{
+//----------------------------------------------------------------------------
+// Functions
+//----------------------------------------------------------------------------
 bool ReadNeuronRegion(uint32_t *region, uint32_t)
 {
   // Allocate array for neuron's mutable state
@@ -159,7 +158,7 @@ static void TimerTick(uint tick, uint)
     }
   }
 }
-} // NeuronProcessor
+} // Anonymous namespace
 
 //-----------------------------------------------------------------------------
 // Entry point
@@ -170,18 +169,18 @@ extern "C" void c_main()
   uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
   
   // If reading SDRAM data fails
-  if(!NeuronProcessor::ReadSDRAMData(baseAddress, 0))
+  if(!ReadSDRAMData(baseAddress, 0))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data\n");
     return;
   }
   
   // Set timer tick (in microseconds) in both timer and 
-  spin1_set_timer_tick(g_AppWords[NeuronProcessor::AppWordTimerPeriod]);
+  spin1_set_timer_tick(g_AppWords[AppWordTimerPeriod]);
   
   // Register callbacks
-  spin1_callback_on(DMA_TRANSFER_DONE,  NeuronProcessor::DMATransferDone,  0);
-  spin1_callback_on(TIMER_TICK,         NeuronProcessor::TimerTick,        2);
+  spin1_callback_on(DMA_TRANSFER_DONE,  DMATransferDone,  0);
+  spin1_callback_on(TIMER_TICK,         TimerTick,        2);
   
   // Start simulation
   spin1_start(SYNC_WAIT);

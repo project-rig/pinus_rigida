@@ -8,4 +8,6 @@ SOURCES = ../../../common/config.cpp \
 	../../neuron_processor.cpp \
 	$(EXTRA_SOURCES)
 
+CFLAGS += -I $(CURDIR)
+
 include ../../../Makefile.depend
