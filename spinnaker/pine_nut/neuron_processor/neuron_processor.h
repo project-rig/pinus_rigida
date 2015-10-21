@@ -11,18 +11,17 @@ enum Region
   RegionSystem          = 0,
   RegionNeuron          = 1,
   RegionSynapseShaping  = 2,
-  RegionRecordSpikes    = 10,
-  RegionRecordAnalogue1 = 11,
-  RegionRecordAnalogue2 = 12,
-  RegionProfiler        = 17,
+  RegionInputBuffer     = 6,
+  RegionRecordSpikes    = 8,
+  RegionRecordAnalogue1 = 9,
+  RegionRecordAnalogue2 = 10,
+  RegionProfiler        = 11,
 };
 
 // Indexes of application words
 enum AppWord
 {
   AppWordKey,
-  AppWordSimulationDuration,
-  AppWordTimerPeriod,
   AppWordNumNeurons,
   AppWordMax,
 };

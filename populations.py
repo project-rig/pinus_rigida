@@ -81,22 +81,21 @@ class Population(common.Population, ContextMixin):
         vertex_resources = [resources] * len(vertex_slices)
         return vertex_slices, vertex_resources
 
-    def create_spinnaker_population(self, simulation_timestep_us, 
-                                    hardware_timestep_us, 
-                                    duration_timestep):
+    def create_spinnaker_neural_population(self, simulation_timestep_us,
+                                           timer_period_us, simulation_ticks):
         if isinstance(self.celltype, StandardCellType):
-            parameter_space = self.celltype.native_parameters
+            immutable_lazy_params = self.celltype.native_parameters
         else:
-            parameter_space = self.celltype.parameter_space
-        parameter_space.shape = (self.size,)
-
-        # Evaluate parameter space
-        parameter_space.evaluate(simplify=False)
+            immutable_lazy_params = self.celltype.parameter_space
+        immutable_lazy_params.shape = (self.size,)
         
         # **TODO** pick correct population class
-        return self.get_new_context(spinnaker_population=NeuralPopulation(
-            self.celltype, parameter_space, simulation_timestep_us, hardware_timestep_us, duration_timestep))
+        # self.get_new_context(
+        return NeuralPopulation(self.celltype, immutable_lazy_params,
+                                self.initial_values, simulation_timestep_us,
+                                timer_period_us, simulation_ticks)
 
+    '''
     @ContextMixin.use_contextual_arguments()
     def expand_incoming_connection(self, spinnaker_population):
         # Build incoming projections
@@ -115,7 +114,8 @@ class Population(common.Population, ContextMixin):
         spinnaker_population.convergent_connect(projection, presynaptic_indices, 
                                                       postsynaptic_index,
                                                       **connection_parameters)
-        
+    '''
+
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,
                                 simulator.state.id_counter + self.size)

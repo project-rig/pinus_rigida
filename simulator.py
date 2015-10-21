@@ -180,9 +180,13 @@ class State(common.control.BaseState):
 
         print("Partitioning synapse vertices")
 
-        # Now all neuron vertices are partioned, loop through populations again
-        # **TODO** make this process iterative so if result of there are more than
-        # 15 synapse processors for each neuron processor, split more and try again
+        # Now all neuron vertices are partioned,
+        # loop through populations again
+        # **TODO** make this process iterative so if result of
+        # there are more than 15 synapse processors for each
+        # neuron processor, split more and try again
+        # **TODO** post-synaptic limits should perhaps be based on
+        # shifts down of 1024 to avoid overlapping weirdness
         pop_synapse_vertices = {}
         for pop in self.populations:
             print "Population:", pop
@@ -307,34 +311,60 @@ class State(common.control.BaseState):
                 net_keys.update(zip(vertex_nets, vertex_net_keys))
             
         print("Connecting to SpiNNaker")
-        
-        assert False
+
         # Get machine controller from connected SpiNNaker board
         machine_controller = MachineController(self.spinnaker_hostname)
         # **TODO** some sensible/ideally standard with Nengo booting behaviour
         machine_controller.boot(2, 2)
-        
+
         # Retrieve a machine object
         spinnaker_machine = machine_controller.get_machine()
-        
-        print("Found %ux%u chip machine" % 
+
+        print("Found %ux%u chip machine" %
             (spinnaker_machine.width, spinnaker_machine.height))
-        
+
         print("Placing and routing")
-        
+
         # Place-and-route
         placements, allocations, application_map, routing_tables = wrapper(
             vertex_resources, vertex_applications, nets, net_keys, spinnaker_machine)
-        
+
         #print placements, allocations, application_map, routing_tables
         print("Writing vertices")
         
+        # Build neural populations
+        for pop, vertices in iteritems(pop_neuron_vertices):
+            # Create spinnaker neural population
+            spinnaker_pop = pop.create_spinnaker_neural_population(
+                simulation_timestep_us, hardware_timestep_us,
+                duration_timesteps)
+
+            # Loop through vertices
+            for v in vertices:
+                # Get placement and allocation
+                vertex_placement = placements[v]
+                vertex_allocation = allocations[v]
+
+                # Get core this vertex should be run on
+                core = vertex_allocation[machine.Cores]
+                assert (core.stop - core.start) == 1
+
+                # Select placed chip
+                with machine_controller(x=vertex_placement[0], y=vertex_placement[1]):
+                    # Allocate a suitable memory block for this vertex and get memory io
+                    # **NOTE** this is tagged by core
+                    memory_io = machine_controller.sdram_alloc_as_filelike(
+                        spinnaker_pop.get_size(v.neuron_slice), tag=core.start)
+                    print("\tMemory begins at %08x" % memory_io.address)
+
+                    # Write the vertex to file
+                    spinnaker_pop.write_to_file(v.key, v.neuron_slice, memory_io)
+
+        '''
         # Build populations
         for pop, vertices in population_vertices.iteritems():
             # Create a spinnaker population
-            with pop.create_spinnaker_population(simulation_timestep_us, 
-                                                 hardware_timestep_us, 
-                                                 duration_timesteps):
+            with pop.create_spinnaker_population():
                 # Expand any incoming connections
                 pop.expand_incoming_connection()
                 
@@ -358,13 +388,11 @@ class State(common.control.BaseState):
                         
                         # Write the vertex to file
                         pop.spinnaker_population().write_to_file(v.key, v.neuron_slice, memory_io)
-        
+        '''
         # Load routing tables and applications
         print("Loading routing tables")
         machine_controller.load_routing_tables(routing_tables)
         print("Loading applications")
         machine_controller.load_application(application_map)
-        
-        
         
 state = State()

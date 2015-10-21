@@ -2,16 +2,9 @@
 import numpy as np
 
 # Import classes
-from master_population_array_region import MasterPopulationArrayRegion
 from neuron_region import NeuronRegion
-from row_size_region import RowSizeRegion
-from synaptic_matrix_region import SynapticMatrixRegion
 from system_region import SystemRegion
-
-MATRIX_DATATYPE = { 
-    "names":[ "mask", "delay", "weight" ], 
-    "formats":[ "bool", "u1", "float" ] 
-}
+from ..utils import apply_param_map
 
 #------------------------------------------------------------------------------
 # NeuralPopulation
@@ -19,66 +12,42 @@ MATRIX_DATATYPE = {
 class NeuralPopulation(object):
     MAX_CELLS = 1024
     
-    def __init__(self, cell_type, parameter_space, simulation_timestep_us, 
-                 hardware_timestep_us, duration_timestep):
-        # Build numpy record datatype for neuron region
-        # **TODO** this probably doesn't need to be a string - could use np.uint8 style things throughout
-        record_datatype = ",".join(zip(*cell_type.neuron_region_map)[1])
-        
-        # Build a numpy record array large enough for all neurons
-        parameter_records = np.empty(parameter_space.shape[0], dtype=(record_datatype))
-        for f, n in zip(parameter_records.dtype.names, cell_type.neuron_region_map):
-            # If this map entry has a constant value, 
-            # Write it into field for all neurons
-            if len(n) == 2:
-                parameter_records[f][:] = n[0]
-            # Otherwise
-            else:
-                assert len(n) == 3
-                
-                # Extract correctly named parameter
-                parameter = parameter_space[n[0]]
-                
-                # Apply translation function to parameter and write into field
-                parameter_records[f] = n[2](parameter)
-                
-        # Dictionary of synaptic matrices associated with each pre-synaptic population
-        # **TODO** a matrix is required for each population per synapse-type, plastic and fixed
-        self.matrices = {}
-        
+    def __init__(self, cell_type, immutable_lazy_params, initial_values,
+                 simulation_timestep_us, timer_period_us, simulation_ticks):
+        # Determine number of neurons
+        num_neurons = immutable_lazy_params.shape[0]
+
+        # Use neurons mutable parameter map to
+        # transform lazy array of mutable parameters
+        mutable_params = apply_param_map(
+            initial_values, cell_type.neuron_mutable_param_map,
+            num_neurons)
+        print "Mutable", mutable_params
+
+        # Use neurons immutable parameter map to transform
+        # lazy array of immutable parameters
+        immutable_params = apply_param_map(
+            immutable_lazy_params, cell_type.neuron_immutable_param_map,
+            num_neurons)
+
+        print "Immutable:", immutable_params
+
+        # Use neurons
         # List of regions
-        self.regions = [None] * 16
-        self.regions[0] = SystemRegion(hardware_timestep_us, duration_timestep, 
-                spike_recording_region_size=0, voltage_recording_region_size=0, 
-                gsyn_recording_region_size=0, num_profiling_samples=0)
-        self.regions[1] = NeuronRegion(simulation_timestep_us, 
-                                       len(cell_type.receptor_types), 
-                                       parameter_records)
-        #self.regions[2] = SynapseRegion()
-        self.regions[3] = RowSizeRegion()
-        self.regions[4] = MasterPopulationArrayRegion()
-        self.regions[5] = SynapticMatrixRegion()
-        #self.regions[6] = PlasticityRegion()
-        #self.regions[7] = SpikeRecordingRegion()
-        #self.regions[8] = VoltageRecordingRegion()
-        #self.regions[9] = CurrentRecordingRegion()
+        self.regions = [None] * 12
+        self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)
+        self.regions[1] = NeuronRegion(mutable_params, immutable_params)
+        #self.regions[2] = SynapseShapingRegion()
+        #self.regions[6] = InputBufferRegion()
+        #self.regions[8] = SpikeRecordingRegion()
+        #self.regions[9] = VoltageRecordingRegion()
+        #self.regions[10] = CurrentRecordingRegion()
+        #self.regions[11] = ProfilerRegion()
     
     def get_size(self, vertex_slice):
-        # Get optimal list of row sizes for this vertex
-        # **YUCK** these get recalculated when written
-        row_sizes = self.regions[3].calc_row_sizes(self.matrices, vertex_slice)
-        
-        # Get dictionary of offsets for sub-matrices
-        matrix_placements = self.regions[4].calc_sub_matrix_placement(
-            self.matrices, vertex_slice, row_sizes)
-        
         # Build formatter
         formatter = { 
-            "synapse_type_input_shifts": [1, 2], 
-            "weight_scale": 4096,
-            "matrices": self.matrices,
-            "row_sizes": row_sizes,
-            "matrix_placements": matrix_placements
+            "num_application_words": 2
         }
         
         # Calculate region size
@@ -95,25 +64,11 @@ class NeuralPopulation(object):
         return vertex_size_bytes
     
     def write_to_file(self, key, vertex_slice, fp):
-        # Get optimal list of row sizes for this vertex
-        # **YUCK** these get recalculated when written
-        row_sizes = self.regions[3].calc_row_sizes(self.matrices, vertex_slice)
-        
-        # Get dictionary of offsets for sub-matrices
-        matrix_placements = self.regions[4].calc_sub_matrix_placement(
-            self.matrices, vertex_slice, row_sizes)
-        
         # Build formatter
-        formatter = { 
-            "key": key, 
-            "synapse_type_input_shifts": [1, 2], 
-            "weight_scale": 4096,
-            "matrices": self.matrices,
-            "row_sizes": row_sizes,
-            "matrix_placements": matrix_placements
+        formatter = {
+            "application_words": [key, vertex_slice.slice_length]
         }
         
-        # **TODO** sark-allocate regions and get magical file object
         # Write regions
         for r in self.regions:
             if r is not None:
@@ -122,6 +77,7 @@ class NeuralPopulation(object):
     #--------------------------------------------------------------------------
     # Public methods
     #--------------------------------------------------------------------------
+    '''
     def convergent_connect(self, projection, pre_indices, 
                            post_index, **parameters):
         # **TODO** assemblies
@@ -141,3 +97,4 @@ class NeuralPopulation(object):
         # Set mask, weight and delay for column
         # **TODO** different matrix for each connection type
         self.matrices[projection.pre][pre_indices, post_index] = (True, quantised_delay, parameters["weight"])
+    '''

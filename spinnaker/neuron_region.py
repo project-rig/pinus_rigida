@@ -5,10 +5,9 @@ from rig.regions.region import Region
 # NeuronRegion
 #------------------------------------------------------------------------------
 class NeuronRegion(Region):
-    def __init__(self, num_us_per_timestep, num_synapse_types, params):
-        self.num_us_per_timestep = num_us_per_timestep
-        self.num_synapse_types = num_synapse_types
-        self.params = params
+    def __init__(self, mutable_params, immutable_params):
+        self.mutable_params = mutable_params
+        self.immutable_params = immutable_params
     
     #--------------------------------------------------------------------------
     # Region methods
@@ -32,12 +31,9 @@ class NeuronRegion(Region):
             of the region.
         """
         
-        # Calculate header size (one word for key, num_neurons, num_parameters,
-        # num_microseconds_per_timestep and one for each synapse type)
-        header_size = 4 * (4 + self.num_synapse_types)
-        
         # Add storage size of parameter slice to header and return
-        return header_size + self.params[vertex_slice].nbytes
+        return self.immutable_params[vertex_slice.python_slice].nbytes +\
+            self.mutable_params[vertex_slice.python_slice].nbytes
 
     def write_subregion_to_file(self, vertex_slice, fp, **formatter_args):
         """Write a portion of the region to a file applying the formatter.
@@ -54,30 +50,14 @@ class NeuronRegion(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
-        # Create parameter slice
-        param_slice = self.params[vertex_slice]
-        
-        # Write header
-        fp.write(struct.pack("IIII", 
-                 formatter_args["key"],         # Routing key
-                 len(param_slice),              # Number of neurons
-                 len(self.params.dtype.names),  # Number of parameters(unused)
-                 self.num_us_per_timestep))     # Time step length
-        
-        # Extract the per-synapse-type input shifts
-        synapse_type_input_shifts = formatter_args["synapse_type_input_shifts"]
-        
-        # Write each synapse type's input shift
-        fp.write(struct.pack("I" * self.num_synapse_types,
-                             *synapse_type_input_shifts))
-        
-        # Write parameter slice as string
-        fp.write(param_slice.tostring())
+        # Write parameter slices as string
+        fp.write(self.mutable_params[vertex_slice.python_slice].tostring())
+        fp.write(self.immutable_params[vertex_slice.python_slice].tostring())
     
     #--------------------------------------------------------------------------
     # Properties
     #--------------------------------------------------------------------------
     @property
     def num_neurons(self):
-        return len(self.params)
+        return len(self.immutable_params)
         

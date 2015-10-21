@@ -52,16 +52,19 @@ conductance_synapse_translations = build_translations(
 # Create a converter function to convert from float to S1615 format
 float_to_s1615 = NumpyFloatToFixConverter(True, 32, 15)
 
-lif_neuron_region_map = [
+lif_neuron_immutable_param_map = [
     ("v_thresh", "i4", float_to_s1615),
     ("v_reset", "i4", float_to_s1615),
-    ("v_rest", "i4", float_to_s1615),     # **TODO** v_init is more cunning than this
-    ("r_membrane", "i4", float_to_s1615),
-    ("v_rest", "i4", float_to_s1615),     # **TODO** initializing state variables is more cunning than this
+    ("v_rest", "i4", float_to_s1615),
     ("i_offset", "i4", float_to_s1615),
+    ("r_membrane", "i4", float_to_s1615),
     ("exp_tau_m", "i4", float_to_s1615),
-    (0, "i4"),                            # **NOTE** not using ODE solver
     ("tau_refrac", "i4", numpy.round),
+]
+
+lif_neuron_mutable_param_map = [
+    ("v", "i4", float_to_s1615),
+    (0, "i4"),
 ]
 
 #-------------------------------------------------------------------
@@ -73,7 +76,8 @@ class IF_curr_exp(cells.IF_curr_exp):
     translations = deepcopy(lif_neuron_translations)
     translations.update(current_synapse_translations)
     
-    neuron_region_map = lif_neuron_region_map
+    neuron_immutable_param_map = lif_neuron_immutable_param_map
+    neuron_mutable_param_map = lif_neuron_mutable_param_map
 
 class IF_cond_exp(cells.IF_cond_exp):
     __doc__ = cells.IF_cond_exp.__doc__
@@ -81,7 +85,8 @@ class IF_cond_exp(cells.IF_cond_exp):
     translations = deepcopy(lif_neuron_translations)
     translations.update(conductance_synapse_translations)
     
-    neuron_region_map = lif_neuron_region_map
+    neuron_immutable_param_map = lif_neuron_immutable_param_map
+    neuron_mutable_param_map = lif_neuron_mutable_param_map
 
 class Izhikevich(cells.Izhikevich):
     __doc__ = cells.Izhikevich.__doc__

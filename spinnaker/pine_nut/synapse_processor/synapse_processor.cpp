@@ -262,7 +262,7 @@ extern "C" void c_main()
   //ring_buffer_init();
 
   // Set timer tick (in microseconds) in both timer and
-  spin1_set_timer_tick(g_AppWords[SynapseProcessor::AppWordTimerPeriod]);
+  spin1_set_timer_tick(g_Config.GetTimerPeriod());
 
   // Register callbacks
   spin1_callback_on(MC_PACKET_RECEIVED, MCPacketReceived, -1);

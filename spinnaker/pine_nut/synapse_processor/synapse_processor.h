@@ -9,18 +9,16 @@ namespace SynapseProcessor
 enum Region
 {
   RegionSystem              = 0,
-  RegionKeyLookup           = 4,
-  RegionSynapticMatrix      = 5,
-  RegionPlasticity          = 6,
+  RegionKeyLookup           = 3,
+  RegionSynapticMatrix      = 4,
+  RegionPlasticity          = 5,
   RegionOutputBuffer        = 7,
-  RegionProfiler            = 17,
+  RegionProfiler            = 11,
 };
 
 // Indexes of application words
 enum AppWord
 {
-  AppWordSimulationDuration,
-  AppWordTimerPeriod,
   AppWordMax,
 };
 
