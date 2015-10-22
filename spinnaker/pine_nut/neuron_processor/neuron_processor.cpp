@@ -42,7 +42,8 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
 {
   // Allocate array for neuron's mutable state
   // **TODO** spin1_malloc allocator
-  uint32_t mutableNeuronBytes = sizeof(Neuron::MutableState) * g_AppWords[AppWordNumNeurons];
+  unsigned int mutableNeuronBytes = sizeof(Neuron::MutableState)
+    * g_AppWords[AppWordNumNeurons];
   g_NeuronMutableState = (Neuron::MutableState*)spin1_malloc(mutableNeuronBytes);
   if(g_NeuronMutableState == NULL)
   {
@@ -55,7 +56,8 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   spin1_memcpy(g_NeuronMutableState, region, mutableNeuronBytes);
 
   // Allocate array for neuron's mutable state
-  uint32_t immutableNeuronBytes = sizeof(Neuron::ImmutableState) * g_AppWords[AppWordNumNeurons];
+  unsigned int immutableNeuronBytes = sizeof(Neuron::ImmutableState)
+    * g_AppWords[AppWordNumNeurons];
   g_NeuronImmutableState = (Neuron::ImmutableState*)spin1_malloc(immutableNeuronBytes);
   if(g_NeuronImmutableState == NULL)
   {
@@ -65,15 +67,18 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   }
 
   // Copy neuron data into newly allocated array
-  spin1_memcpy(g_NeuronImmutableState, region, immutableNeuronBytes);
+  unsigned int mutableNeuronWords = mutableNeuronBytes / sizeof(uint32_t);
+  spin1_memcpy(g_NeuronImmutableState, region + mutableNeuronWords,
+               immutableNeuronBytes);
   
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
-  LOG_PRINT(LOG_LEVEL_TRACE, "neurons");
+  LOG_PRINT(LOG_LEVEL_TRACE, "Neurons");
   LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------");
-  //for (uint32_t i = 0; i < 2; i++)
-  //{
-  //  LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p\n", i, output_buffers[i]);
-  //}= NULL
+  for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+  {
+    io_printf(IO_BUF, "Neuron %u:\n", n);
+    Neuron::Print(IO_BUF, g_NeuronMutableState[n], g_NeuronImmutableState[n]);
+  }
   LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------");
 #endif
   
@@ -94,6 +99,11 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     flags, AppWordMax, g_AppWords))
   {
     return false;
+  }
+  else
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "\tkey=%08x, num neurons=%u",
+      g_AppWords[AppWordKey], g_AppWords[AppWordNumNeurons]);
   }
   
   // Read neuron region
@@ -131,7 +141,8 @@ static void TimerTick(uint tick, uint)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
-    // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
+    // Finalise any recordings that are in progress, writing
+    // back the final amounts of samples recorded to SDRAM
     //recording_finalise();
     spin1_exit(0);
   }

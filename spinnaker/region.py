@@ -8,7 +8,6 @@ class Region(object):
         """Get the size of the region in bytes when padded to take an integral
         number of words.
         """
-        print kwargs
         # Call to get the number of bytes, then pad if necessary and return
         n_bytes = self.sizeof(vertex_slice, **kwargs)
         return n_bytes + (0 if (n_bytes % 4 == 0) else (4 - n_bytes % 4))

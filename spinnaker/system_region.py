@@ -1,10 +1,6 @@
 import struct
 from region import Region
 
-RECORD_SPIKE_HISTORY  = (1 << 0)
-RECORD_VOLTAGE        = (1 << 1)
-RECORD_GSYN           = (1 << 2)
-
 #------------------------------------------------------------------------------
 # SystemRegion
 #------------------------------------------------------------------------------
