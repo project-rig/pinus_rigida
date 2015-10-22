@@ -59,12 +59,12 @@ def create_app_ptr_and_region_files(fp, regions, vertex_slice, **kwargs):
         A file-like view of memory for each region.
     """
     # First we split off the application pointer region
-    ptrs = [0 for n in range(len(regions) + 1)]
-    offset = 4 + len(ptrs)*4  # 1 word per region and magic number
+    ptrs = [0 for n in range(len(regions))]
+    offset = 4 + (len(ptrs) * 4)  # 1 word per region and magic number
 
     # Then we go through and assign each region in turn
     region_memory = list()
-    for i, r in enumerate(regions, start=1):
+    for i, r in enumerate(regions):
         if r is None:
             region_memory.append(None)
         else:

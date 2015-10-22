@@ -40,10 +40,14 @@ Neuron::ImmutableState *g_NeuronImmutableState = NULL;
 //----------------------------------------------------------------------------
 bool ReadNeuronRegion(uint32_t *region, uint32_t)
 {
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadNeuronRegion");
+
   // Allocate array for neuron's mutable state
   // **TODO** spin1_malloc allocator
   unsigned int mutableNeuronBytes = sizeof(Neuron::MutableState)
     * g_AppWords[AppWordNumNeurons];
+  LOG_PRINT(LOG_LEVEL_INFO, "\t%u bytes of mutable neuron state", mutableNeuronBytes);
+
   g_NeuronMutableState = (Neuron::MutableState*)spin1_malloc(mutableNeuronBytes);
   if(g_NeuronMutableState == NULL)
   {
@@ -58,6 +62,8 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   // Allocate array for neuron's mutable state
   unsigned int immutableNeuronBytes = sizeof(Neuron::ImmutableState)
     * g_AppWords[AppWordNumNeurons];
+  LOG_PRINT(LOG_LEVEL_INFO, "\t%u bytes of immutable neuron state", immutableNeuronBytes);
+
   g_NeuronImmutableState = (Neuron::ImmutableState*)spin1_malloc(immutableNeuronBytes);
   if(g_NeuronImmutableState == NULL)
   {

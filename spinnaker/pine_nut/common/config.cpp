@@ -25,7 +25,7 @@ bool Config::VerifyHeader(uint32_t *baseAddress, uint32_t) const
 bool Config::ReadSystemRegion(uint32_t *region, uint32_t,
   unsigned int numApplicationWords, uint32_t applicationWords[])
 {
-  LOG_PRINT(LOG_LEVEL_INFO, "ReadSystemRegion: starting");
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadSystemRegion");
 
   // Read timer period and simulation ticks from first two words
   m_TimerPeriod = region[0];

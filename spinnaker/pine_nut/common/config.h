@@ -40,9 +40,10 @@ public:
   static uint32_t *GetBaseAddressAllocTag();
 
   // Get the address of region n within the SDRAM data beginning at base_address
+  // **NOTE** one is added to skip over magic number
   static uint32_t *GetRegionStart(uint32_t *baseAddress, unsigned int regionNumber)
   {
-     return &baseAddress[baseAddress[2 + regionNumber] >> 2];
+     return &baseAddress[baseAddress[1 + regionNumber] >> 2];
   }
 
 private:

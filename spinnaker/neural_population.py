@@ -25,15 +25,12 @@ class NeuralPopulation(object):
         mutable_params = apply_param_map(
             initial_values, cell_type.neuron_mutable_param_map,
             num_neurons)
-        print "Mutable", mutable_params
-
+        
         # Use neurons immutable parameter map to transform
         # lazy array of immutable parameters
         immutable_params = apply_param_map(
             immutable_lazy_params, cell_type.neuron_immutable_param_map,
             num_neurons)
-
-        print "Immutable:", immutable_params
 
         # Use neurons
         # List of regions
@@ -57,7 +54,7 @@ class NeuralPopulation(object):
 
         vertex_size_bytes = sizeof_regions(self.regions, vertex_slice, **region_kwargs)
 
-        print("Region size = %u bytes" % vertex_size_bytes)
+        print("\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
     
     def write_to_file(self, key, vertex_slice, fp):
