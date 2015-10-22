@@ -164,7 +164,7 @@ ifeq ($(GNU),1)
 else
 	$(OC) --bin --output $(APP).bin $(APP).elf
 endif
-	mkaplx $(APCCP).elf | $(CAT) - $(APP).bin > $(APP).aplx
+	mkaplx $(APP).elf | $(CAT) - $(APP).bin > $(APP).aplx
 	$(RM) $(APP).bin RO_DATA.bin RW_DATA.bin
 	$(CP) $(APP).aplx $(APP_DIR)/
 	$(LS) $(APP_DIR)/$(APP).aplx
