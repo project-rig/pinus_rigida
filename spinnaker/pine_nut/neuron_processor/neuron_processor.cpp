@@ -159,9 +159,9 @@ static void TimerTick(uint tick, uint)
   for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
     // Update neuron, if it spikes
-    S1615 exc_input = 0;
-    S1615 inh_input = 0;
-    S1615 external_input = 0;
+    S1516 exc_input = 0;
+    S1516 inh_input = 0;
+    S1516 external_input = 0;
     if(Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
       exc_input, inh_input, external_input))
     {

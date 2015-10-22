@@ -7,15 +7,12 @@
 using namespace Common::FixedPointNumber;
 
 //-----------------------------------------------------------------------------
-// NeuronModels
+// NeuronProcessor::NeuronModels::IFCurr
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
 namespace NeuronModels
 {
-//-----------------------------------------------------------------------------
-// IFCurr
-//-----------------------------------------------------------------------------
 class IFCurr
 {
 public:
@@ -25,7 +22,7 @@ public:
   struct MutableState
   {
     // Membrane voltage [mV]
-    S1615 m_V_Membrane;
+    S1516 m_V_Membrane;
 
     // Countdown to end of next refractory period [machine timesteps]
     int32_t m_RefractoryTimer;
@@ -37,24 +34,24 @@ public:
   struct ImmutableState
   {
     // Membrane voltage threshold at which neuron spikes [mV]
-    S1615 m_V_Threshold;
+    S1516 m_V_Threshold;
 
     // Post-spike reset membrane voltage [mV]
-    S1615 m_V_Reset;
+    S1516 m_V_Reset;
 
     // Membrane resting voltage [mV]
-    S1615 m_V_Rest;
+    S1516 m_V_Rest;
 
     // Offset current [nA] but take care because actually 'per timestep charge'
-    S1615 m_I_Offset;
+    S1516 m_I_Offset;
 
     // Membrane resistance [MegaOhm]
-    S1615 m_R_Membrane;
+    S1516 m_R_Membrane;
 
     // 'Fixed' computation parameter - time constant multiplier for
     // Closed-form solution
     // exp( -(machine time step in ms)/(R * C) ) [.]
-    S1615 m_ExpTC;
+    S1516 m_ExpTauM;
 
     // Refractory time of neuron [machine timesteps]
     int32_t m_T_Refractory;
@@ -64,7 +61,7 @@ public:
   // Static methods
   //-----------------------------------------------------------------------------
   static inline bool Update(MutableState &mutableState, const ImmutableState &immutableState,
-                            S1615 excInput, S1615 inhInput, S1615 extBiasCurrent)
+                            S1516 excInput, S1516 inhInput, S1516 extBiasCurrent)
   {
     bool spike = false;
 
@@ -75,15 +72,15 @@ public:
     if (mutableState.m_RefractoryTimer <= 0)
     {
       // Get the input in nA
-      S1615 inputThisTimestep = excInput - inhInput
+      S1516 inputThisTimestep = excInput - inhInput
         + extBiasCurrent + immutableState.m_I_Offset;
 
       // Convert input from current to voltage
-      S1615 alpha = MulS1615(inputThisTimestep, immutableState.m_R_Membrane) + immutableState.m_V_Rest;
+      S1516 alpha = MulS1516_S1516(inputThisTimestep, immutableState.m_R_Membrane) + immutableState.m_V_Rest;
 
       // Perform closed form update
-      mutableState.m_V_Membrane = alpha - MulS1615(immutableState.m_ExpTC,
-                                                   alpha - mutableState.m_V_Membrane);
+      mutableState.m_V_Membrane = alpha - MulS1516_S1516(immutableState.m_ExpTauM,
+                                                         alpha - mutableState.m_V_Membrane);
 
       // Neuron spikes if membrane voltage has crossed threshold
       spike = (mutableState.m_V_Membrane >= immutableState.m_V_Threshold);
