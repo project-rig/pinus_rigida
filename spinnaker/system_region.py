@@ -1,5 +1,5 @@
 import struct
-from rig.regions.region import Region
+from region import Region
 
 RECORD_SPIKE_HISTORY  = (1 << 0)
 RECORD_VOLTAGE        = (1 << 1)
@@ -25,7 +25,7 @@ class SystemRegion(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, vertex_slice, **kwargs):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -33,7 +33,7 @@ class SystemRegion(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
+        kwargs : optional
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
             
@@ -43,26 +43,28 @@ class SystemRegion(Region):
             The number of bytes required to store the data in the given slice
             of the region.
         """
+        # Extract application words from formatter
+        application_words = kwargs["application_words"]
 
-        return 4 * (2 + formatter_args["num_application_words"])
+        return 4 * (2 + len(application_words))
 
-    def write_subregion_to_file(self, vertex_slice, fp, **formatter_args):
+    def write_subregion_to_file(self, fp, vertex_slice, **kwargs):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
         ----------
-        vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
-            elements of the region should be included.
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        formatter_args : optional
+        vertex_slice : :py:func:`slice`
+            A slice object which indicates which rows, columns or other
+            elements of the region should be included.
+        kwargs : optional
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
         # Extract application words from formatter
-        application_words = formatter_args["application_words"]
+        application_words = kwargs["application_words"]
 
         # Write structure
         fp.write(struct.pack("%uI" % (2 + len(application_words)),

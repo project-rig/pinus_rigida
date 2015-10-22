@@ -17,7 +17,7 @@ public:
   // Public methods
   //-----------------------------------------------------------------------------
   // Verify header residing at the beginning of all executable's SDRAM data
-  bool VerifyHeader(uint32_t *baseAddress, uint32_t flags, uint32_t &version) const;
+  bool VerifyHeader(uint32_t *baseAddress, uint32_t flags) const;
 
   // Read system region including application-specific words from region data
   bool ReadSystemRegion(uint32_t *region, uint32_t flags,

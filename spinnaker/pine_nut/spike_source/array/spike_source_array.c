@@ -52,7 +52,7 @@ static bool read_spike_source_region(uint32_t *region, uint32_t flags)
   next_spike_tick = region[0];
   spike_data_region_base = region + 1;
   
-  LOG_PRINT(LOG_LEVEL_INFO, "\tnext_spike_tick:%u, spike_data_region_base:%p \n", next_spike_tick, spike_data_region_base);
+  LOG_PRINT(LOG_LEVEL_INFO, "\tnext_spike_tick:%u, spike_data_region_base:%p", next_spike_tick, spike_data_region_base);
   return true;
 }
 
@@ -63,7 +63,7 @@ bool spike_source_read_sdram_data(uint32_t *base_address, uint32_t flags)
 {
   USE(flags);
   
-  LOG_PRINT(LOG_LEVEL_INFO, "spike_source_read_sdram_data\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "spike_source_read_sdram_data");
   
   // Read spike source region
   if(!read_spike_source_region(
@@ -76,13 +76,13 @@ bool spike_source_read_sdram_data(uint32_t *base_address, uint32_t flags)
   // Determine how many words are required for each neuron to have a bit
   // **NOTE** add one for word containing tick next dma is required at
   spike_block_size_words = bit_field_get_word_size(spike_source_app_words[app_word_num_sources]) + 1;
-  LOG_PRINT(LOG_LEVEL_INFO, "\tspike_block_size_words %u\n", spike_block_size_words);
+  LOG_PRINT(LOG_LEVEL_INFO, "\tspike_block_size_words %u", spike_block_size_words);
   
   // Allocate correctly sized DMA buffer
   dma_buffer = (uint32_t*)spin1_malloc(spike_block_size_words * sizeof(uint32_t));
   if(dma_buffer == NULL)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte DMA buffer\n", 
+    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte DMA buffer",
       spike_block_size_words * sizeof(uint32_t));
     return false;
   }
@@ -90,7 +90,7 @@ bool spike_source_read_sdram_data(uint32_t *base_address, uint32_t flags)
   // If the next spike occurs in the 1st timestep
   if(next_spike_tick == 0)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Copying first block into DMA buffer synchronously\n");
+    LOG_PRINT(LOG_LEVEL_INFO, "Copying first block into DMA buffer synchronously");
     
     // Synchronously copy next block into dma buffer
     memcpy(dma_buffer, spike_data_region_base, spike_block_size_words * sizeof(uint32_t));
@@ -100,7 +100,7 @@ bool spike_source_read_sdram_data(uint32_t *base_address, uint32_t flags)
     state = state_spike_block_in_buffer;
   }
   
-  LOG_PRINT(LOG_LEVEL_INFO, "spike_source_read_sdram_data: completed successfully\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "spike_source_read_sdram_data: completed successfully");
   
   return true;
 }
@@ -111,15 +111,15 @@ void spike_source_dma_transfer_done(uint unused, uint tag)
   
   if(tag != 0)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "tag (%d) = 0\n", tag);
+    LOG_PRINT(LOG_LEVEL_ERROR, "tag (%d) = 0", tag);
   }
   
   if(state != state_dma_in_progress)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "state (%u) = %u\n", state, state_dma_in_progress);
+    LOG_PRINT(LOG_LEVEL_ERROR, "state (%u) = %u", state, state_dma_in_progress);
   }
   
-  LOG_PRINT(LOG_LEVEL_TRACE, "DMA transfer complete\n");
+  LOG_PRINT(LOG_LEVEL_TRACE, "DMA transfer complete");
   
   // Set state to reflect that the spike block is now in the buffer
   state = state_spike_block_in_buffer;
@@ -158,7 +158,7 @@ void spike_source_generate(uint32_t tick)
     // Otherwise error
     else
     {
-      LOG_PRINT(LOG_LEVEL_WARN, "DMA hasn't completed in time for next tick\n");
+      LOG_PRINT(LOG_LEVEL_WARN, "DMA hasn't completed in time for next tick");
     }
   }
   

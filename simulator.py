@@ -10,9 +10,11 @@ from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.machine_controller import MachineController, MemoryIO
 from rig.netlist import Net
+
+# Import functions
 from rig.place_and_route import wrapper
 from six import iteritems
-from utils import evenly_slice
+from spinnaker.utils import evenly_slice
 
 name = "SpiNNaker"
 
@@ -354,7 +356,7 @@ class State(common.control.BaseState):
                     # Allocate a suitable memory block for this vertex and get memory io
                     # **NOTE** this is tagged by core
                     memory_io = machine_controller.sdram_alloc_as_filelike(
-                        spinnaker_pop.get_size(v.neuron_slice), tag=core.start)
+                        spinnaker_pop.get_size(v.key, v.neuron_slice), tag=core.start)
                     print("\tMemory begins at %08x" % memory_io.address)
 
                     # Write the vertex to file

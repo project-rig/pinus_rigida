@@ -46,7 +46,7 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   g_NeuronMutableState = (Neuron::MutableState*)spin1_malloc(mutableNeuronBytes);
   if(g_NeuronMutableState == NULL)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte neuron mutable state array\n",
+    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte neuron mutable state array",
       mutableNeuronBytes);
     return false;
   }
@@ -59,7 +59,7 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   g_NeuronImmutableState = (Neuron::ImmutableState*)spin1_malloc(immutableNeuronBytes);
   if(g_NeuronImmutableState == NULL)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte neuron imutable data array\n",
+    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate %u byte neuron imutable data array",
       immutableNeuronBytes);
     return false;
   }
@@ -68,13 +68,13 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   spin1_memcpy(g_NeuronImmutableState, region, immutableNeuronBytes);
   
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
-  LOG_PRINT(LOG_LEVEL_TRACE, "neurons\n");
-  LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_TRACE, "neurons");
+  LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------");
   //for (uint32_t i = 0; i < 2; i++)
   //{
   //  LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p\n", i, output_buffers[i]);
   //}= NULL
-  LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------");
 #endif
   
   return true;
@@ -83,8 +83,7 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
 bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 {
   // Verify data header
-  uint32_t version;
-  if(!g_Config.VerifyHeader(baseAddress, flags, version))
+  if(!g_Config.VerifyHeader(baseAddress, flags))
   {
     return false;
   }
@@ -118,19 +117,19 @@ static void DMATransferDone(uint, uint tag)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u\n", tag);
+    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u", tag);
   }
 }
 //-----------------------------------------------------------------------------
 static void TimerTick(uint tick, uint)
 {
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u\n", tick);
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", tick);
 
   // If a fixed number of simulation ticks are specified and these have passed
   if(g_Config.GetSimulationTicks() != UINT32_MAX
     && tick >= g_Config.GetSimulationTicks())
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
+    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
     //recording_finalise();
@@ -171,7 +170,7 @@ extern "C" void c_main()
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data\n");
+    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
     return;
   }
   

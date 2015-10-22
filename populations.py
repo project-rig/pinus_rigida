@@ -10,7 +10,9 @@ from . import simulator
 from .recording import Recorder
 from rig.utils.contexts import ContextMixin, Required
 from spinnaker.neural_population import NeuralPopulation
-from utils import evenly_slice
+
+# Import functions
+from spinnaker.utils import evenly_slice
 
 class Assembly(common.Assembly):
     _simulator = simulator

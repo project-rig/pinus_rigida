@@ -38,13 +38,13 @@ static bool read_row_size_region(uint32_t *region, uint32_t flags)
   memcpy(row_size, region, sizeof(uint32_t) * ROW_SIZE_TABLE_SIZE);
 
 #if LOG_LEVEL <= LOG_LEVEL_INFO
-  LOG_PRINT(LOG_LEVEL_INFO, "Row_size\n");
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "Row_size");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
   for(uint32_t i = 0; i < ROW_SIZE_TABLE_SIZE; i++)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "\tindex %2u, size = %3u\n", i, row_size[i]);
   }
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
 #endif
   
   return true;
@@ -58,19 +58,19 @@ static bool read_master_population_region(uint32_t *region, uint32_t flags)
   memcpy(master_population, region, sizeof(uint16_t) * MASTER_POPULATION_SIZE);
 
 #if LOG_LEVEL <= LOG_LEVEL_INFO
-  LOG_PRINT(LOG_LEVEL_INFO, "Master_population\n");
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "Master_population");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
   for (uint32_t i = 0; i < MASTER_POPULATION_MAX; i++)
   {
     uint32_t mp = (uint32_t)(master_population[i]);
     uint32_t s  = mp & 0x7;
     if (s != 0)
     {
-      LOG_PRINT(LOG_LEVEL_INFO, "\tindex %u, entry: %4u (13 bits = %04x), size = %3u\n",
+      LOG_PRINT(LOG_LEVEL_INFO, "\tindex %u, entry: %4u (13 bits = %04x), size = %3u",
         i, mp, mp >> 3, row_size_table [s]);
     }
   }
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
 #endif
   
   return true;
@@ -82,7 +82,7 @@ static bool read_synaptic_matrix_region(uint32_t *region, uint32_t flags)
   synaptic_matrix_base = region;
   
 #if LOG_LEVEL <= LOG_LEVEL_INFO
-  LOG_PRINT(LOG_LEVEL_INFO, "Synaptic matrix base address:%p\n", synaptic_matrix_base);
+  LOG_PRINT(LOG_LEVEL_INFO, "Synaptic matrix base address:%p", synaptic_matrix_base);
 #endif
   return true;
 }
@@ -125,7 +125,7 @@ bool row_lookup_get_address(uint32_t key, uint32_t **address, uint32_t *size_byt
   
   if(pid >= MASTER_POPULATION_SIZE)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Population ID %u too large to be supported by linear row lookup\n", pid);
+    LOG_PRINT(LOG_LEVEL_ERROR, "Population ID %u too large to be supported by linear row lookup", pid);
     return false;
   }
   
@@ -139,7 +139,7 @@ bool row_lookup_get_address(uint32_t key, uint32_t **address, uint32_t *size_byt
 
   if(size_index == 0)
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Spike %u (= %x): population not found in master population table\n", 
+    LOG_PRINT(LOG_LEVEL_WARN, "Spike %u (= %x): population not found in master population table",
       key, key);
     return false;
   }
@@ -153,7 +153,7 @@ bool row_lookup_get_address(uint32_t key, uint32_t **address, uint32_t *size_byt
     // **NOTE** 1024 converts from kilobyte offset to byte offset
     uint32_t population_offset_bytes = population_offset_kilobytes * 1024;
 
-    LOG_PRINT(LOG_LEVEL_TRACE, "Neuron offset (bytes) = %u, population offset (bytes) = %u, base = %08x, size = %u\n", 
+    LOG_PRINT(LOG_LEVEL_TRACE, "Neuron offset (bytes) = %u, population offset (bytes) = %u, base = %08x, size = %u",
       neuron_offset_bytes, population_offset_bytes, synaptic_matrix_base, *size_bytes);
     
     // Return address

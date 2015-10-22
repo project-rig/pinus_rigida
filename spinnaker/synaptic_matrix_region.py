@@ -1,7 +1,9 @@
+# Import modules
 import numpy as np
 import struct
-from rig.regions.region import Region
 
+# Import classes
+from region import Region
 ROW_HEADER_BYTES = 3 * 4
 
 # Number of bits for various synapse components
@@ -60,17 +62,17 @@ class SynapticMatrixRegion(Region):
         
         return total_size
     
-    def write_subregion_to_file(self, vertex_slice, fp, **formatter_args):
+    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
         ----------
-        vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
-            elements of the region should be included.
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
+        vertex_slice : :py:func:`slice`
+            A slice object which indicates which rows, columns or other
+            elements of the region should be included.
         formatter_args : optional
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.

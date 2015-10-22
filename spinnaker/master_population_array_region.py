@@ -4,7 +4,7 @@ import struct
 
 # Import classes
 from collections import namedtuple
-from rig.regions.region import Region
+from region import Region
 
 # Import functions
 from bisect import bisect_left

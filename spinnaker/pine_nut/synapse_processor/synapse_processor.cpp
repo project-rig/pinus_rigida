@@ -75,12 +75,12 @@ bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
 
 #if LOG_LEVEL <= LOG_LEVEL_INFO
   LOG_PRINT(LOG_LEVEL_INFO, "output_buffer\n");
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
   for (uint32_t i = 0; i < 2; i++)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p\n", i, g_OutputBuffers[i]);
+    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p", i, g_OutputBuffers[i]);
   }
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
 #endif
 
   return true;
@@ -89,8 +89,7 @@ bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
 bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 {
   // Verify data header
-  uint32_t version;
-  if(!g_Config.VerifyHeader(baseAddress, flags, version))
+  if(!g_Config.VerifyHeader(baseAddress, flags))
   {
     return false;
   }
@@ -158,7 +157,7 @@ void SetupNextDMARowRead()
 //-----------------------------------------------------------------------------
 void MCPacketReceived(uint key, uint)
 {
-  //LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u\n",
+  //LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u",
   //  key, tick, dma_busy);
 
   // If there was space to add spike to incoming spike queue
@@ -167,7 +166,7 @@ void MCPacketReceived(uint key, uint)
     // If we're not already processing synaptic dmas, flag pipeline as busy and trigger a user event
     /*if(!dma_busy)
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike\n");
+      LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike");
 
       if(spin1_trigger_user_event(0, 0))
       {
@@ -175,7 +174,7 @@ void MCPacketReceived(uint key, uint)
       }
       else
       {
-        LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event\n");
+        LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event");
       }
     }*/
   }
@@ -199,7 +198,7 @@ void DMATransferDone(uint, uint tag)
   }
   else if(tag != DMATagRowWrite)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u\n", tag);
+    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u", tag);
   }
 }
 //-----------------------------------------------------------------------------
@@ -215,14 +214,14 @@ void TimerTick(uint tick, uint)
   if(g_Config.GetSimulationTicks() != UINT32_MAX
     && tick >= g_Config.GetSimulationTicks())
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
+    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
     //recording_finalise();
     spin1_exit(0);
   }
 
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)\n",
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)",
     tick, (tick % 2), g_OutputBuffers[tick % 2]);
 
   // Get output buffer from 'back' of ring-buffer
@@ -248,7 +247,7 @@ extern "C" void c_main()
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data\n");
+    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
     return;
   }
 

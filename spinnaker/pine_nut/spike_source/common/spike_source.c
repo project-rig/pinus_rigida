@@ -59,13 +59,13 @@ static void timer_tick(uint unused0, uint unused1)
   
   // Increment tick counter
   tick++;
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u\n", tick);
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", tick);
 
   // If a fixed number of simulation ticks are specified and these have passed
   if (spike_source_app_words[app_word_simulation_duration] != UINT32_MAX 
     && tick >= spike_source_app_words[app_word_simulation_duration])
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete\n");
+    LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
     //recording_finalise();
@@ -111,7 +111,7 @@ void c_main()
   // If reading SDRAM data fails
   if(!read_sdram_data(base_address, 0))
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data\n");
+    LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
     return;
   }
   

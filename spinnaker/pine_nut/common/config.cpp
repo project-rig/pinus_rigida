@@ -9,26 +9,23 @@
 //-----------------------------------------------------------------------------
 namespace Common
 {
-bool Config::VerifyHeader(uint32_t *baseAddress, uint32_t, uint32_t &version) const
+bool Config::VerifyHeader(uint32_t *baseAddress, uint32_t) const
 {
   if (baseAddress[0] != 0xAD130AD6)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Magic number is %08x", baseAddress[0]);
+    LOG_PRINT(LOG_LEVEL_ERROR, "Magic number is %08x", baseAddress[0]);
     return false;
   }
-
-  version = baseAddress[1]; // version number extracted.
-  #include <sark.h>
-  LOG_PRINT(LOG_LEVEL_INFO, "Magic = %08x, version = %u.%u", baseAddress[0],
-    baseAddress[1] >> 16, baseAddress[1] & 0xFFFF);
-
-  return true;
+  else
+  {
+    return true;
+  }
 }
 //-----------------------------------------------------------------------------
 bool Config::ReadSystemRegion(uint32_t *region, uint32_t,
   unsigned int numApplicationWords, uint32_t applicationWords[])
 {
-  LOG_PRINT(LOG_LEVEL_INFO, "ReadSystemRegion: starting\n");
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadSystemRegion: starting");
 
   // Read timer period and simulation ticks from first two words
   m_TimerPeriod = region[0];
@@ -41,7 +38,7 @@ bool Config::ReadSystemRegion(uint32_t *region, uint32_t,
       numApplicationWords * sizeof(uint32_t));
   }
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\ttimer period=%u, simulation ticks=%u\n",
+  LOG_PRINT(LOG_LEVEL_INFO, "\ttimer period=%u, simulation ticks=%u",
     m_TimerPeriod, m_SimulationTicks);
 
   return true;

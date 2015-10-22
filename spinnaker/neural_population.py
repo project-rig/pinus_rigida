@@ -4,7 +4,10 @@ import numpy as np
 # Import classes
 from neuron_region import NeuronRegion
 from system_region import SystemRegion
-from ..utils import apply_param_map
+
+# Import functions
+from utils import (
+    apply_param_map, create_app_ptr_and_region_files, sizeof_regions)
 
 #------------------------------------------------------------------------------
 # NeuralPopulation
@@ -44,35 +47,38 @@ class NeuralPopulation(object):
         #self.regions[10] = CurrentRecordingRegion()
         #self.regions[11] = ProfilerRegion()
     
-    def get_size(self, vertex_slice):
-        # Build formatter
-        formatter = { 
-            "num_application_words": 2
-        }
-        
-        # Calculate region size
-        print("Calculating size")
-        vertex_size_bytes = 0
-        for i, r in enumerate(self.regions):
-            if r is not None:
-                region_size_bytes = r.sizeof(vertex_slice, **formatter)
-                print("Region %u - %u bytes" % (i, region_size_bytes))
-                
-                vertex_size_bytes += region_size_bytes
-        
-        print("= %u bytes" % vertex_size_bytes)
-        return vertex_size_bytes
-    
-    def write_to_file(self, key, vertex_slice, fp):
-        # Build formatter
-        formatter = {
+    def get_size(self, key, vertex_slice):
+        # Build region kwargs
+        region_kwargs = {
             "application_words": [key, vertex_slice.slice_length]
         }
         
-        # Write regions
-        for r in self.regions:
-            if r is not None:
-                r.write_subregion_to_file(vertex_slice, fp, **formatter)
+        # Calculate region size
+
+        vertex_size_bytes = sizeof_regions(self.regions, vertex_slice, **region_kwargs)
+
+        print("Region size = %u bytes" % vertex_size_bytes)
+        return vertex_size_bytes
+    
+    def write_to_file(self, key, vertex_slice, fp):
+        # Build region kwargs
+        region_kwargs = {
+            "application_words": [key, vertex_slice.slice_length]
+        }
+        
+        # Layout the slice of SDRAM we have been given
+        region_memory = create_app_ptr_and_region_files(
+            fp, self.regions, vertex_slice, **region_kwargs)
+
+        # Write in each region
+        for region, mem in zip(self.regions, region_memory):
+            if region is None:
+                pass
+            #elif region is self.output_keys_region:
+            #    self.output_keys_region.write_subregion_to_file(
+            #        mem, vertex.slice, cluster=vertex.cluster)
+            else:
+                region.write_subregion_to_file(mem, vertex_slice, **region_kwargs)
     
     #--------------------------------------------------------------------------
     # Public methods
