@@ -7,8 +7,8 @@ import numpy
 
 logger = logging.getLogger("PyNN")
 
-# Create a converter function to convert from float to S1615 format
-float_to_s1615 = NumpyFloatToFixConverter(True, 32, 15)
+# Create a converter function to convert from float to S1516 format
+float_to_s1516 = NumpyFloatToFixConverter(True, 32, 16)
 
 #-------------------------------------------------------------------
 # Neuron type translations
@@ -46,17 +46,17 @@ exp_synapse_translations = build_translations(
 #-------------------------------------------------------------------
 # Build maps of where and how parameters need to be written into neuron regions
 if_curr_neuron_immutable_param_map = [
-    ("v_thresh", "i4", float_to_s1615),
-    ("v_reset", "i4", float_to_s1615),
-    ("v_rest", "i4", float_to_s1615),
-    ("i_offset", "i4", float_to_s1615),
-    ("r_membrane", "i4", float_to_s1615),
-    ("exp_tau_m", "i4", float_to_s1615),
+    ("v_thresh", "i4", float_to_s1516),
+    ("v_reset", "i4", float_to_s1516),
+    ("v_rest", "i4", float_to_s1516),
+    ("i_offset", "i4", float_to_s1516),
+    ("r_membrane", "i4", float_to_s1516),
+    ("exp_tau_m", "i4", float_to_s1516),
     ("tau_refrac", "i4", numpy.round),
 ]
 
 if_curr_neuron_mutable_param_map = [
-    ("v", "i4", float_to_s1615),
+    ("v", "i4", float_to_s1516),
     (0, "i4"),
 ]
 
@@ -64,13 +64,13 @@ if_curr_neuron_mutable_param_map = [
 # Synapse shaping region maps
 #-------------------------------------------------------------------
 exp_synapse_immutable_param_map = [
-    ("exp_tau_syn_e", "i4", float_to_s1615),
-    ("exp_tau_syn_i", "i4", float_to_s1615),
+    ("exp_tau_syn_e", "i4", float_to_s1516),
+    ("exp_tau_syn_i", "i4", float_to_s1516),
 ]
 
 exp_synapse_mutable_param_map = [
-    ("exp_tau_syn_e", "i4", float_to_s1615),
-    ("exp_tau_syn_i", "i4", float_to_s1615),
+    ("isyn_exc", "i4", float_to_s1516),
+    ("isyn_inh", "i4", float_to_s1516),
 ]
 
 #-------------------------------------------------------------------
