@@ -10,6 +10,7 @@ from . import simulator
 from .recording import Recorder
 from rig.utils.contexts import ContextMixin, Required
 from spinnaker.neural_population import NeuralPopulation
+from spinnaker.synapse_population import SynapsePopulation
 
 # Import functions
 from spinnaker.utils import evenly_slice
@@ -92,31 +93,50 @@ class Population(common.Population, ContextMixin):
         parameters.shape = (self.size,)
         
         # **TODO** pick correct population class
-        # self.get_new_context(
         return NeuralPopulation(self.celltype, parameters,
                                 self.initial_values, simulation_timestep_us,
                                 timer_period_us, simulation_ticks)
 
-    '''
+    def create_spinnaker_synapse_population(self):
+         # **TODO** pick correct population class
+        return self.get_new_context(
+            spinnaker_synapse_population=SynapsePopulation())
+
     @ContextMixin.use_contextual_arguments()
-    def expand_incoming_connection(self, spinnaker_population):
+    def expand_incoming_connection(self, spinnaker_synapse_population):
+        population_matrix_rows = {}
+
         # Build incoming projections
+        # **THINK** if incoming projections were in a dictionary of lists
+        # keyed by pre-synaptic population, this process could be optimised
         # **NOTE** this will result to multiple calls to convergent_connect
         for i in self.incoming_projections:
-            i.build()
+            # If this projection's pre-synaptic population
+            # doesn't already have a matrix
+            if i.pre not in population_matrix_rows:
+                # Create an array to hold matrix rows and initialize each one with an empty list
+                population_matrix_rows[i.pre] = numpy.empty(i.pre.size, dtype=object)
+                for r in range(i.pre.size):
+                    population_matrix_rows[i.pre][r] = []
+
+            # Build the connection, adding the matrix rows to the context
+            with self.get_new_context(matrix_rows=population_matrix_rows[i.pre]):
+                i.build()
+
+        print population_matrix_rows
             
-    @ContextMixin.use_contextual_arguments()
-    def spinnaker_population(self, spinnaker_population):
-        return spinnaker_population
+    #@ContextMixin.use_contextual_arguments()
+    #def spinnaker_population(self, spinnaker_synapse_population):
+    #    return spinnaker_population
     
     @ContextMixin.use_contextual_arguments()
     def convergent_connect(self, projection, presynaptic_indices, postsynaptic_index,
-                            spinnaker_population, **connection_parameters):
+                            spinnaker_synapse_population, matrix_rows,
+                            **connection_parameters):
         # Create connections within spinnaker population
-        spinnaker_population.convergent_connect(projection, presynaptic_indices, 
-                                                      postsynaptic_index,
-                                                      **connection_parameters)
-    '''
+        spinnaker_synapse_population.convergent_connect(
+            projection, presynaptic_indices, postsynaptic_index,
+            matrix_rows, **connection_parameters)
 
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,

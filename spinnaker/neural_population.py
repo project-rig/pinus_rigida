@@ -30,6 +30,9 @@ class NeuralPopulation(object):
         #self.regions[10] = CurrentRecordingRegion()
         #self.regions[11] = ProfilerRegion()
     
+    #--------------------------------------------------------------------------
+    # Public methods
+    #--------------------------------------------------------------------------
     def get_size(self, key, vertex_slice):
         # Build region kwargs
         region_kwargs = {
@@ -62,28 +65,3 @@ class NeuralPopulation(object):
             #        mem, vertex.slice, cluster=vertex.cluster)
             else:
                 region.write_subregion_to_file(mem, vertex_slice, **region_kwargs)
-    
-    #--------------------------------------------------------------------------
-    # Public methods
-    #--------------------------------------------------------------------------
-    '''
-    def convergent_connect(self, projection, pre_indices, 
-                           post_index, **parameters):
-        # **TODO** assemblies
-        # **TODO** multiple projections and merging
-        # If there's not already a synaptic matrix 
-        # Associated with pre-synaptic population
-        if projection.pre not in self.matrices:
-            # Get shape of connection matrix
-            shape = (len(projection.pre), len(projection.post))
-            
-            # Add synaptic matrix to dictionary
-            self.matrices[projection.pre] = np.zeros(shape, dtype=MATRIX_DATATYPE)
-        
-        # Quantise delay into timesteps
-        quantised_delay = int(round(parameters["delay"]))
-
-        # Set mask, weight and delay for column
-        # **TODO** different matrix for each connection type
-        self.matrices[projection.pre][pre_indices, post_index] = (True, quantised_delay, parameters["weight"])
-    '''

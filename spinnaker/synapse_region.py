@@ -25,9 +25,6 @@ class SynapseRegion(Region):
         self.immutable_params = apply_param_map(
             parameters, cell_type.synapse_immutable_param_map,
             num_neurons)
-
-        print self.mutable_params
-        print self.immutable_params
     
     #--------------------------------------------------------------------------
     # Region methods

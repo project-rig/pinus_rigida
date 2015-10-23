@@ -362,15 +362,16 @@ class State(common.control.BaseState):
                     # Write the vertex to file
                     spinnaker_pop.write_to_file(v.key, v.neuron_slice, memory_io)
 
-        '''
-        # Build populations
-        for pop, vertices in population_vertices.iteritems():
+
+        # Build synapsepopulations
+        for pop, vertices in iteritems(pop_synapse_vertices):
             # Create a spinnaker population
-            with pop.create_spinnaker_population():
+            with pop.create_spinnaker_synapse_population():
                 # Expand any incoming connections
                 pop.expand_incoming_connection()
                 
                 # Loop through vertices
+                '''
                 for v in vertices:
                     # Get placement and allocation
                     vertex_placement = placements[v]
@@ -390,7 +391,7 @@ class State(common.control.BaseState):
                         
                         # Write the vertex to file
                         pop.spinnaker_population().write_to_file(v.key, v.neuron_slice, memory_io)
-        '''
+                '''
         # Load routing tables and applications
         print("Loading routing tables")
         machine_controller.load_routing_tables(routing_tables)
