@@ -19,13 +19,13 @@ class NeuralPopulation(object):
                  simulation_timestep_us, timer_period_us, simulation_ticks):
         # Determine number of neurons
         num_neurons = immutable_lazy_params.shape[0]
-        print initial_values
+
         # Use neurons mutable parameter map to
         # transform lazy array of mutable parameters
         mutable_params = apply_param_map(
             initial_values, cell_type.neuron_mutable_param_map,
             num_neurons)
-
+        
         # Use neurons immutable parameter map to transform
         # lazy array of immutable parameters
         immutable_params = apply_param_map(
