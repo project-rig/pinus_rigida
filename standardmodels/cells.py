@@ -1,14 +1,21 @@
+# Import modules
+import functools
+import logging
+import numpy as np
+
 from copy import deepcopy
 from pyNN.standardmodels import cells, build_translations
 from rig.type_casts import NumpyFloatToFixConverter
 from ..simulator import State
-import logging
-import numpy
 
 logger = logging.getLogger("PyNN")
 
 # Create a converter function to convert from float to S1615 format
 float_to_s1615 = NumpyFloatToFixConverter(True, 32, 15)
+
+def one_minus_float_to_s1615(array):
+    one_minus = np.subtract(1.0, array)
+    return float_to_s1615(one_minus)
 
 #-------------------------------------------------------------------
 # Neuron type translations
@@ -52,7 +59,7 @@ if_curr_neuron_immutable_param_map = [
     ("i_offset", "i4", float_to_s1615),
     ("r_membrane", "i4", float_to_s1615),
     ("exp_tau_m", "i4", float_to_s1615),
-    ("tau_refrac", "i4", numpy.round),
+    ("tau_refrac", "i4", np.round),
 ]
 
 if_curr_neuron_mutable_param_map = [
@@ -65,7 +72,9 @@ if_curr_neuron_mutable_param_map = [
 #-------------------------------------------------------------------
 exp_synapse_immutable_param_map = [
     ("exp_tau_syn_e", "i4", float_to_s1615),
+    ("exp_tau_syn_e", "i4", one_minus_float_to_s1615),
     ("exp_tau_syn_i", "i4", float_to_s1615),
+    ("exp_tau_syn_i", "i4", one_minus_float_to_s1615),
 ]
 
 exp_synapse_mutable_param_map = [

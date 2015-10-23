@@ -7,11 +7,11 @@
 using namespace Common::FixedPointNumber;
 
 //-----------------------------------------------------------------------------
-// NeuronProcessor::NeuronModels::IFCurr
+// NeuronProcessor::SynapseModels::Exp
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
-namespace NeuronModels
+namespace SynapseModels
 {
 class Exp
 {
@@ -22,10 +22,10 @@ public:
   struct MutableState
   {
     // Excitatory input current
-    S1516 m_ESynExc;
+    S1615 m_ISynExc;
 
     // Inhibitory input current
-    S1516 m_ISynInh;
+    S1615 m_ISynInh;
   };
 
   //-----------------------------------------------------------------------------
@@ -34,30 +34,38 @@ public:
   struct ImmutableState
   {
     // Excitatory decay constants
-    S015 m_ExpTauSynE;
+    S1615 m_ExpTauSynExc;
+
+    // Excitatory initial value
+    S1615 m_InitE;
 
     // Inhibitory decay constant
-    S015 m_ExpTauSynI;
+    S1615 m_ExpTauSynInh;
+
+    S1615 m_InitI;
   };
 
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline S1516 GetExcInput(const MutableState &mutableState, const ImmutableState &) const
+  static inline S1615 GetExcInput(const MutableState &mutableState, const ImmutableState &)
   {
-    return mutableState.m_ESynExc;
+    return mutableState.m_ISynExc;
   }
 
-  static inline S1516 GetInhInput(const MutableState &mutableState, const ImmutableState &) const
+  static inline S1615 GetInhInput(const MutableState &mutableState, const ImmutableState &)
   {
     return mutableState.m_ISynInh;
   }
 
   static inline void Shape(MutableState &mutableState, const ImmutableState &immutableState)
   {
-    //mutableState.m_ESynExc
+    // Decay both currents
+    mutableState.m_ISynExc = MulS1615(mutableState.m_ISynExc, immutableState.m_ExpTauSynExc);
+    mutableState.m_ISynInh = MulS1615(mutableState.m_ISynInh, immutableState.m_ExpTauSynInh);
   }
 
+  static void Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState);
 };
 } // NeuronModels
 } // NeuronProcessor

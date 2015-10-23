@@ -3,11 +3,12 @@ import numpy as np
 
 # Import classes
 from neuron_region import NeuronRegion
+from synapse_region import SynapseRegion
 from system_region import SystemRegion
 
 # Import functions
 from utils import (
-    apply_param_map, create_app_ptr_and_region_files, sizeof_regions)
+    create_app_ptr_and_region_files, sizeof_regions)
 
 #------------------------------------------------------------------------------
 # NeuralPopulation
@@ -15,29 +16,14 @@ from utils import (
 class NeuralPopulation(object):
     MAX_CELLS = 1024
     
-    def __init__(self, cell_type, immutable_lazy_params, initial_values,
+    def __init__(self, cell_type, parameters, initial_values,
                  simulation_timestep_us, timer_period_us, simulation_ticks):
-        # Determine number of neurons
-        num_neurons = immutable_lazy_params.shape[0]
-
-        # Use neurons mutable parameter map to
-        # transform lazy array of mutable parameters
-        mutable_params = apply_param_map(
-            initial_values, cell_type.neuron_mutable_param_map,
-            num_neurons)
-        
-        # Use neurons immutable parameter map to transform
-        # lazy array of immutable parameters
-        immutable_params = apply_param_map(
-            immutable_lazy_params, cell_type.neuron_immutable_param_map,
-            num_neurons)
-
         # Use neurons
         # List of regions
         self.regions = [None] * 12
         self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)
-        self.regions[1] = NeuronRegion(mutable_params, immutable_params)
-        #self.regions[2] = SynapseShapingRegion()
+        self.regions[1] = NeuronRegion(cell_type, parameters, initial_values)
+        self.regions[2] = SynapseRegion(cell_type, parameters, initial_values)
         #self.regions[6] = InputBufferRegion()
         #self.regions[8] = SpikeRecordingRegion()
         #self.regions[9] = VoltageRecordingRegion()

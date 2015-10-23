@@ -86,14 +86,14 @@ class Population(common.Population, ContextMixin):
     def create_spinnaker_neural_population(self, simulation_timestep_us,
                                            timer_period_us, simulation_ticks):
         if isinstance(self.celltype, StandardCellType):
-            immutable_lazy_params = self.celltype.native_parameters
+            parameters = self.celltype.native_parameters
         else:
-            immutable_lazy_params = self.celltype.parameter_space
-        immutable_lazy_params.shape = (self.size,)
+            parameters = self.celltype.parameter_space
+        parameters.shape = (self.size,)
         
         # **TODO** pick correct population class
         # self.get_new_context(
-        return NeuralPopulation(self.celltype, immutable_lazy_params,
+        return NeuralPopulation(self.celltype, parameters,
                                 self.initial_values, simulation_timestep_us,
                                 timer_period_us, simulation_ticks)
 

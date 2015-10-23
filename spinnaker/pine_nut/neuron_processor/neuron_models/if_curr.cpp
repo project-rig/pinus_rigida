@@ -3,7 +3,7 @@
 #include "../../common/spinnaker.h"
 
 //-----------------------------------------------------------------------------
-// LIFCurr
+// NeuronProcessor::NeuronModels::IFCurr
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {

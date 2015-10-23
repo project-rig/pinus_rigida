@@ -10,7 +10,7 @@ enum Region
 {
   RegionSystem          = 0,
   RegionNeuron          = 1,
-  RegionSynapseShaping  = 2,
+  RegionSynapse         = 2,
   RegionInputBuffer     = 6,
   RegionRecordSpikes    = 8,
   RegionRecordAnalogue1 = 9,

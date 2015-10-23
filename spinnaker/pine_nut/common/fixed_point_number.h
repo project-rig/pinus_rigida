@@ -27,7 +27,7 @@ namespace FixedPointNumber
 
   inline S1615 MulS1615(S1615 a, S1615 b)
   {
-    return Mul<int32_t, int64_t, 16>(a, b);
+    return Mul<int32_t, int64_t, 15>(a, b);
   }
 }
 };  // namespace Common

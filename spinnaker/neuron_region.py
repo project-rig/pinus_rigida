@@ -4,13 +4,28 @@ import struct
 # Import classes
 from region import Region
 
+# Import functions
+from utils import apply_param_map
+
 #------------------------------------------------------------------------------
 # NeuronRegion
 #------------------------------------------------------------------------------
 class NeuronRegion(Region):
-    def __init__(self, mutable_params, immutable_params):
-        self.mutable_params = mutable_params
-        self.immutable_params = immutable_params
+    def __init__(self, cell_type, parameters, initial_values):
+        # Determine number of neurons
+        num_neurons = parameters.shape[0]
+
+        # Use neurons mutable parameter map to
+        # transform lazy array of mutable parameters
+        self.mutable_params = apply_param_map(
+            initial_values, cell_type.neuron_mutable_param_map,
+            num_neurons)
+
+        # Use neurons immutable parameter map to transform
+        # lazy array of immutable parameters
+        self.immutable_params = apply_param_map(
+            parameters, cell_type.neuron_immutable_param_map,
+            num_neurons)
     
     #--------------------------------------------------------------------------
     # Region methods
@@ -56,11 +71,5 @@ class NeuronRegion(Region):
         # Write parameter slices as string
         fp.write(self.mutable_params[vertex_slice.python_slice].tostring())
         fp.write(self.immutable_params[vertex_slice.python_slice].tostring())
-    
-    #--------------------------------------------------------------------------
-    # Properties
-    #--------------------------------------------------------------------------
-    @property
-    def num_neurons(self):
-        return len(self.immutable_params)
+
         
