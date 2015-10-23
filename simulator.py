@@ -68,10 +68,10 @@ class NeuronVertex:
 class SynapseVertex:
     def __init__(self, post_neuron_slice):
         self.post_neuron_slice = post_neuron_slice
-        self.incoming_connections = []
+        self.incoming_connections = defaultdict(list)
 
-    def add_connection(self, pre_neuron_vertex, projection):
-        self.incoming_connections.append((pre_neuron_vertex, projection))
+    def add_connection(self, pre_pop, pre_neuron_vertex):
+        self.incoming_connections[pre_pop].append(pre_neuron_vertex)
 
 #------------------------------------------------------------------------------
 # ID
@@ -195,13 +195,14 @@ class State(common.control.BaseState):
 
             # Partition incoming projections to this population by type
             pop_synapse_types = defaultdict(list)
-            for p in pop.incoming_projections:
-                # Build a tuple identifying which synapse
-                # type this projection requires
-                synapse_type = (p.synapse_type.__class__, p.receptor_type)
+            for pre_pop, projections in iteritems(pop.incoming_projections):
+                for p in projections:
+                    # Build a tuple identifying which synapse
+                    # type this projection requires
+                    synapse_type = (p.synapse_type.__class__, p.receptor_type)
 
-                # Add this population to the associated list
-                pop_synapse_types[synapse_type].append(p)
+                    # Add this population to the associated list
+                    pop_synapse_types[synapse_type].append(p)
 
             # Loop through newly partioned incoming projections
             synapse_vertices = []
@@ -249,7 +250,7 @@ class State(common.control.BaseState):
                             print "\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f" % (total_synapses, synaptic_event_rate)
 
                             # Add this connection to the synapse vertex
-                            synapse_vertex.add_connection(pre_vertex, projection)
+                            synapse_vertex.add_connection(projection.pre, pre_vertex)
 
                             # Add event rate to total for current synapse processor
                             synapse_vertex_event_rate += synaptic_event_rate
@@ -332,7 +333,7 @@ class State(common.control.BaseState):
             vertex_resources, vertex_applications, nets, net_keys, spinnaker_machine)
 
         #print placements, allocations, application_map, routing_tables
-        print("Writing vertices")
+        print("Writing neuron vertices")
         
         # Build neural populations
         for pop, vertices in iteritems(pop_neuron_vertices):
@@ -341,8 +342,12 @@ class State(common.control.BaseState):
                 simulation_timestep_us, hardware_timestep_us,
                 duration_timesteps)
 
+            print("\tPopulation %s" % pop)
+
             # Loop through vertices
             for v in vertices:
+                print("\t\tVertex slice %s" % str(v.neuron_slice))
+
                 # Get placement and allocation
                 vertex_placement = placements[v]
                 vertex_allocation = allocations[v]
@@ -362,15 +367,39 @@ class State(common.control.BaseState):
                     # Write the vertex to file
                     spinnaker_pop.write_to_file(v.key, v.neuron_slice, memory_io)
 
+        print("Writing synapse vertices")
 
         # Build synapsepopulations
         for pop, vertices in iteritems(pop_synapse_vertices):
+            print("\tPopulation %s" % pop)
+
+            # Expand any incoming connections
+            matrices = pop.build_incoming_connection()
+
             # Create a spinnaker population
-            with pop.create_spinnaker_synapse_population():
-                # Expand any incoming connections
-                pop.expand_incoming_connection()
-                
-                # Loop through vertices
+            spinnaker_pop = pop.create_spinnaker_synapse_population(
+                matrices, hardware_timestep_us, duration_timesteps)
+
+            # Loop through vertices
+            for v in vertices:
+                # Get placement and allocation
+                vertex_placement = placements[v]
+                vertex_allocation = allocations[v]
+
+                # Get core this vertex should be run on
+                core = vertex_allocation[machine.Cores]
+                assert (core.stop - core.start) == 1
+
+                # Loop through all the incoming connections to this vertex
+                for pre_pop, pre_neuron_vertices in iteritems(synapse_vertex.incoming_connections):
+                    # Extract corresponding connection matrix
+                    matrices = matrices[pre_pop]
+
+                    print "\t\t\tConnections from %s" % pre_pop
+                    for pre_neuron_vertex in pre_neuron_vertices:
+                        print "\t\t\t\tPre-vertex slice %s (key %08x)" % (str(pre_neuron_vertex.neuron_slice), pre_neuron_vertex.key)
+                # 1)
+
                 '''
                 for v in vertices:
                     # Get placement and allocation

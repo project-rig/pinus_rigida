@@ -18,7 +18,6 @@ class NeuralPopulation(object):
     
     def __init__(self, cell_type, parameters, initial_values,
                  simulation_timestep_us, timer_period_us, simulation_ticks):
-        # Use neurons
         # List of regions
         self.regions = [None] * 12
         self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)

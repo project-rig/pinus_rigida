@@ -30,11 +30,11 @@ class Projection(common.Projection):
             # Add this projection to each post-population in 
             # assembly's list of incoming connections
             for p in self.post.populations:
-                self.post.incoming_projections.append(self)
+                self.post.incoming_projections[self.pre].append(self)
         # Otherwise add it to the post-synaptic population's list
         # **TODO** what about population-views? add to their parent?
         else:
-            self.post.incoming_projections.append(self)
+            self.post.incoming_projections[self.pre].append(self)
     
     def build(self):
         # connect the populations
