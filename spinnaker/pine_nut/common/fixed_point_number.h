@@ -39,8 +39,7 @@ namespace FixedPointNumber
 {
   //-----------------------------------------------------------------------------
   // Typedefines
-  //-----------------------------------------------------------------------------
-  typedef int32_t S1516;
+  typedef int32_t S1615;
   typedef int16_t S015;
 
   //-----------------------------------------------------------------------------
@@ -53,14 +52,9 @@ namespace FixedPointNumber
     return (Type)(m >> FractionalBits);
   }
 
-  inline S1516 MulS1616_S015(S1516 a, S1516 b)
+  inline S1615 MulS1615(S1615 a, S1615 b)
   {
-    return ARMIntrinsics::__smulwb(a, b);
-  }
-
-  inline S1516 MulS1516_S1516(S1516 a, S1516 b)
-  {
-    return Mul<int32_t, int64_t, 16>(a, b);
+    return Mul<int32_t, int64_t, 15>(a, b);
   }
 }
 };  // namespace Common
