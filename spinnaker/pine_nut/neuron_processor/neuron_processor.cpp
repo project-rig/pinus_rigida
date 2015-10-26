@@ -41,6 +41,7 @@ Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 //----------------------------------------------------------------------------
 // Functions
 //----------------------------------------------------------------------------
+// **TODO** const somewhere on inputPointer!
 template<typename T>
 bool AllocateCopyStructArray(unsigned int numElements, uint32_t *&inputPointer, T *&outputArray)
 {

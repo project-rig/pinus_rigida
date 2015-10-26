@@ -38,6 +38,8 @@ uint32_t g_AppWords[AppWordMax];
 
 uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
+uint32_t *g_SynapticMatrixBaseAddress = NULL;
+
 //-----------------------------------------------------------------------------
 // Module variables
 //-----------------------------------------------------------------------------
@@ -68,6 +70,19 @@ inline void dma_swap_row_buffers()
 */
 //-----------------------------------------------------------------------------
 // Module functions
+//-----------------------------------------------------------------------------
+bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
+{
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadSynapticMatrixRegion");
+
+  // Cache pointer to region as base address for synaptic matrices
+  g_SynapticMatrixBaseAddress = region;
+
+  LOG_PRINT(LOG_LEVEL_INFO, "\tSynaptic matrix base address:%08x",
+            g_SynapticMatrixBaseAddress);
+
+  return true;
+}
 //-----------------------------------------------------------------------------
 bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
 {
@@ -111,6 +126,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read synaptic matrix region
+  if(!ReadSynapticMatrixRegion(
+    Common::Config::GetRegionStart(baseAddress, RegionSynapticMatrix),
+    flags))
+  {
+    return false;
+  }
+
   // Read output buffer region
   if(!ReadOutputBufferRegion(
     Common::Config::GetRegionStart(baseAddress, RegionOutputBuffer),
@@ -131,7 +154,8 @@ void SetupNextDMARowRead()
     // Decode spike to get address of destination synaptic row
     unsigned int numSynapses;
     uint32_t *popAddress;
-    if(g_KeyLookup.LookupRow(spike, numSynapses, popAddress))
+    if(g_KeyLookup.LookupRow(spike, g_SynapticMatrixBaseAddress,
+      numSynapses, popAddress))
     {
       // Write the SDRAM address and originating spike to the beginning of dma buffer
       /*dma_current_row_buffer()[0] = (uint32_t)address;

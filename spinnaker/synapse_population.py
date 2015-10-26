@@ -1,14 +1,11 @@
 # Import classes
-from master_population_array_region import MasterPopulationArrayRegion
-from row_size_region import RowSizeRegion
+from key_lookup_binary_search_region import KeyLookupBinarySearchRegion
 from synaptic_matrix_region import SynapticMatrixRegion
 from system_region import SystemRegion
 
-#MATRIX_DATATYPE = {
-#    "names":[ "mask", "delay", "weight" ],
-#    "formats":[ "bool", "u1", "float" ]
-#}
-
+# Import functions
+from utils import (
+    create_app_ptr_and_region_files, sizeof_regions)
 
 #------------------------------------------------------------------------------
 # SynapsePopulation
@@ -21,8 +18,8 @@ class SynapsePopulation(object):
         # List of regions
         self.regions = [None] * 12
         self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)
-        #self.regions[3] = KeyLookupRegion()
-        #self.regions[4] = SynapticMatrixRegion()
+        self.regions[3] = KeyLookupBinarySearchRegion()
+        self.regions[4] = SynapticMatrixRegion()
         #self.regions[5] = PlasticityRegion()
         #self.regions[7] = OutputBufferRegion()
         #self.regions[11] = ProfilerRegion()
@@ -30,10 +27,23 @@ class SynapsePopulation(object):
     #--------------------------------------------------------------------------
     # Public methods
     #--------------------------------------------------------------------------
-    def get_size(self, key, vertex_slice):
+    def partition_matrices(self, matrices, vertex_slice, incoming_connections):
+        # Partition matrices
+        sub_matrices = self.regions[4].partition_matrices(
+            matrices, vertex_slice, incoming_connections)
+
+        # Place them in memory
+        matrix_placements = self.regions[3].place_matrices(sub_matrices)
+
+        # Return both
+        return sub_matrices, matrix_placements
+
+    def get_size(self, vertex_slice, sub_matrices, matrix_placements):
         # Build region kwargs
         region_kwargs = {
-            "application_words": []
+            "application_words": [],
+            "sub_matrices": sub_matrices,
+            "matrix_placements": matrix_placements
         }
 
         # Calculate region size
@@ -42,10 +52,12 @@ class SynapsePopulation(object):
         print("\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
-    def write_to_file(self, key, vertex_slice, fp):
+    def write_to_file(self, vertex_slice, sub_matrices, matrix_placements, fp):
         # Build region kwargs
         region_kwargs = {
-            "application_words": []
+            "application_words": [],
+            "sub_matrices": sub_matrices,
+            "matrix_placements": matrix_placements
         }
 
         # Layout the slice of SDRAM we have been given

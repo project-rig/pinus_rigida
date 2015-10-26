@@ -15,17 +15,14 @@ template<unsigned int S>
 class KeyLookupBinarySearch
 {
 public:
-  KeyLookupBinarySearch()
+  KeyLookupBinarySearch() : m_LookupEntries(NULL), m_NumLookupEntries(NULL)
   {
-    m_BaseAddress = NULL;
-    m_LookupEntries = NULL;
-    m_NumLookupEntries = 0;
   }
 
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool LookupRow(uint32_t key, unsigned int &numSynapses, uint32_t *&popAddress) const
+  bool LookupRow(uint32_t key, uint32_t *baseAddress, unsigned int &numSynapses, uint32_t *&popAddress) const
   {
     // Binary search lookup table
     unsigned int iMin = 0;
@@ -37,11 +34,12 @@ public:
       if ((key & lookupEntry.m_Mask) == lookupEntry.m_Key)
       {
         // Extract number of synapses and word offset from lookup entry
-        numSynapses = lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask;
-        const uint32_t wordOffset = lookupEntry.m_WordOffsetRowSynapses >> WordOffsetShift;
+        // **NOTE** add one as 0 is not a valid number
+        numSynapses = (lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask) + 1;
+        const uint32_t wordOffset = lookupEntry.m_WordOffsetRowSynapses >> S;
 
         // Add word offset to base address to get row address
-        popAddress = m_BaseAddress + wordOffset;
+        popAddress = baseAddress + wordOffset;
 
         LOG_PRINT(LOG_LEVEL_TRACE, "Spike key:%08x - Population address:%08x, Num synapses:%u",
                   key, popAddress, numSynapses);
@@ -69,11 +67,8 @@ public:
     LOG_PRINT(LOG_LEVEL_INFO, "ReadKeyLookupRegion");
 
     // Read base address and num lookup entries from 1st 2 words
-    m_BaseAddress = (uint32_t*)baseAddress[0];
-    m_NumLookupEntries = baseAddress[1];
-    LOG_PRINT(LOG_LEVEL_INFO, "\tBase address:%08x, Num lookup entries:%u",
-      m_BaseAddress, m_NumLookupEntries
-    );
+    m_NumLookupEntries = baseAddress[0];
+    LOG_PRINT(LOG_LEVEL_INFO, "\tNum lookup entries:%u", m_NumLookupEntries);
 
     // Allocate lookup entries
     const unsigned int lookupEntriesBytes = m_NumLookupEntries * sizeof(KeyLookupEntry);
@@ -84,7 +79,7 @@ public:
     }
 
     // Copy data into newly allocated array
-    spin1_memcpy(m_LookupEntries, &m_BaseAddress[2], lookupEntriesBytes);
+    spin1_memcpy(m_LookupEntries, &baseAddress[1], lookupEntriesBytes);
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
   LOG_PRINT(LOG_LEVEL_TRACE, "\tPopulations");
@@ -95,7 +90,7 @@ public:
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tKey:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
       lookupEntry.m_Key, lookupEntry.m_Mask,
       lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask,
-      lookupEntry.m_WordOffsetRowSynapses >> WordOffsetShift);
+      lookupEntry.m_WordOffsetRowSynapses >> S);
   }
   LOG_PRINT(LOG_LEVEL_TRACE, "\t------------------------------------------");
 #endif
@@ -107,7 +102,6 @@ private:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  static const uint32_t WordOffsetShift = 32 - S;
   static const uint32_t RowSynapsesMask = (1 << S) - 1;
 
   //-----------------------------------------------------------------------------
@@ -127,6 +121,5 @@ private:
   //-----------------------------------------------------------------------------
   KeyLookupEntry *m_LookupEntries;
   unsigned int m_NumLookupEntries;
-  uint32_t *m_BaseAddress;
 };
 }

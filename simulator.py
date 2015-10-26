@@ -357,11 +357,14 @@ class State(common.control.BaseState):
                 assert (core.stop - core.start) == 1
 
                 # Select placed chip
-                with machine_controller(x=vertex_placement[0], y=vertex_placement[1]):
-                    # Allocate a suitable memory block for this vertex and get memory io
+                with machine_controller(x=vertex_placement[0],
+                                        y=vertex_placement[1]):
+                    # Allocate a suitable memory block
+                    # for this vertex and get memory io
                     # **NOTE** this is tagged by core
                     memory_io = machine_controller.sdram_alloc_as_filelike(
-                        spinnaker_pop.get_size(v.key, v.neuron_slice), tag=core.start)
+                        spinnaker_pop.get_size(v.key, v.neuron_slice),
+                        tag=core.start)
                     print("\tMemory begins at %08x" % memory_io.address)
 
                     # Write the vertex to file
@@ -390,37 +393,31 @@ class State(common.control.BaseState):
                 core = vertex_allocation[machine.Cores]
                 assert (core.stop - core.start) == 1
 
-                # Loop through all the incoming connections to this vertex
-                for pre_pop, pre_neuron_vertices in iteritems(synapse_vertex.incoming_connections):
-                    # Extract corresponding connection matrix
-                    matrices = matrices[pre_pop]
+                # Partition the matrices
+                sub_matrices, matrix_placements =\
+                    spinnaker_pop.partition_matrices(matrices,
+                                                     v.post_neuron_slice,
+                                                     v.incoming_connections)
 
-                    print "\t\t\tConnections from %s" % pre_pop
-                    for pre_neuron_vertex in pre_neuron_vertices:
-                        print "\t\t\t\tPre-vertex slice %s (key %08x)" % (str(pre_neuron_vertex.neuron_slice), pre_neuron_vertex.key)
-                # 1)
+                # Select placed chip
+                with machine_controller(x=vertex_placement[0],
+                                        y=vertex_placement[1]):
+                    # Calculate required memory size
+                    size = spinnaker_pop.get_size(
+                        v.post_neuron_slice, sub_matrices, matrix_placements)
 
-                '''
-                for v in vertices:
-                    # Get placement and allocation
-                    vertex_placement = placements[v]
-                    vertex_allocation = allocations[v]
+                    # Allocate a suitable memory block
+                    # for this vertex and get memory io
+                    # **NOTE** this is tagged by core
+                    memory_io = machine_controller.sdram_alloc_as_filelike(
+                        size, tag=core.start)
+                    print("\tMemory begins at %08x" % memory_io.address)
 
-                    # Get core this vertex should be run on 
-                    core = vertex_allocation[machine.Cores]
-                    assert (core.stop - core.start) == 1
-                    
-                    # Select placed chip
-                    with machine_controller(x=vertex_placement[0], y=vertex_placement[1]):
-                        # Allocate a suitable memory block for this vertex and get memory io
-                        # **NOTE** this is tagged by core
-                        memory_io = machine_controller.sdram_alloc_as_io(
-                            pop.spinnaker_population().get_size(v.neuron_slice), tag=core.start)
-                        print("\tMemory begins at %08x" % memory_io.address)
-                        
-                        # Write the vertex to file
-                        pop.spinnaker_population().write_to_file(v.key, v.neuron_slice, memory_io)
-                '''
+                    # Write the vertex to file
+                    spinnaker_pop.write_to_file(
+                        v.post_neuron_slice, sub_matrices,
+                        matrix_placements, memory_io)
+
         # Load routing tables and applications
         print("Loading routing tables")
         machine_controller.load_routing_tables(routing_tables)
