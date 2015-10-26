@@ -31,6 +31,7 @@ enum DMATag
 //----------------------------------------------------------------------------
 Common::Config g_Config;
 RingBuffer g_RingBuffer;
+KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
 
 uint32_t g_AppWords[AppWordMax];
@@ -102,17 +103,13 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
-  // Read row-lookup type-dependent regions
-  /*if(!row_lookup_read_sdram_data(base_address, flags))
+  // Read key lookup region
+  if(!g_KeyLookup.ReadSDRAMData(
+    Common::Config::GetRegionStart(baseAddress, RegionKeyLookup),
+    flags))
   {
     return false;
   }
-
-  // Read synapse type-dependent regions
-  if(!synapse_read_sdram_data(base_address, flags))
-  {
-    return false;
-  }*/
 
   // Read output buffer region
   if(!ReadOutputBufferRegion(
@@ -132,12 +129,12 @@ void SetupNextDMARowRead()
   if(g_SpikeInputBuffer.GetNextSpike(&spike))
   {
     // Decode spike to get address of destination synaptic row
-    /*uint32_t *address;
-    uint32_t sizeBytes;
-    if(row_lookup_get_address(spike, &address, &sizeBytes) != NULL)
+    unsigned int numSynapses;
+    uint32_t *popAddress;
+    if(g_KeyLookup.LookupRow(spike, numSynapses, popAddress))
     {
       // Write the SDRAM address and originating spike to the beginning of dma buffer
-      dma_current_row_buffer()[0] = (uint32_t)address;
+      /*dma_current_row_buffer()[0] = (uint32_t)address;
 
       // Start a DMA transfer to fetch this synaptic row into current buffer
       spin1_dma_transfer(dma_tag_row_read, address, &dma_current_row_buffer()[1], DMA_READ, sizeBytes);
@@ -145,8 +142,8 @@ void SetupNextDMARowRead()
       // Flip DMA buffers
       dma_swap_row_buffers();
 
-      return;
-    }*/
+      return;*/
+    }
   }
 
   //dma_busy = false;
