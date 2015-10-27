@@ -27,7 +27,7 @@ if_curr_neuron_translations = build_translations(
     ("v_rest",      "v_rest"),
     ("v_thresh",    "v_thresh"),
     ("v_reset",     "v_reset"),
-    ("tau_refrac",  "tau_refrac",   10.0),  # **NOTE** this is in units of 100uS 
+    ("tau_refrac",  "tau_refrac"),# **TODO** scale relative to timestep
     ("i_offset",    "i_offset"),  # **TODO** scale relative to timestep
 )
 
