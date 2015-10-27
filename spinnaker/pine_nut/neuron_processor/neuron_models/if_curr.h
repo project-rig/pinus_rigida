@@ -2,6 +2,7 @@
 
 // Common includes
 #include "../../common/fixed_point_number.h"
+#include "../../common/log.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;
@@ -66,11 +67,6 @@ public:
   static inline bool Update(MutableState &mutableState, const ImmutableState &immutableState,
                             S1615 excInput, S1615 inhInput, S1615 extBiasCurrent)
   {
-    bool spike = false;
-
-    // Update refractory timer
-    mutableState.m_RefractoryTimer--;
-
     // If outside of the refractory period
     if (mutableState.m_RefractoryTimer <= 0)
     {
@@ -78,26 +74,38 @@ public:
       S1615 inputThisTimestep = excInput - inhInput
         + extBiasCurrent + immutableState.m_I_Offset;
 
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tInput this timestep:%.4knA %.4kMOhm", inputThisTimestep, immutableState.m_R_Membrane);
+
       // Convert input from current to voltage
       S1615 alpha = MulS1615(inputThisTimestep, immutableState.m_R_Membrane) + immutableState.m_V_Rest;
+
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAlpha:%.4kmV", alpha);
 
       // Perform closed form update
       mutableState.m_V_Membrane = alpha - MulS1615(immutableState.m_ExpTC,
                                                    alpha - mutableState.m_V_Membrane);
 
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tMembrane voltage:%.4knA", mutableState.m_V_Membrane);
+
       // Neuron spikes if membrane voltage has crossed threshold
-      spike = (mutableState.m_V_Membrane >= immutableState.m_V_Threshold);
-      if (spike)
+      if (mutableState.m_V_Membrane >= immutableState.m_V_Threshold)
       {
         // Reset membrane voltage
         mutableState.m_V_Membrane = immutableState.m_V_Reset;
 
         // Reset refractory timer
         mutableState.m_RefractoryTimer  = immutableState.m_T_Refractory;
+
+        return true;
       }
     }
+    // Otherwise, count down refractory timer
+    else
+    {
+      mutableState.m_RefractoryTimer--;
+    }
 
-    return spike;
+    return false;
   }
 
   static void Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState);
