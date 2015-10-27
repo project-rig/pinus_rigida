@@ -21,7 +21,7 @@ namespace FixedPointNumber
   template<typename Type, typename IntermediateType, unsigned int FractionalBits>
   inline Type Mul(Type a, Type b)
   {
-    IntermediateType m = a * b;
+    IntermediateType m = (IntermediateType)a * (IntermediateType)b;
     return (Type)(m >> FractionalBits);
   }
 
