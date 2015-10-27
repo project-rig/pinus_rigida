@@ -9,6 +9,7 @@ from collections import defaultdict
 from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.machine_controller import MachineController, MemoryIO
+from rig.place_and_route.constraints import SameChipConstraint
 from rig.netlist import Net
 
 # Import functions
@@ -282,6 +283,34 @@ class State(common.control.BaseState):
                 # Add resources to dictionary
                 vertex_resources[v] = { machine.Cores: 1 }
 
+        print("Constraining synapse and neuron vertices together")
+
+        # Loop through population again to constrain
+        # together synapse and neuron vertices
+        constraints = []
+        for pop in self.populations:
+            print "\tPopulation:", pop
+
+            # Get lists of synapse and neuron vertices associated with this list
+            s_verts = pop_synapse_vertices[pop]
+            n_verts = pop_neuron_vertices[pop]
+
+            # Loop through neuron vertices
+            num_assoc_s_verts = 0
+            for n in n_verts:
+                # Find synapse vertices with the same slice
+                # **TODO** different ratios here
+                assoc_s_verts = [s for s in s_verts
+                                 if s.post_neuron_slice == n.neuron_slice]
+
+                # Count associated neuron vertices
+                num_assoc_s_verts += len(assoc_s_verts)
+
+                print "\t\tConstraining neuron vert %s and synapse verts %s to same chip" % (n, assoc_s_verts)
+
+                # Build same chip constraint and add to list
+                constraints.append(SameChipConstraint(assoc_s_verts + [n]))
+
         # Finalise keyspace fields
         keyspace.assign_fields()
 
@@ -330,7 +359,8 @@ class State(common.control.BaseState):
 
         # Place-and-route
         placements, allocations, application_map, routing_tables = wrapper(
-            vertex_resources, vertex_applications, nets, net_keys, spinnaker_machine)
+            vertex_resources, vertex_applications, nets, net_keys,
+            spinnaker_machine, constraints)
 
         #print placements, allocations, application_map, routing_tables
         print("Writing neuron vertices")
