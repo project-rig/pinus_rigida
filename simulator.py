@@ -453,5 +453,14 @@ class State(common.control.BaseState):
         machine_controller.load_routing_tables(routing_tables)
         print("Loading applications")
         machine_controller.load_application(application_map)
+
+        # Wait for all cores to hit SYNC0
+        print("Waiting for synch")
+        machine_controller.wait_for_cores_to_reach_state(
+            "sync0", len(vertex_resources)
+        )
+
+        # Sync!
+        machine_controller.send_signal("sync0")
         
 state = State()
