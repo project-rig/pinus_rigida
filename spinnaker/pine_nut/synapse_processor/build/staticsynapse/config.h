@@ -7,6 +7,7 @@
 #include "../../key_lookup_binary_search.h"
 #include "../../ring_buffer.h"
 #include "../../synaptic_word.h"
+#include "../../synapse_types/static.h"
 
 namespace SynapseProcessor
 {
@@ -19,4 +20,6 @@ typedef SynapticWordBase<uint32_t, uint16_t, 3, 10> SynapticWord;
 typedef RingBufferBase<uint32_t, SynapticWord> RingBuffer;
 
 typedef KeyLookupBinarySearch<10> KeyLookup;
+
+typedef SynapseTypes::Static SynapseType;
 };

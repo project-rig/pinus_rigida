@@ -34,40 +34,28 @@ RingBuffer g_RingBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
 
+SynapseType g_Synapse;
+
 uint32_t g_AppWords[AppWordMax];
 
 uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
 uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
-//-----------------------------------------------------------------------------
-// Module variables
-//-----------------------------------------------------------------------------
-/*static bool dma_busy;
-static uint32_t dma_row_buffer[2][SYNAPSE_MAX_ROW_WORDS + 1];
-static uint32_t dma_row_buffer_index;
+uint g_Tick = 0;
 
-static uint32_t *output_buffers[2];
+bool g_DMABusy = false;
 
+unsigned int g_DMARowBufferIndex = 0;
 
 //-----------------------------------------------------------------------------
 // Module inline functions
 //-----------------------------------------------------------------------------
-inline uint32_t *dma_current_row_buffer()
+inline void DMASwapRowBuffers()
 {
-  return (dma_row_buffer[dma_row_buffer_index]);
+  g_DMARowBufferIndex ^= 1;
 }
-//-----------------------------------------------------------------------------
-inline uint32_t *dma_next_row_buffer()
-{
-  return (dma_row_buffer[dma_row_buffer_index ^ 1]);
-}
-//-----------------------------------------------------------------------------
-inline void dma_swap_row_buffers()
-{
-  dma_row_buffer_index ^= 1;
-}
-*/
+
 //-----------------------------------------------------------------------------
 // Module functions
 //-----------------------------------------------------------------------------
@@ -158,19 +146,19 @@ void SetupNextDMARowRead()
       numSynapses, popAddress))
     {
       // Write the SDRAM address and originating spike to the beginning of dma buffer
-      /*dma_current_row_buffer()[0] = (uint32_t)address;
+      dma_current_row_buffer()[0] = (uint32_t)address;
 
       // Start a DMA transfer to fetch this synaptic row into current buffer
-      spin1_dma_transfer(dma_tag_row_read, address, &dma_current_row_buffer()[1], DMA_READ, sizeBytes);
+      spin1_dma_transfer(DMATagRowRead, address, &dma_current_row_buffer()[1], DMA_READ, sizeBytes);
 
       // Flip DMA buffers
-      dma_swap_row_buffers();
+      DMASwapRowBuffers();
 
-      return;*/
+      return;
     }
   }
 
-  //dma_busy = false;
+  g_DMABusy = false;
 }
 
 //-----------------------------------------------------------------------------
@@ -178,26 +166,26 @@ void SetupNextDMARowRead()
 //-----------------------------------------------------------------------------
 void MCPacketReceived(uint key, uint)
 {
-  //LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u",
-  //  key, tick, dma_busy);
+  LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u",
+            key, g_Tick, g_DMABusy);
 
   // If there was space to add spike to incoming spike queue
   if(g_SpikeInputBuffer.AddSpike(key))
   {
     // If we're not already processing synaptic dmas, flag pipeline as busy and trigger a user event
-    /*if(!dma_busy)
+    if(!g_DMABusy)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike");
 
       if(spin1_trigger_user_event(0, 0))
       {
-        dma_busy = true;
+        g_DMABusy = true;
       }
       else
       {
         LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event");
       }
-    }*/
+    }
   }
 
 }
@@ -206,9 +194,8 @@ void DMATransferDone(uint, uint tag)
 {
   if(tag == DMATagRowRead)
   {
-    // Process row
-    //synapse_process_row(tick, dma_next_row_buffer() + 1);
-
+    g_Synapse.ProcessRow(g_Tick, ,
+                  g_RingBuffer);
     // Setup next row read
     SetupNextDMARowRead();
   }
@@ -231,6 +218,9 @@ void UserEvent(uint, uint)
 //-----------------------------------------------------------------------------
 void TimerTick(uint tick, uint)
 {
+  // Cache tick
+  g_Tick = tick;
+
   // If a fixed number of simulation ticks are specified and these have passed
   if(g_Config.GetSimulationTicks() != UINT32_MAX
     && tick >= g_Config.GetSimulationTicks())
@@ -273,10 +263,8 @@ extern "C" void c_main()
   }
 
   // Initialise
-  // **NOTE** tick is initialized to UINT32_MAX as ticks are advanced at
-  // The START of each timer tick so it will be zeroed once time 'starts'
-  //dma_busy = false;
-  //dma_row_buffer_index = 0;
+  g_DMABusy = false;
+  g_DMARowBufferIndex = 0;
 
   // Initialize modules
   //ring_buffer_init();

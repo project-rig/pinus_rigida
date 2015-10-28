@@ -204,6 +204,8 @@ static void TimerTick(uint tick, uint)
   auto *neuronImmutableState = g_NeuronImmutableState;
   for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
+
     // Update neuron, if it spikes
     S1615 exc_input = 0;
     S1615 inh_input = 0;
@@ -211,6 +213,8 @@ static void TimerTick(uint tick, uint)
     if(Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
       exc_input, inh_input, external_input))
     {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
+
       // Send spike
       uint32_t key = g_AppWords[AppWordKey] | n;
       while(!spin1_send_mc_packet(key, 0, NO_PAYLOAD)) 
