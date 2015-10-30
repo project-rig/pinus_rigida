@@ -224,13 +224,14 @@ class State(common.control.BaseState):
                 # Loop through the post-slices
                 for post_slice in post_slices:
                     print "\t\tPost slice:", post_slice
-
+                    
                     # Loop through all projections of this type
                     synapse_vertex_event_rate = 0.0
                     synapse_vertex = SynapseVertex(post_slice)
                     for projection in projections:
-                        print "\t\t\tProjection:", projection
-
+                        #print projection
+                        #print("\t\t\tProjection", projection)
+                        
                         # **TODO** nengo-style configuration system
                         mean_pre_firing_rate = 10.0
 

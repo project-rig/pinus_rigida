@@ -1,7 +1,7 @@
 APP = synapse_processor_staticsynapse
 
-# Extra objects for synapse and row-lookup type
-EXTRA_SOURCES =
+# Extra objects for synapse type
+EXTRA_SOURCES = 
 
 # Build object list
 SOURCES = ../../../common/config.cpp \

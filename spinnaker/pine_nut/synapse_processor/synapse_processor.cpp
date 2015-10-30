@@ -26,6 +26,8 @@ enum DMATag
   DMATagOutputWrite,
 };
 
+typedef uint32_t DMABuffer[SynapseType::MaxRowWords];
+
 //----------------------------------------------------------------------------
 // Module level variables
 //----------------------------------------------------------------------------
@@ -33,8 +35,6 @@ Common::Config g_Config;
 RingBuffer g_RingBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
-
-SynapseType g_Synapse;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -44,8 +44,9 @@ uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
 uint g_Tick = 0;
 
-bool g_DMABusy = false;
 
+bool g_DMABusy = false;
+DMABuffer g_DMABuffers[2];
 unsigned int g_DMARowBufferIndex = 0;
 
 //-----------------------------------------------------------------------------
@@ -54,6 +55,16 @@ unsigned int g_DMARowBufferIndex = 0;
 inline void DMASwapRowBuffers()
 {
   g_DMARowBufferIndex ^= 1;
+}
+//-----------------------------------------------------------------------------
+inline DMABuffer &DMACurrentRowBuffer()
+{
+  return g_DMABuffers[g_DMARowBufferIndex];
+}
+//-----------------------------------------------------------------------------
+inline DMABuffer &DMANextRowBuffer()
+{
+  return g_DMABuffers[g_DMARowBufferIndex ^ 1];
 }
 
 //-----------------------------------------------------------------------------
@@ -82,7 +93,7 @@ bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
   LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
   for (uint32_t i = 0; i < 2; i++)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%p", i, g_OutputBuffers[i]);
+    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%08x", i, g_OutputBuffers[i]);
   }
   LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
 #endif
@@ -136,20 +147,22 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 void SetupNextDMARowRead()
 {
   // If there's more incoming spikes
-  uint32_t spike;
-  if(g_SpikeInputBuffer.GetNextSpike(&spike))
+  uint32_t key;
+  if(g_SpikeInputBuffer.GetNextSpike(&key))
   {
-    // Decode spike to get address of destination synaptic row
+    LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
+    
+    // Decode key to get address of destination synaptic row
     unsigned int numSynapses;
     uint32_t *popAddress;
-    if(g_KeyLookup.LookupRow(spike, g_SynapticMatrixBaseAddress,
+    if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress,
       numSynapses, popAddress))
     {
-      // Write the SDRAM address and originating spike to the beginning of dma buffer
-      dma_current_row_buffer()[0] = (uint32_t)address;
-
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tNum synapses:%u, Population address:%08x",
+                numSynapses, popAddress);
+      
       // Start a DMA transfer to fetch this synaptic row into current buffer
-      spin1_dma_transfer(DMATagRowRead, address, &dma_current_row_buffer()[1], DMA_READ, sizeBytes);
+      //spin1_dma_transfer(DMATagRowRead, address, DMACurrentRowBuffer(), DMA_READ, sizeBytes);
 
       // Flip DMA buffers
       DMASwapRowBuffers();
@@ -172,7 +185,8 @@ void MCPacketReceived(uint key, uint)
   // If there was space to add spike to incoming spike queue
   if(g_SpikeInputBuffer.AddSpike(key))
   {
-    // If we're not already processing synaptic dmas, flag pipeline as busy and trigger a user event
+    // If we're not already processing synaptic dmas,  
+    // flag pipeline as busy and trigger a user event
     if(!g_DMABusy)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike");
@@ -187,6 +201,10 @@ void MCPacketReceived(uint key, uint)
       }
     }
   }
+  else
+  {
+    LOG_PRINT(LOG_LEVEL_WARN, "Cannot add spike to input buffer");
+  }
 
 }
 //-----------------------------------------------------------------------------
@@ -194,14 +212,23 @@ void DMATransferDone(uint, uint tag)
 {
   if(tag == DMATagRowRead)
   {
-    g_Synapse.ProcessRow(g_Tick, ,
-                  g_RingBuffer);
+    // Create lambda function to add a weight to the ring-buffer
+    auto addWeightLambda = 
+      [](unsigned int tick, unsigned int index, uint32_t weight) 
+      { 
+        g_RingBuffer.AddWeight(tick, index, weight);
+      };
+    
+    // Process the next row in the DMA buffer, using this function to apply
+    SynapseType::ProcessRow(g_Tick, DMANextRowBuffer(), addWeightLambda);
+    
     // Setup next row read
     SetupNextDMARowRead();
   }
   else if(tag == DMATagOutputWrite)
   {
-    // This timesteps output has been written from the ring-buffer so we can now zero it
+    // This timesteps output has been written from
+    // the ring-buffer so we can now zero it
     //ring_buffer_clear_output_buffer(tick);
   }
   else if(tag != DMATagRowWrite)
@@ -227,13 +254,14 @@ void TimerTick(uint tick, uint)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
-    // Finalise any recordings that are in progress, writing back the final amounts of samples recorded to SDRAM
+    // Finalise any recordings that are in progress, writing  
+    // back the final amounts of samples recorded to SDRAM
     //recording_finalise();
     spin1_exit(0);
   }
 
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%p)",
-    tick, (tick % 2), g_OutputBuffers[tick % 2]);
+  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%08x)",
+            tick, (tick % 2), g_OutputBuffers[tick % 2]);
 
   // Get output buffer from 'back' of ring-buffer
   const RingBuffer::Type *pOutputBuffer = g_RingBuffer.GetOutputBuffer(tick);
@@ -247,11 +275,23 @@ void TimerTick(uint tick, uint)
 }
 } // anonymous namespace
 
+/*extern "C"
+{
+    extern void (**__init_array_start)();
+    extern void (**__init_array_end)();
+
+    inline void static_init()
+    {
+        for (void (**p)() = __init_array_start; p < __init_array_end; ++p)
+            (*p)();
+    }
+}*/
 //-----------------------------------------------------------------------------
 // Entry point
 //-----------------------------------------------------------------------------
 extern "C" void c_main()
 {
+  //static_init();
   // Get this core's base address using alloc tag
   uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
 

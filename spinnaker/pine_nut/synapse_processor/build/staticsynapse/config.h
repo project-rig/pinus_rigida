@@ -2,24 +2,32 @@
 
 // Common includes
 #include "../../../common/spike_input_buffer.h"
+namespace SynapseProcessor
+{
+  typedef Common::SpikeInputBufferBase<256> SpikeInputBuffer;
+}
 
 // Synapse processor includes
 #include "../../key_lookup_binary_search.h"
-#include "../../ring_buffer.h"
-#include "../../synaptic_word.h"
-#include "../../synapse_types/static.h"
-
 namespace SynapseProcessor
 {
-//-----------------------------------------------------------------------------
-// Typedefines
-//-----------------------------------------------------------------------------
-typedef Common::SpikeInputBufferBase<256> SpikeInputBuffer;
+  typedef KeyLookupBinarySearch<10> KeyLookup;
+}
 
-typedef SynapticWordBase<uint32_t, uint16_t, 3, 10> SynapticWord;
-typedef RingBufferBase<uint32_t, SynapticWord> RingBuffer;
+#include "../../synaptic_word.h"
+namespace SynapseProcessor
+{
+  typedef SynapticWordBase<uint32_t, uint16_t, 3, 10> SynapticWord;
+}
 
-typedef KeyLookupBinarySearch<10> KeyLookup;
+#include "../../ring_buffer.h"
+namespace SynapseProcessor
+{
+  typedef RingBufferBase<uint32_t, SynapticWord> RingBuffer;
+}
 
-typedef SynapseTypes::Static SynapseType;
-};
+#include "../../synapse_types/static.h"
+namespace SynapseProcessor
+{
+  typedef SynapseTypes::Static<SynapticWord> SynapseType;
+}
