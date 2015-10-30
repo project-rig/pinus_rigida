@@ -11,7 +11,6 @@ class SpikeInputBufferBase
 public:
   SpikeInputBufferBase() : m_Input(Size - 1), m_Output(0), m_NumOverflows(0), m_NumUnderflows(0)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "CONSTRUCTOR");
   }
 
   //-----------------------------------------------------------------------------

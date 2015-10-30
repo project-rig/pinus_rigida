@@ -5,7 +5,7 @@
 //-----------------------------------------------------------------------------
 namespace SynapseProcessor
 {
-template<typename T, typename S>
+template<typename T, unsigned int D, unsigned int I>
 class RingBufferBase
 {
 public:
@@ -14,8 +14,9 @@ public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  static const unsigned int OutputBufferSize = (1 << S::NumIndexBits);
-  static const unsigned int Size = (1 << (S::NumDelayBits + S::NumIndexBits));
+  static const unsigned int OutputBufferSize = (1 << I);
+  static const unsigned int Size = (1 << (D + I));
+  static const T DelayMask = ((1 << D) - 1);
 
   //-----------------------------------------------------------------------------
   // Public API
@@ -44,7 +45,7 @@ private:
   //-----------------------------------------------------------------------------
   static unsigned int OffsetTime(unsigned int tick)
   {
-    return ((tick & S::DelayMask) << S::NumIndexBits);
+    return ((tick & DelayMask) << I);
   }
 
   static unsigned int OffsetTypeIndex(unsigned int tick, unsigned int index)

@@ -22,7 +22,9 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool LookupRow(uint32_t key, uint32_t *baseAddress, unsigned int &numSynapses, uint32_t *&popAddress) const
+  template<typename G>
+  bool LookupRow(uint32_t key, uint32_t *baseAddress, G getRowWordsFunction,
+                 unsigned int &rowWords, uint32_t *&rowAddress) const
   {
     // Binary search lookup table
     unsigned int iMin = 0;
@@ -35,14 +37,21 @@ public:
       {
         // Extract number of synapses and word offset from lookup entry
         // **NOTE** add one as 0 is not a valid number
-        numSynapses = (lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask) + 1;
-        const uint32_t wordOffset = lookupEntry.m_WordOffsetRowSynapses >> S;
-
+        const unsigned int rowSynapses = (lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask) + 1;
+        const unsigned int wordOffset = lookupEntry.m_WordOffsetRowSynapses >> S;
+        
+        // Extract neuron ID from key
+        // **NOTE** assumed to be at bottom of mask
+        const unsigned int neuronID = key &  ~lookupEntry.m_Mask;
+        
+        // Convert number of synapses to number of words 
+        rowWords = getRowWordsFunction(rowSynapses);
+        
         // Add word offset to base address to get row address
-        popAddress = baseAddress + wordOffset;
+        rowAddress = baseAddress + wordOffset + (neuronID * rowWords);
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "Spike key:%08x - Population address:%08x, Num synapses:%u",
-                  key, popAddress, numSynapses);
+        LOG_PRINT(LOG_LEVEL_TRACE, "Spike key:%08x - Row address:%08x, Row synapses:%u, Row words:%u",
+                  key, rowAddress, rowSynapses, rowWords);
 
         return true;
       }

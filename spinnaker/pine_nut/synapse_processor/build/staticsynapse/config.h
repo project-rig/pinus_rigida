@@ -14,20 +14,16 @@ namespace SynapseProcessor
   typedef KeyLookupBinarySearch<10> KeyLookup;
 }
 
-#include "../../synaptic_word.h"
-namespace SynapseProcessor
-{
-  typedef SynapticWordBase<uint32_t, uint16_t, 3, 10> SynapticWord;
-}
-
-#include "../../ring_buffer.h"
-namespace SynapseProcessor
-{
-  typedef RingBufferBase<uint32_t, SynapticWord> RingBuffer;
-}
 
 #include "../../synapse_types/static.h"
 namespace SynapseProcessor
 {
-  typedef SynapseTypes::Static<SynapticWord> SynapseType;
+  typedef SynapseTypes::Static<uint32_t, uint16_t, 3, 10> SynapseType;
+}
+
+
+#include "../../ring_buffer.h"
+namespace SynapseProcessor
+{
+  typedef RingBufferBase<uint32_t, 3, 10> RingBuffer;
 }

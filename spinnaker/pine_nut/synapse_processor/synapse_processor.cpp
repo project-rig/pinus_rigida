@@ -152,17 +152,24 @@ void SetupNextDMARowRead()
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
     
-    // Decode key to get address of destination synaptic row
-    unsigned int numSynapses;
-    uint32_t *popAddress;
-    if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress,
-      numSynapses, popAddress))
+    // Create lambda function to convert number of synapses to a row length in words
+    auto getRowWordsLambda = 
+      [](unsigned int rowSynapses) 
+      { 
+        return SynapseType::GetRowWords(rowSynapses);
+      };
+    
+    // Decode key to get address and length of destination synaptic row
+    unsigned int rowWords;
+    uint32_t *rowAddress;
+    if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress, getRowWordsLambda,
+      rowWords, rowAddress))
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\tNum synapses:%u, Population address:%08x",
-                numSynapses, popAddress);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tRow words:%u, Row address:%08x",
+                rowWords, rowAddress);
       
       // Start a DMA transfer to fetch this synaptic row into current buffer
-      //spin1_dma_transfer(DMATagRowRead, address, DMACurrentRowBuffer(), DMA_READ, sizeBytes);
+      spin1_dma_transfer(DMATagRowRead, rowAddress, DMACurrentRowBuffer(), DMA_READ, rowWords * sizeof(uint32_t));
 
       // Flip DMA buffers
       DMASwapRowBuffers();
@@ -215,7 +222,9 @@ void DMATransferDone(uint, uint tag)
     // Create lambda function to add a weight to the ring-buffer
     auto addWeightLambda = 
       [](unsigned int tick, unsigned int index, uint32_t weight) 
-      { 
+      {
+        LOG_PRINT(LOG_LEVEL_TRACE, "Adding weight %u to neuron %u for tick %u",
+                  weight, index, tick);
         g_RingBuffer.AddWeight(tick, index, weight);
       };
     
@@ -275,17 +284,6 @@ void TimerTick(uint tick, uint)
 }
 } // anonymous namespace
 
-/*extern "C"
-{
-    extern void (**__init_array_start)();
-    extern void (**__init_array_end)();
-
-    inline void static_init()
-    {
-        for (void (**p)() = __init_array_start; p < __init_array_end; ++p)
-            (*p)();
-    }
-}*/
 //-----------------------------------------------------------------------------
 // Entry point
 //-----------------------------------------------------------------------------
