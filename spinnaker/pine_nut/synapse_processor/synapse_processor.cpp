@@ -40,7 +40,7 @@ uint32_t g_AppWords[AppWordMax];
 
 uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
-uint32_t *g_SynapticMatrixBaseAddress = NULL;
+const uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
 uint g_Tick = 0;
 
@@ -70,7 +70,7 @@ inline DMABuffer &DMANextRowBuffer()
 //-----------------------------------------------------------------------------
 // Module functions
 //-----------------------------------------------------------------------------
-bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
+bool ReadSynapticMatrixRegion(const uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadSynapticMatrixRegion");
 
@@ -83,7 +83,7 @@ bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
+bool ReadOutputBufferRegion(const uint32_t *region, uint32_t)
 {
   // Copy two output buffer pointers from region
   spin1_memcpy(g_OutputBuffers, region, 2 * sizeof(uint32_t*));
@@ -101,7 +101,7 @@ bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
+bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
 {
   // Verify data header
   if(!g_Config.VerifyHeader(baseAddress, flags))
@@ -166,7 +166,7 @@ void SetupNextDMARowRead()
     
     // Decode key to get address and length of destination synaptic row
     unsigned int rowWords;
-    uint32_t *rowAddress;
+    const uint32_t *rowAddress;
     if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress, getRowWordsLambda,
       rowWords, rowAddress))
     {
@@ -174,7 +174,7 @@ void SetupNextDMARowRead()
                 rowWords, rowAddress);
       
       // Start a DMA transfer to fetch this synaptic row into current buffer
-      spin1_dma_transfer(DMATagRowRead, rowAddress, DMACurrentRowBuffer(), DMA_READ, rowWords * sizeof(uint32_t));
+      spin1_dma_transfer(DMATagRowRead, const_cast<uint32_t*>(rowAddress), DMACurrentRowBuffer(), DMA_READ, rowWords * sizeof(uint32_t));
 
       // Flip DMA buffers
       DMASwapRowBuffers();
@@ -243,7 +243,7 @@ void DMATransferDone(uint, uint tag)
   {
     // This timesteps output has been written from
     // the ring-buffer so we can now zero it
-    //ring_buffer_clear_output_buffer(tick);
+    g_RingBuffer.ClearOutputBuffer(g_Tick);
   }
   else if(tag != DMATagRowWrite)
   {
@@ -296,7 +296,7 @@ extern "C" void c_main()
 {
   //static_init();
   // Get this core's base address using alloc tag
-  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  const uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
 
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))

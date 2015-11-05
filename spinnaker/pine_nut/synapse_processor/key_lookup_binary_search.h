@@ -27,8 +27,8 @@ public:
   // Public API
   //-----------------------------------------------------------------------------
   template<typename G>
-  bool LookupRow(uint32_t key, uint32_t *baseAddress, G getRowWordsFunction,
-                 unsigned int &rowWords, uint32_t *&rowAddress) const
+  bool LookupRow(uint32_t key, const uint32_t *baseAddress, G getRowWordsFunction,
+                 unsigned int &rowWords, const uint32_t *&rowAddress) const
   {
     // Binary search lookup table
     unsigned int iMin = 0;
@@ -74,7 +74,7 @@ public:
     return false;
   }
 
-  bool ReadSDRAMData(uint32_t *baseAddress, uint32_t)
+  bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "ReadKeyLookupRegion");
 

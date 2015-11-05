@@ -25,7 +25,7 @@ public:
     Type weight)
   {
     // Calculate ring buffer offset
-    uint32_t offset = OffsetTypeIndex(tick, index);
+    const unsigned int offset = OffsetTypeIndex(tick, index);
 
     // Add value to ring-buffer
     m_Data[offset] += weight;
@@ -34,9 +34,21 @@ public:
   const Type *GetOutputBuffer(uint32_t tick) const
   {
     // Calculate ring-buffer offset for this time
-    unsigned int offset = OffsetTime(tick);
+    const unsigned int offset = OffsetTime(tick);
 
     return &m_Data[offset];
+  }
+  
+  void ClearOutputBuffer(uint32_t tick)
+  {
+     // Calculate ring-buffer offset for this time
+    const unsigned int offset = OffsetTime(tick);
+    
+    // Zero each output buffer element
+    for(unsigned int i = 0; i < OutputBufferSize; i++)
+    {
+      m_Data[offset + i] = 0;
+    }
   }
 
 private:

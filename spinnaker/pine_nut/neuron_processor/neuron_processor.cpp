@@ -43,7 +43,7 @@ Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 //----------------------------------------------------------------------------
 // **TODO** const somewhere on inputPointer!
 template<typename T>
-bool AllocateCopyStructArray(unsigned int numElements, uint32_t *&inputPointer, T *&outputArray)
+bool AllocateCopyStructArray(unsigned int numElements, const uint32_t *&inputPointer, T *&outputArray)
 {
   static_assert(sizeof(T) % 4 == 0, "Only word-aligned structures are supported");
 
@@ -67,7 +67,7 @@ bool AllocateCopyStructArray(unsigned int numElements, uint32_t *&inputPointer, 
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadNeuronRegion(uint32_t *region, uint32_t)
+bool ReadNeuronRegion(const uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadNeuronRegion");
 
@@ -99,7 +99,7 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadSynapseRegion(uint32_t *region, uint32_t)
+bool ReadSynapseRegion(const uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadSynapseRegion");
 
@@ -130,7 +130,7 @@ bool ReadSynapseRegion(uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
+bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
 {
   // Verify data header
   if(!g_Config.VerifyHeader(baseAddress, flags))
@@ -232,7 +232,7 @@ static void TimerTick(uint tick, uint)
 extern "C" void c_main()
 {
   // Get this core's base address using alloc tag
-  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  const uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
   
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))

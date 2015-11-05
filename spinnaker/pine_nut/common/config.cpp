@@ -9,7 +9,7 @@
 //-----------------------------------------------------------------------------
 namespace Common
 {
-bool Config::VerifyHeader(uint32_t *baseAddress, uint32_t) const
+bool Config::VerifyHeader(const uint32_t *baseAddress, uint32_t) const
 {
   if (baseAddress[0] != 0xAD130AD6)
   {
@@ -22,7 +22,7 @@ bool Config::VerifyHeader(uint32_t *baseAddress, uint32_t) const
   }
 }
 //-----------------------------------------------------------------------------
-bool Config::ReadSystemRegion(uint32_t *region, uint32_t,
+bool Config::ReadSystemRegion(const uint32_t *region, uint32_t,
   unsigned int numApplicationWords, uint32_t applicationWords[])
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadSystemRegion");
@@ -44,7 +44,7 @@ bool Config::ReadSystemRegion(uint32_t *region, uint32_t,
   return true;
 }
 //-----------------------------------------------------------------------------
-uint32_t *Config::GetBaseAddressAllocTag()
+const uint32_t *Config::GetBaseAddressAllocTag()
 {
   // Get core and app ID from sark
   unsigned int coreID = sark_core_id();
@@ -52,7 +52,7 @@ uint32_t *Config::GetBaseAddressAllocTag()
 
   // Find tag for this core's base address
   // **TODO** next SARK will have build in function to do this
-  uint32_t *address = (uint32_t*)sv->alloc_tag[(appID << 8) + coreID];
+  const uint32_t *address = (const uint32_t*)sv->alloc_tag[(appID << 8) + coreID];
   LOG_PRINT(LOG_LEVEL_INFO, "Based on allocated tag, SDRAM for app_id %u running on core %u begins at %08x", appID, coreID, address);
   return address;
 }
