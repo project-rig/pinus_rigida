@@ -408,11 +408,12 @@ class State(common.control.BaseState):
             print("\tPopulation %s" % pop)
 
             # Expand any incoming connections
-            matrices = pop.build_incoming_connection()
+            matrices, incoming_weight_range = pop.build_incoming_connection()
 
             # Create a spinnaker population
             spinnaker_pop = pop.create_spinnaker_synapse_population(
-                matrices, hardware_timestep_us, duration_timesteps)
+                matrices, incoming_weight_range, 
+                hardware_timestep_us, duration_timesteps)
 
             # Loop through vertices
             for v in vertices:

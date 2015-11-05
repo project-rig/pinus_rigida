@@ -33,14 +33,14 @@ public:
     register T *synapticWords = (T*)&dmaBuffer[1];
     register uint32_t count = dmaBuffer[0];
     
-    LOG_PRINT(LOG_LEVEL_TRACE, "Processing row with %u synapses", count);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing row with %u synapses", count);
     
     for(; count > 0; count--)
     {
       // Get the next 32 bit word from the synaptic_row
       // (should autoincrement pointer in single instruction)
       T synapticWord = *synapticWords++;
-
+       
       // Add weight to ring-buffer
       applyInputFunction(GetDelay(synapticWord) + tick, 
         GetIndex(synapticWord), GetWeight(synapticWord));
@@ -67,7 +67,7 @@ private:
   //-----------------------------------------------------------------------------
    static T GetIndex(T word){ return (word & IndexMask); }
    static T GetDelay(T word){ return ((word >> I) & DelayMask); }
-   static W GetWeight(T word){ return (W)(word >> (8 * (sizeof(T) - sizeof(W)))); }
+   static W GetWeight(T word){ return (W)(word >> (D + I)); }
 };
 } // SynapseTypes
 } // SynapseProcessor

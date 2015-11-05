@@ -4,7 +4,11 @@
 #include <cstdint>
 
 // Common includes
+#include "../common/arm_intrinsics.h"
 #include "../common/log.h"
+
+// Namespaces
+using namespace Common::ARMIntrinsics;
 
 //-----------------------------------------------------------------------------
 // SynapseProcessor::KeyLookupBinarySearch
@@ -48,11 +52,10 @@ public:
         rowWords = getRowWordsFunction(rowSynapses);
         
         // Add word offset to base address to get row address
-        rowAddress = baseAddress + wordOffset + (neuronID * rowWords);
-
-        LOG_PRINT(LOG_LEVEL_TRACE, "Spike key:%08x - Row address:%08x, Row synapses:%u, Row words:%u",
-                  key, rowAddress, rowSynapses, rowWords);
-
+        // **NOTE** neuronID < 1024 and row words < 1024 - __smalbb!
+        rowAddress = baseAddress + (uint32_t)__smlabb(
+          (int32_t)neuronID, (int32_t)rowWords, (int32_t)wordOffset);
+        
         return true;
       }
       // Otherwise, entry must be in upper part of the table

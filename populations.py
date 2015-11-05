@@ -1,5 +1,6 @@
 # Import modules
 import numpy
+import sys
 from rig import machine
 from pyNN import common
 
@@ -102,23 +103,32 @@ class Population(common.Population, ContextMixin):
                                 self.initial_values, simulation_timestep_us,
                                 timer_period_us, simulation_ticks)
 
-    def create_spinnaker_synapse_population(self, matrices, timer_period_us, simulation_ticks):
+    def create_spinnaker_synapse_population(self, matrices, 
+                                            incoming_weight_range, 
+                                            timer_period_us, 
+                                            simulation_ticks):
         # Create synapse population
-        return SynapsePopulation(matrices, timer_period_us, simulation_ticks)
+        return SynapsePopulation(matrices, incoming_weight_range, 
+                                 timer_period_us, simulation_ticks)
 
     def build_incoming_connection(self):
         population_matrix_rows = {}
-
+        
+        # Create, initially masked mask arrays to hold range of incoming weights
+        incoming_weight_range = [sys.float_info.max, sys.float_info.min]
+        
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
         for pre_pop, projections in iteritems(self.incoming_projections):
             # Create an array to hold matrix rows and initialize each one with an empty list
             population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size, dtype=object)
+            
             for r in range(pre_pop.size):
                 population_matrix_rows[pre_pop][r] = []
 
             # Build each projection, adding the matrix rows to the context
-            with self.get_new_context(matrix_rows=population_matrix_rows[pre_pop]):
+            with self.get_new_context(matrix_rows=population_matrix_rows[pre_pop],
+                                      incoming_weight_range=incoming_weight_range):
                 for projection in projections:
                     projection.build()
 
@@ -127,18 +137,24 @@ class Population(common.Population, ContextMixin):
             # PyNN always move left to right
             for r in population_matrix_rows[pre_pop]:
                 r.sort(key=itemgetter(2))
-
-        return population_matrix_rows
+        
+        return population_matrix_rows, incoming_weight_range
 
     @ContextMixin.use_contextual_arguments()
     def convergent_connect(self, projection, presynaptic_indices,
                            postsynaptic_index, matrix_rows,
-                           **connection_parameters):
+                           incoming_weight_range, **connection_parameters):
+        # Extract connection parameters
+        weight = connection_parameters["weight"]
+        delay = connection_parameters["delay"]
+
+        # Update incoming weight range
+        incoming_weight_range[0] = min(incoming_weight_range[0], weight)
+        incoming_weight_range[1] = max(incoming_weight_range[1], weight)
+        
         # Add synapse to each row
         for p in matrix_rows[presynaptic_indices]:
-            p.append(Synapse(connection_parameters["weight"],
-                             connection_parameters["delay"],
-                             postsynaptic_index))
+            p.append(Synapse(weight, delay, postsynaptic_index))
 
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,

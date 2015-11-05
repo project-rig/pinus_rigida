@@ -1,3 +1,6 @@
+# Import modules
+import math
+
 # Import classes
 from key_lookup_binary_search_region import KeyLookupBinarySearchRegion
 from synaptic_matrix_region import SynapticMatrixRegion
@@ -11,10 +14,22 @@ from utils import (
 # SynapsePopulation
 #------------------------------------------------------------------------------
 class SynapsePopulation(object):
-    def __init__(self, matrices, timer_period_us, simulation_ticks):
-        # Dictionary of pre-synaptic populations to expanded connection matrices
+    def __init__(self, matrices, incoming_weight_range, timer_period_us, 
+                 simulation_ticks):
         self.matrices = matrices
-
+        #self.incoming_weight_range = incoming_weight_range
+        
+        # Get MSB of minimum and maximum weight and get magnitude of range
+        weight_msb = [math.floor(math.log(r, 2)) + 1 
+                      for r in incoming_weight_range]
+        weight_range = weight_msb[1] - weight_msb[0]
+        
+        # Check there's enough bits to represent this is any form
+        assert weight_range < 16
+        
+        # Calculate where the weight format fixed-point lies
+        self.weight_fixed_point = 16 - int(weight_msb[1])
+        
         # List of regions
         self.regions = [None] * 12
         self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)
@@ -41,9 +56,10 @@ class SynapsePopulation(object):
     def get_size(self, vertex_slice, sub_matrices, matrix_placements):
         # Build region kwargs
         region_kwargs = {
-            "application_words": [],
+            "application_words": [self.weight_fixed_point],
             "sub_matrices": sub_matrices,
-            "matrix_placements": matrix_placements
+            "matrix_placements": matrix_placements,
+            "weight_fixed_point": self.weight_fixed_point
         }
 
         # Calculate region size
@@ -55,9 +71,10 @@ class SynapsePopulation(object):
     def write_to_file(self, vertex_slice, sub_matrices, matrix_placements, fp):
         # Build region kwargs
         region_kwargs = {
-            "application_words": [],
+            "application_words": [self.weight_fixed_point],
             "sub_matrices": sub_matrices,
-            "matrix_placements": matrix_placements
+            "matrix_placements": matrix_placements,
+            "weight_fixed_point": self.weight_fixed_point
         }
 
         # Layout the slice of SDRAM we have been given

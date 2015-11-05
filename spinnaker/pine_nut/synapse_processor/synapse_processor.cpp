@@ -116,6 +116,11 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   {
     return false;
   }
+  else
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "\tWeight fixed point=%u",
+      g_AppWords[AppWordWeightFixedPoint]);
+  }
 
   // Read key lookup region
   if(!g_KeyLookup.ReadSDRAMData(
@@ -186,7 +191,7 @@ void SetupNextDMARowRead()
 //-----------------------------------------------------------------------------
 void MCPacketReceived(uint key, uint)
 {
-  LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at %u, DMA Busy = %u",
+  LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at tick %u, DMA Busy = %u",
             key, g_Tick, g_DMABusy);
 
   // If there was space to add spike to incoming spike queue
@@ -223,7 +228,7 @@ void DMATransferDone(uint, uint tag)
     auto addWeightLambda = 
       [](unsigned int tick, unsigned int index, uint32_t weight) 
       {
-        LOG_PRINT(LOG_LEVEL_TRACE, "Adding weight %u to neuron %u for tick %u",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding weight %u to neuron %u for tick %u",
                   weight, index, tick);
         g_RingBuffer.AddWeight(tick, index, weight);
       };
@@ -242,7 +247,7 @@ void DMATransferDone(uint, uint tag)
   }
   else if(tag != DMATagRowWrite)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u", tag);
+    LOG_PRINT(LOG_LEVEL_ERROR, "DMA transfer done with unknown tag %u", tag);
   }
 }
 //-----------------------------------------------------------------------------

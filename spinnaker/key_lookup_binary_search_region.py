@@ -64,7 +64,7 @@ class KeyLookupBinarySearchRegion(Region):
         for m, p in zip(sub_matrices, matrix_placements):
             data += struct.pack(
                 "III", m.key, m.mask,
-                m.max_cols | (p << KeyLookupBinarySearchRegion.NumSynapseBits)
+                (m.max_cols - 1) | (p << KeyLookupBinarySearchRegion.NumSynapseBits)
             )
 
         # Write data to filelike

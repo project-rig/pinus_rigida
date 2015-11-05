@@ -19,6 +19,7 @@ enum Region
 // Indexes of application words
 enum AppWord
 {
+  AppWordWeightFixedPoint,
   AppWordMax,
 };
 
