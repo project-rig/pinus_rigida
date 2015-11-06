@@ -362,7 +362,62 @@ class State(common.control.BaseState):
         placements, allocations, application_map, routing_tables = wrapper(
             vertex_resources, vertex_applications, nets, net_keys,
             spinnaker_machine, constraints)
+        
+        print("Writing synapse vertices")
 
+        # Build synapsepopulations
+        for pop, vertices in iteritems(pop_synapse_vertices):
+            print("\tPopulation %s" % pop)
+
+            # Expand any incoming connections
+            matrices, incoming_weight_range = pop.build_incoming_connection()
+
+            # Create a spinnaker population
+            spinnaker_pop = pop.create_spinnaker_synapse_population(
+                matrices, incoming_weight_range, 
+                hardware_timestep_us, duration_timesteps)
+
+            # Loop through vertices
+            for v in vertices:
+                # Get placement and allocation
+                vertex_placement = placements[v]
+                vertex_allocation = allocations[v]
+
+                # Get core this vertex should be run on
+                core = vertex_allocation[machine.Cores]
+                assert (core.stop - core.start) == 1
+
+                # Partition the matrices
+                sub_matrices, matrix_placements =\
+                    spinnaker_pop.partition_matrices(matrices,
+                                                     v.post_neuron_slice,
+                                                     v.incoming_connections)
+
+                # Select placed chip
+                with machine_controller(x=vertex_placement[0],
+                                        y=vertex_placement[1]):
+                    
+                    # Allocate two output buffers for this synapse population
+                    buffer_bytes = v.post_neuron_slice.slice_length * 4
+                    buffers = [machine_controller.sdram_alloc(buffer_bytes)
+                                     for b in range(2)]
+                    
+                    # Calculate required memory size
+                    size = spinnaker_pop.get_size(
+                        v.post_neuron_slice, sub_matrices, matrix_placements)
+
+                    # Allocate a suitable memory block
+                    # for this vertex and get memory io
+                    # **NOTE** this is tagged by core
+                    memory_io = machine_controller.sdram_alloc_as_filelike(
+                        size, tag=core.start)
+                    print("\tMemory begins at %08x" % memory_io.address)
+
+                    # Write the vertex to file
+                    spinnaker_pop.write_to_file(
+                        v.post_neuron_slice, sub_matrices,
+                        matrix_placements, buffers, memory_io)
+        
         #print placements, allocations, application_map, routing_tables
         print("Writing neuron vertices")
         
@@ -400,55 +455,6 @@ class State(common.control.BaseState):
 
                     # Write the vertex to file
                     spinnaker_pop.write_to_file(v.key, v.neuron_slice, memory_io)
-
-        print("Writing synapse vertices")
-
-        # Build synapsepopulations
-        for pop, vertices in iteritems(pop_synapse_vertices):
-            print("\tPopulation %s" % pop)
-
-            # Expand any incoming connections
-            matrices, incoming_weight_range = pop.build_incoming_connection()
-
-            # Create a spinnaker population
-            spinnaker_pop = pop.create_spinnaker_synapse_population(
-                matrices, incoming_weight_range, 
-                hardware_timestep_us, duration_timesteps)
-
-            # Loop through vertices
-            for v in vertices:
-                # Get placement and allocation
-                vertex_placement = placements[v]
-                vertex_allocation = allocations[v]
-
-                # Get core this vertex should be run on
-                core = vertex_allocation[machine.Cores]
-                assert (core.stop - core.start) == 1
-
-                # Partition the matrices
-                sub_matrices, matrix_placements =\
-                    spinnaker_pop.partition_matrices(matrices,
-                                                     v.post_neuron_slice,
-                                                     v.incoming_connections)
-
-                # Select placed chip
-                with machine_controller(x=vertex_placement[0],
-                                        y=vertex_placement[1]):
-                    # Calculate required memory size
-                    size = spinnaker_pop.get_size(
-                        v.post_neuron_slice, sub_matrices, matrix_placements)
-
-                    # Allocate a suitable memory block
-                    # for this vertex and get memory io
-                    # **NOTE** this is tagged by core
-                    memory_io = machine_controller.sdram_alloc_as_filelike(
-                        size, tag=core.start)
-                    print("\tMemory begins at %08x" % memory_io.address)
-
-                    # Write the vertex to file
-                    spinnaker_pop.write_to_file(
-                        v.post_neuron_slice, sub_matrices,
-                        matrix_placements, memory_io)
 
         # Load routing tables and applications
         print("Loading routing tables")

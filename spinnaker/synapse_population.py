@@ -4,6 +4,7 @@ import math
 # Import classes
 from key_lookup_binary_search_region import KeyLookupBinarySearchRegion
 from synaptic_matrix_region import SynapticMatrixRegion
+from output_buffer_region import OutputBufferRegion
 from system_region import SystemRegion
 
 # Import functions
@@ -36,7 +37,7 @@ class SynapsePopulation(object):
         self.regions[3] = KeyLookupBinarySearchRegion()
         self.regions[4] = SynapticMatrixRegion()
         #self.regions[5] = PlasticityRegion()
-        #self.regions[7] = OutputBufferRegion()
+        self.regions[7] = OutputBufferRegion()
         #self.regions[11] = ProfilerRegion()
 
     #--------------------------------------------------------------------------
@@ -53,33 +54,38 @@ class SynapsePopulation(object):
         # Return both
         return sub_matrices, matrix_placements
 
-    def get_size(self, vertex_slice, sub_matrices, matrix_placements):
+    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements):
         # Build region kwargs
         region_kwargs = {
-            "application_words": [self.weight_fixed_point],
+            "application_words": [self.weight_fixed_point, 
+                                  post_vertex_slice.slice_length],
             "sub_matrices": sub_matrices,
             "matrix_placements": matrix_placements,
             "weight_fixed_point": self.weight_fixed_point
         }
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions(self.regions, vertex_slice, **region_kwargs)
+        vertex_size_bytes = sizeof_regions(self.regions, post_vertex_slice, 
+                                           **region_kwargs)
 
         print("\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
-    def write_to_file(self, vertex_slice, sub_matrices, matrix_placements, fp):
+    def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements, 
+                      output_buffers, fp):
         # Build region kwargs
         region_kwargs = {
-            "application_words": [self.weight_fixed_point],
+            "application_words": [self.weight_fixed_point, 
+                                  post_vertex_slice.slice_length],
             "sub_matrices": sub_matrices,
             "matrix_placements": matrix_placements,
+            "output_buffers": output_buffers,
             "weight_fixed_point": self.weight_fixed_point
         }
 
         # Layout the slice of SDRAM we have been given
         region_memory = create_app_ptr_and_region_files(
-            fp, self.regions, vertex_slice, **region_kwargs)
+            fp, self.regions, post_vertex_slice, **region_kwargs)
 
         # Write in each region
         for region, mem in zip(self.regions, region_memory):
@@ -89,4 +95,5 @@ class SynapsePopulation(object):
             #    self.output_keys_region.write_subregion_to_file(
             #        mem, vertex.slice, cluster=vertex.cluster)
             else:
-                region.write_subregion_to_file(mem, vertex_slice, **region_kwargs)
+                region.write_subregion_to_file(mem, post_vertex_slice, 
+                                               **region_kwargs)

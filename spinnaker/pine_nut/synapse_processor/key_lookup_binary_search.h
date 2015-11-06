@@ -41,8 +41,8 @@ public:
       {
         // Extract number of synapses and word offset from lookup entry
         // **NOTE** add one as 0 is not a valid number
-        const unsigned int rowSynapses = (lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask) + 1;
-        const unsigned int wordOffset = lookupEntry.m_WordOffsetRowSynapses >> S;
+        const unsigned int rowSynapses = GetNumSynapses(lookupEntry.m_WordOffsetRowSynapses);
+        const unsigned int wordOffset = GetWordOffset(lookupEntry.m_WordOffsetRowSynapses);
         
         // Extract neuron ID from key
         // **NOTE** assumed to be at bottom of mask
@@ -94,17 +94,14 @@ public:
     spin1_memcpy(m_LookupEntries, &baseAddress[1], lookupEntriesBytes);
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
-  LOG_PRINT(LOG_LEVEL_TRACE, "\tPopulations");
-  LOG_PRINT(LOG_LEVEL_TRACE, "\t------------------------------------------");
   for(unsigned int i = 0; i < m_NumLookupEntries; i++)
   {
     const auto &lookupEntry = m_LookupEntries[i];
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tKey:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
-      lookupEntry.m_Key, lookupEntry.m_Mask,
-      lookupEntry.m_WordOffsetRowSynapses & RowSynapsesMask,
-      lookupEntry.m_WordOffsetRowSynapses >> S);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEntry:%u, Key:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
+      i, lookupEntry.m_Key, lookupEntry.m_Mask,
+      GetNumSynapses(lookupEntry.m_WordOffsetRowSynapses),
+      GetWordOffset(lookupEntry.m_WordOffsetRowSynapses));
   }
-  LOG_PRINT(LOG_LEVEL_TRACE, "\t------------------------------------------");
 #endif
 
     return true;
@@ -115,12 +112,25 @@ private:
   // Constants
   //-----------------------------------------------------------------------------
   static const uint32_t RowSynapsesMask = (1 << S) - 1;
-
+  
+  //-----------------------------------------------------------------------------
+  // Static methods
+  //-----------------------------------------------------------------------------
+  static uint32_t GetNumSynapses(uint32_t word)
+  {
+    return (word & RowSynapsesMask) + 1;
+  }
+  
+  static uint32_t GetWordOffset(uint32_t word)
+  {
+    return (word >> S);
+  }
+  
   //-----------------------------------------------------------------------------
   // KeyLookupEntry
   //-----------------------------------------------------------------------------
   // **THINK** mask could be a byte index into an array of
-  // masks as there are going to be very few mask format
+  // masks as there are going to be very few mask formats
   struct KeyLookupEntry
   {
     uint32_t m_Key;

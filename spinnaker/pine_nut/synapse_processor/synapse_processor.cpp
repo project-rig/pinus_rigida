@@ -89,13 +89,11 @@ bool ReadOutputBufferRegion(const uint32_t *region, uint32_t)
   spin1_memcpy(g_OutputBuffers, region, 2 * sizeof(uint32_t*));
 
 #if LOG_LEVEL <= LOG_LEVEL_INFO
-  LOG_PRINT(LOG_LEVEL_INFO, "output_buffer\n");
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadOutputBufferRegion");
   for (uint32_t i = 0; i < 2; i++)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "index %u, buffer:%08x", i, g_OutputBuffers[i]);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tIndex:%u, Address:%08x", i, g_OutputBuffers[i]);
   }
-  LOG_PRINT(LOG_LEVEL_INFO, "------------------------------------------");
 #endif
 
   return true;
@@ -118,8 +116,8 @@ bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "\tWeight fixed point=%u",
-      g_AppWords[AppWordWeightFixedPoint]);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tWeight fixed point:%u, Num post-neurons:%u",
+      g_AppWords[AppWordWeightFixedPoint], g_AppWords[AppWordNumPostNeurons]);
   }
 
   // Read key lookup region

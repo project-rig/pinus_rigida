@@ -3,7 +3,6 @@ import numpy as np
 import struct
 
 # Import classes
-from collections import namedtuple
 from region import Region
 from six import itervalues
 
@@ -44,7 +43,7 @@ class KeyLookupBinarySearchRegion(Region):
         Parameters
         ----------
         vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
+            A slice object which indicnamedtupleates which rows, columns or other
             elements of the region should be included.
         fp : file-like object
             The file-like object to which data from the region will be written.

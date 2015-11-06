@@ -20,6 +20,7 @@ enum Region
 enum AppWord
 {
   AppWordWeightFixedPoint,
+  AppWordNumPostNeurons,
   AppWordMax,
 };
 
