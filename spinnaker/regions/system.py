@@ -2,9 +2,9 @@ import struct
 from region import Region
 
 #------------------------------------------------------------------------------
-# SystemRegion
+# System
 #------------------------------------------------------------------------------
-class SystemRegion(Region):
+class System(Region):
     def __init__(self, timer_period_us, simulation_ticks):
         """Create a new system region.
 

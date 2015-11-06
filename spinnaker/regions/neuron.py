@@ -5,12 +5,12 @@ import struct
 from region import Region
 
 # Import functions
-from utils import apply_param_map
+from ..utils import apply_param_map
 
 #------------------------------------------------------------------------------
-# NeuronRegion
+# Neuron
 #------------------------------------------------------------------------------
-class NeuronRegion(Region):
+class Neuron(Region):
     def __init__(self, cell_type, parameters, initial_values):
         # Determine number of neurons
         num_neurons = parameters.shape[0]

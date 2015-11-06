@@ -16,9 +16,9 @@ SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
                                      "max_cols", "matrix"])
 
 #------------------------------------------------------------------------------
-# SynapticMatrixRegion
+# SynapticMatrix
 #------------------------------------------------------------------------------
-class SynapticMatrixRegion(Region):
+class SynapticMatrix(Region):
     # Number of bits for various synapse components
     IndexBits = 10
     DelayBits = 3
@@ -107,8 +107,8 @@ class SynapticMatrixRegion(Region):
                 words = np.empty(len(r_np) + 1, dtype=np.uint32)
                 words[0] = len(r_np)
                 words[1:] = (r_np["i"] 
-                    | (d_quantised << SynapticMatrixRegion.IndexBits)
-                    | (w_fixed << (SynapticMatrixRegion.IndexBits + SynapticMatrixRegion.DelayBits)))
+                    | (d_quantised << SynapticMatrix.IndexBits)
+                    | (w_fixed << (SynapticMatrix.IndexBits + SynapticMatrix.DelayBits)))
                 # Write words
                 fp.write(words.tostring())
                 print words

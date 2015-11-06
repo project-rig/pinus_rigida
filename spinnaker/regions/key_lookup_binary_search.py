@@ -7,9 +7,9 @@ from region import Region
 from six import itervalues
 
 #------------------------------------------------------------------------------
-# KeyLookupBinarySearchRegion
+# KeyLookupBinarySearch
 #------------------------------------------------------------------------------
-class KeyLookupBinarySearchRegion(Region):
+class KeyLookupBinarySearch(Region):
     # How many of the low bits are used to represent row length
     NumSynapseBits = 10
 
@@ -63,7 +63,7 @@ class KeyLookupBinarySearchRegion(Region):
         for m, p in zip(sub_matrices, matrix_placements):
             data += struct.pack(
                 "III", m.key, m.mask,
-                (m.max_cols - 1) | (p << KeyLookupBinarySearchRegion.NumSynapseBits)
+                (m.max_cols - 1) | (p << KeyLookupBinarySearch.NumSynapseBits)
             )
 
         # Write data to filelike

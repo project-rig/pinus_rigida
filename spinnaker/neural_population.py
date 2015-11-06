@@ -1,10 +1,6 @@
 # Import modules
 import numpy as np
-
-# Import classes
-from neuron_region import NeuronRegion
-from synapse_region import SynapseRegion
-from system_region import SystemRegion
+import regions
 
 # Import functions
 from utils import (
@@ -20,9 +16,9 @@ class NeuralPopulation(object):
                  simulation_timestep_us, timer_period_us, simulation_ticks):
         # List of regions
         self.regions = [None] * 12
-        self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)
-        self.regions[1] = NeuronRegion(cell_type, parameters, initial_values)
-        self.regions[2] = SynapseRegion(cell_type, parameters, initial_values)
+        self.regions[0] = regions.System(timer_period_us, simulation_ticks)
+        self.regions[1] = regions.Neuron(cell_type, parameters, initial_values)
+        self.regions[2] = regions.Synapse(cell_type, parameters, initial_values)
         #self.regions[6] = InputBufferRegion()
         #self.regions[8] = SpikeRecordingRegion()
         #self.regions[9] = VoltageRecordingRegion()

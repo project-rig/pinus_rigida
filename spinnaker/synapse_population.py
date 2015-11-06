@@ -1,11 +1,6 @@
 # Import modules
 import math
-
-# Import classes
-from key_lookup_binary_search_region import KeyLookupBinarySearchRegion
-from synaptic_matrix_region import SynapticMatrixRegion
-from output_buffer_region import OutputBufferRegion
-from system_region import SystemRegion
+import regions
 
 # Import functions
 from utils import (
@@ -33,12 +28,12 @@ class SynapsePopulation(object):
         
         # List of regions
         self.regions = [None] * 12
-        self.regions[0] = SystemRegion(timer_period_us, simulation_ticks)
-        self.regions[3] = KeyLookupBinarySearchRegion()
-        self.regions[4] = SynapticMatrixRegion()
-        #self.regions[5] = PlasticityRegion()
-        self.regions[7] = OutputBufferRegion()
-        #self.regions[11] = ProfilerRegion()
+        self.regions[0] = regions.System(timer_period_us, simulation_ticks)
+        self.regions[3] = regions.KeyLookupBinarySearch()
+        self.regions[4] = regions.SynapticMatrix()
+        #self.regions[5] = regions.Plasticity()
+        self.regions[7] = regions.OutputBuffer()
+        #self.regions[11] = regions.Profiler()
 
     #--------------------------------------------------------------------------
     # Public methods

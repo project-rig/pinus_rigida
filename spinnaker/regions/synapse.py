@@ -5,12 +5,12 @@ import struct
 from region import Region
 
 # Import functions
-from utils import apply_param_map
+from ..utils import apply_param_map
 
 #------------------------------------------------------------------------------
-# SynapseRegion
+# Synapse
 #------------------------------------------------------------------------------
-class SynapseRegion(Region):
+class Synapse(Region):
     def __init__(self, cell_type, parameters, initial_values):
         num_neurons = parameters.shape[0]
 
