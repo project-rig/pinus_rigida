@@ -1,28 +1,50 @@
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 // Standard includes
 #include <cstdint>
 
-//-----------------------------------------------------------------------------
-// Macros
-//-----------------------------------------------------------------------------
-// The following can be used to silence gcc's "-Wall -Wextra"
-// warnings about failure to use function arguments.
-//
-// Obviously you'll only be using this during debug, for unused
-// arguments of callback functions, or where conditional compilation
-// means that the accessor functions return a constant
-//#define USE(x) do {} while ((x)!=(x))
+// Common includes
+#include "spinnaker.h"
 
-// Define int/uint helper macros to create the correct
-// type names for int/uint of a particular size.
-//
-// This requires an extra level of macro call to "stringify"
-// the result.
-//#define __INT_HELPER(b) int ## b ## _t
-//#define __UINT_HELPER(b) uint ## b ## _t
-//#define INT(b) __INT_HELPER(b)
-//#define UINT(b) uint32_t//__UINT_HELPER(b)
+//-----------------------------------------------------------------------------
+// Common::Utils
+//-----------------------------------------------------------------------------
+namespace Common
+{
+namespace Utils
+{
+// **TODO** const somewhere on inputPointer!
+template<typename T>
+bool AllocateCopyStructArray(unsigned int numElements, const uint32_t *&inputPointer, T *&outputArray)
+{
+  static_assert(sizeof(T) % 4 == 0, "Only word-aligned structures are supported");
 
-#endif  // UTILS_H
+  if(numElements == 0)
+  {
+    outputArray = NULL;
+    return true;
+  }
+  else
+  {
+    // Calculate size of array in bytes
+    const unsigned int arrayBytes = sizeof(T) * numElements;
+    const unsigned int arrayWords = arrayBytes / sizeof(uint32_t);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t%u bytes", arrayBytes);
+
+    // Allocate output array
+    outputArray = (T*)spin1_malloc(arrayBytes);
+    if(outputArray == NULL)
+    {
+      return false;
+    }
+
+    // Copy data into newly allocated array
+    spin1_memcpy(outputArray, inputPointer, arrayBytes);
+
+    // Advance pointer
+    inputPointer += arrayWords;
+    return true;
+  }
+}
+}
+}

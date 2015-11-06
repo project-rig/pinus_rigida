@@ -54,7 +54,8 @@ class NeuronVertex:
         self.neuron_slice = neuron_slice
         self.keyspace = parent_keyspace(population_index=population_index, 
             vertex_index=vertex_index)
-    
+        self.synapse_verts = None
+
     @property
     def key(self):
         return self.keyspace.get_value(tag="routing")
@@ -67,9 +68,11 @@ class NeuronVertex:
 # SynapseVertex
 #------------------------------------------------------------------------------
 class SynapseVertex:
-    def __init__(self, post_neuron_slice):
+    def __init__(self, post_neuron_slice, receptor_index):
         self.post_neuron_slice = post_neuron_slice
         self.incoming_connections = defaultdict(list)
+        self.receptor_index = receptor_index
+        self.out_buffers = None
 
     def add_connection(self, pre_pop, pre_neuron_vertex):
         self.incoming_connections[pre_pop].append(pre_neuron_vertex)
@@ -212,7 +215,8 @@ class State(common.control.BaseState):
                 post_slices = evenly_slice(
                     pop.size, synapse_type[0].max_post_neurons_per_core)
 
-                print "\tSynapse type:", synapse_type[0].__name__, synapse_type[1]
+                receptor_index = pop.celltype.receptor_types.index(synapse_type[1])
+                print "\tSynapse type:%s, Receptor type:%s(%u)" % (synapse_type[0].__name__, synapse_type[1], receptor_index)
 
                 # Get synapse application name
                 # **THINK** is there any point in doing anything cleverer than this
@@ -227,7 +231,7 @@ class State(common.control.BaseState):
                     
                     # Loop through all projections of this type
                     synapse_vertex_event_rate = 0.0
-                    synapse_vertex = SynapseVertex(post_slice)
+                    synapse_vertex = SynapseVertex(post_slice, receptor_index)
                     for projection in projections:
                         #print projection
                         #print("\t\t\tProjection", projection)
@@ -263,7 +267,7 @@ class State(common.control.BaseState):
                                 synapse_vertices.append(synapse_vertex)
 
                                 # Create replacement and reset event rate
-                                synapse_vertex = SynapseVertex(post_slice)
+                                synapse_vertex = SynapseVertex(post_slice, receptor_index)
                                 synapse_vertex_event_rate = 0.0
 
                     # If the last synapse vertex created had any incoming connections
@@ -301,16 +305,16 @@ class State(common.control.BaseState):
             for n in n_verts:
                 # Find synapse vertices with the same slice
                 # **TODO** different ratios here
-                assoc_s_verts = [s for s in s_verts
-                                 if s.post_neuron_slice == n.neuron_slice]
+                n.synapse_verts = [s for s in s_verts
+                                   if s.post_neuron_slice == n.neuron_slice]
 
                 # Count associated neuron vertices
-                num_assoc_s_verts += len(assoc_s_verts)
+                num_assoc_s_verts += len(n.synapse_verts)
 
-                print "\t\tConstraining neuron vert %s and synapse verts %s to same chip" % (n, assoc_s_verts)
+                print "\t\tConstraining neuron vert %s and synapse verts %s to same chip" % (n, n.synapse_verts)
 
                 # Build same chip constraint and add to list
-                constraints.append(SameChipConstraint(assoc_s_verts + [n]))
+                constraints.append(SameChipConstraint(n.synapse_verts + [n]))
 
         # Finalise keyspace fields
         keyspace.assign_fields()
@@ -365,7 +369,7 @@ class State(common.control.BaseState):
         
         print("Writing synapse vertices")
 
-        # Build synapsepopulations
+        # Build synapse populations
         for pop, vertices in iteritems(pop_synapse_vertices):
             print("\tPopulation %s" % pop)
 
@@ -396,15 +400,16 @@ class State(common.control.BaseState):
                 # Select placed chip
                 with machine_controller(x=vertex_placement[0],
                                         y=vertex_placement[1]):
-                    
                     # Allocate two output buffers for this synapse population
-                    buffer_bytes = v.post_neuron_slice.slice_length * 4
-                    buffers = [machine_controller.sdram_alloc(buffer_bytes)
-                                     for b in range(2)]
+                    out_buffer_bytes = v.post_neuron_slice.slice_length * 4
+                    v.out_buffers = [
+                        machine_controller.sdram_alloc(out_buffer_bytes)
+                        for b in range(2)]
                     
                     # Calculate required memory size
                     size = spinnaker_pop.get_size(
-                        v.post_neuron_slice, sub_matrices, matrix_placements)
+                        v.post_neuron_slice, sub_matrices,
+                        matrix_placements, v.out_buffers)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
@@ -416,7 +421,7 @@ class State(common.control.BaseState):
                     # Write the vertex to file
                     spinnaker_pop.write_to_file(
                         v.post_neuron_slice, sub_matrices,
-                        matrix_placements, buffers, memory_io)
+                        matrix_placements, v.out_buffers, memory_io)
         
         #print placements, allocations, application_map, routing_tables
         print("Writing neuron vertices")
@@ -445,16 +450,25 @@ class State(common.control.BaseState):
                 # Select placed chip
                 with machine_controller(x=vertex_placement[0],
                                         y=vertex_placement[1]):
+                    # Get the input buffers from each synapse vertex
+                    in_buffers = [(s.out_buffers[1], s.receptor_index)
+                                  for s in v.synapse_verts]
+                    print "\t", in_buffers
+
+                    # Calculate required memory size
+                    size = spinnaker_pop.get_size(
+                        v.key, v.neuron_slice,in_buffers)
+
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
                     # **NOTE** this is tagged by core
                     memory_io = machine_controller.sdram_alloc_as_filelike(
-                        spinnaker_pop.get_size(v.key, v.neuron_slice),
-                        tag=core.start)
+                        size, tag=core.start)
                     print("\tMemory begins at %08x" % memory_io.address)
 
                     # Write the vertex to file
-                    spinnaker_pop.write_to_file(v.key, v.neuron_slice, memory_io)
+                    spinnaker_pop.write_to_file(v.key, v.neuron_slice,
+                                                in_buffers, memory_io)
 
         # Load routing tables and applications
         print("Loading routing tables")

@@ -19,7 +19,7 @@ class NeuralPopulation(object):
         self.regions[0] = regions.System(timer_period_us, simulation_ticks)
         self.regions[1] = regions.Neuron(cell_type, parameters, initial_values)
         self.regions[2] = regions.Synapse(cell_type, parameters, initial_values)
-        #self.regions[6] = InputBufferRegion()
+        self.regions[6] = regions.InputBuffer()
         #self.regions[8] = SpikeRecordingRegion()
         #self.regions[9] = VoltageRecordingRegion()
         #self.regions[10] = CurrentRecordingRegion()
@@ -28,10 +28,11 @@ class NeuralPopulation(object):
     #--------------------------------------------------------------------------
     # Public methods
     #--------------------------------------------------------------------------
-    def get_size(self, key, vertex_slice):
+    def get_size(self, key, vertex_slice, in_buffers):
         # Build region kwargs
         region_kwargs = {
-            "application_words": [key, vertex_slice.slice_length]
+            "application_words": [key, vertex_slice.slice_length],
+            "in_buffers": in_buffers
         }
         
         # Calculate region size
@@ -41,10 +42,11 @@ class NeuralPopulation(object):
         print("\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
     
-    def write_to_file(self, key, vertex_slice, fp):
+    def write_to_file(self, key, vertex_slice, in_buffers, fp):
         # Build region kwargs
         region_kwargs = {
-            "application_words": [key, vertex_slice.slice_length]
+            "application_words": [key, vertex_slice.slice_length],
+            "in_buffers": in_buffers
         }
         
         # Layout the slice of SDRAM we have been given

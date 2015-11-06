@@ -7,9 +7,9 @@ from region import Region
 from six import itervalues
 
 #------------------------------------------------------------------------------
-# OutputBuffer
+# InputBuffer
 #------------------------------------------------------------------------------
-class OutputBuffer(Region):
+class InputBuffer(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
@@ -31,8 +31,10 @@ class OutputBuffer(Region):
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        # Two pointers
-        return 2 * 4
+        in_buffers = formatter_args["in_buffers"]
+
+        # A count followed by two words for each buffer
+        return (1 + (2 * len(in_buffers))) * 4
 
     def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
         """Write a portion of the region to a file applying the formatter.
@@ -49,8 +51,16 @@ class OutputBuffer(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
-        out_buffers = formatter_args["out_buffers"]
-        assert len(out_buffers) == 2
-        
-        # Write output buffer pointers to file
-        fp.write(struct.pack("II", *out_buffers))
+        in_buffers = formatter_args["in_buffers"]
+
+        # Write header
+        data = b''
+        data += struct.pack("I", len(in_buffers))
+
+        # Write each buffer entry
+        for p, r in in_buffers:
+
+            data += struct.pack("II", p, r)
+
+        # Write data to filelike
+        fp.write(data)

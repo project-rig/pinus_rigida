@@ -49,13 +49,14 @@ class SynapsePopulation(object):
         # Return both
         return sub_matrices, matrix_placements
 
-    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements):
+    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements, out_buffers):
         # Build region kwargs
         region_kwargs = {
             "application_words": [self.weight_fixed_point, 
                                   post_vertex_slice.slice_length],
             "sub_matrices": sub_matrices,
             "matrix_placements": matrix_placements,
+            "out_buffers": out_buffers,
             "weight_fixed_point": self.weight_fixed_point
         }
 
@@ -67,14 +68,14 @@ class SynapsePopulation(object):
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements, 
-                      output_buffers, fp):
+                      out_buffers, fp):
         # Build region kwargs
         region_kwargs = {
             "application_words": [self.weight_fixed_point, 
                                   post_vertex_slice.slice_length],
             "sub_matrices": sub_matrices,
             "matrix_placements": matrix_placements,
-            "output_buffers": output_buffers,
+            "out_buffers": out_buffers,
             "weight_fixed_point": self.weight_fixed_point
         }
 

@@ -85,7 +85,7 @@ class SynapticMatrix(Region):
         # Loop through sub matrices
         assert fp.tell() == 0
         for m, p in zip(sub_matrices, matrix_placements):
-            print("Writing matrix placement:%u, max cols:%u" % (p, m.max_cols))
+            print("\t\tWriting matrix placement:%u, max cols:%u" % (p, m.max_cols))
             
             # Seek to the absolute offset for this matrix
             fp.seek(p, 0)
@@ -111,7 +111,7 @@ class SynapticMatrix(Region):
                     | (w_fixed << (SynapticMatrix.IndexBits + SynapticMatrix.DelayBits)))
                 # Write words
                 fp.write(words.tostring())
-                print words
+                
                 # Seek forward by padding
                 pad_words = m.max_cols - len(r_np)
                 fp.seek(pad_words * 4, 1)

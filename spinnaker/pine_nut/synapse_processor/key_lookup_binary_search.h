@@ -6,9 +6,11 @@
 // Common includes
 #include "../common/arm_intrinsics.h"
 #include "../common/log.h"
+#include "../common/utils.h"
 
 // Namespaces
 using namespace Common::ARMIntrinsics;
+using namespace Common::Utils;
 
 //-----------------------------------------------------------------------------
 // SynapseProcessor::KeyLookupBinarySearch
@@ -19,7 +21,7 @@ template<unsigned int S>
 class KeyLookupBinarySearch
 {
 public:
-  KeyLookupBinarySearch() : m_LookupEntries(NULL), m_NumLookupEntries(NULL)
+  KeyLookupBinarySearch() : m_LookupEntries(NULL), m_NumLookupEntries(0)
   {
   }
 
@@ -82,16 +84,13 @@ public:
     m_NumLookupEntries = baseAddress[0];
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum lookup entries:%u", m_NumLookupEntries);
 
-    // Allocate lookup entries
-    const unsigned int lookupEntriesBytes = m_NumLookupEntries * sizeof(KeyLookupEntry);
-    m_LookupEntries = (KeyLookupEntry*)spin1_malloc(lookupEntriesBytes);
-    if(m_LookupEntries == NULL)
+    // Copy key lookup entries
+    const uint32_t *structArray = &baseAddress[1];
+    if(!AllocateCopyStructArray(m_NumLookupEntries, structArray, m_LookupEntries))
     {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate key lookup array");
       return false;
     }
-
-    // Copy data into newly allocated array
-    spin1_memcpy(m_LookupEntries, &baseAddress[1], lookupEntriesBytes);
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
   for(unsigned int i = 0; i < m_NumLookupEntries; i++)
@@ -112,7 +111,7 @@ private:
   // Constants
   //-----------------------------------------------------------------------------
   static const uint32_t RowSynapsesMask = (1 << S) - 1;
-  
+
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
@@ -120,12 +119,12 @@ private:
   {
     return (word & RowSynapsesMask) + 1;
   }
-  
+
   static uint32_t GetWordOffset(uint32_t word)
   {
     return (word >> S);
   }
-  
+
   //-----------------------------------------------------------------------------
   // KeyLookupEntry
   //-----------------------------------------------------------------------------

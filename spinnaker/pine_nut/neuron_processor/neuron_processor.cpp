@@ -5,12 +5,17 @@
 #include "../common/fixed_point_number.h"
 #include "../common/log.h"
 #include "../common/spinnaker.h"
+#include "../common/utils.h"
+
+// Neuron processor includes
+#include "input_buffer.h"
 
 // Configuration include
 #include "config.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;
+using namespace Common::Utils;
 using namespace NeuronProcessor;
 
 //-----------------------------------------------------------------------------
@@ -38,47 +43,23 @@ Neuron::ImmutableState *g_NeuronImmutableState = NULL;
 Synapse::MutableState *g_SynapseMutableState = NULL;
 Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
+InputBuffer g_InputBuffer;
+
 //----------------------------------------------------------------------------
 // Functions
 //----------------------------------------------------------------------------
-// **TODO** const somewhere on inputPointer!
-template<typename T>
-bool AllocateCopyStructArray(unsigned int numElements, const uint32_t *&inputPointer, T *&outputArray)
-{
-  static_assert(sizeof(T) % 4 == 0, "Only word-aligned structures are supported");
-
-  // Calculate size of array in bytes
-  const unsigned int arrayBytes = sizeof(T) * numElements;
-  const unsigned int arrayWords = arrayBytes / sizeof(uint32_t);
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\t%u bytes", arrayBytes);
-
-  // Allocate output array
-  outputArray = (T*)spin1_malloc(arrayBytes);
-  if(outputArray == NULL)
-  {
-    return false;
-  }
-
-  // Copy data into newly allocated array
-  spin1_memcpy(outputArray, inputPointer, arrayBytes);
-
-  // Advance pointer
-  inputPointer += arrayWords;
-  return true;
-}
-//-----------------------------------------------------------------------------
 bool ReadNeuronRegion(const uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadNeuronRegion");
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\tNeuron mutable state");
+  LOG_PRINT(LOG_LEVEL_TRACE, "\tNeuron mutable state");
   if(!AllocateCopyStructArray(g_AppWords[AppWordNumNeurons], region, g_NeuronMutableState))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate neuron mutable state array");
     return false;
   }
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\tNeuron immutable state");
+  LOG_PRINT(LOG_LEVEL_TRACE, "\tNeuron immutable state");
   if(!AllocateCopyStructArray(g_AppWords[AppWordNumNeurons], region, g_NeuronImmutableState))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate neuron immutable state array");
@@ -103,14 +84,14 @@ bool ReadSynapseRegion(const uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadSynapseRegion");
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\tSynapse mutable state");
+  LOG_PRINT(LOG_LEVEL_TRACE, "\tSynapse mutable state");
   if(!AllocateCopyStructArray(g_AppWords[AppWordNumNeurons], region, g_SynapseMutableState))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate synapse mutable state array");
     return false;
   }
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\tSynapse immutable state");
+  LOG_PRINT(LOG_LEVEL_TRACE, "\tSynapse immutable state");
   if(!AllocateCopyStructArray(g_AppWords[AppWordNumNeurons], region, g_SynapseImmutableState))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate synapse immutable state array");
@@ -161,6 +142,13 @@ bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
   // Read neuron region
   if(!ReadSynapseRegion(
     Common::Config::GetRegionStart(baseAddress, RegionSynapse), flags))
+  {
+    return false;
+  }
+
+  // Read input buffer region
+  if(!g_InputBuffer.ReadSDRAMData(
+    Common::Config::GetRegionStart(baseAddress, RegionInputBuffer), flags))
   {
     return false;
   }
