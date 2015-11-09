@@ -34,7 +34,7 @@ class InputBuffer(Region):
         in_buffers = formatter_args["in_buffers"]
 
         # A count followed by two words for each buffer
-        return (1 + (2 * len(in_buffers))) * 4
+        return (1 + (3 * len(in_buffers))) * 4
 
     def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
         """Write a portion of the region to a file applying the formatter.
@@ -58,9 +58,9 @@ class InputBuffer(Region):
         data += struct.pack("I", len(in_buffers))
 
         # Write each buffer entry
+        # **TODO** insert weight scale in buffer somehow
         for p, r in in_buffers:
-
-            data += struct.pack("II", p, r)
+            data += struct.pack("III", p, r, 1)
 
         # Write data to filelike
         fp.write(data)

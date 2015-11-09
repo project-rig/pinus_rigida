@@ -17,17 +17,18 @@ using namespace Common::Utils;
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
-class InputBuffer
+template<typename T>
+class InputBufferBase
 {
 public:
-  InputBuffer() : m_InputBuffers(NULL), m_NumInputBuffers(0)
+  InputBufferBase() : m_InputBuffers(NULL), m_NumInputBuffers(0), m_DMABuffer(NULL)
   {
   }
 
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t)
+  bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t, unsigned int numNeurons)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "ReadInputBufferRegion");
 
@@ -43,15 +44,79 @@ public:
       return false;
     }
 
+    // Allocate DMA buffer
+    m_DMABuffer = (T*)spin1_malloc(sizeof(T) * numNeurons);
+    if(m_DMABuffer == NULL)
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate DMA buffer");
+      return false;
+    }
+
 #if LOG_LEVEL <= LOG_LEVEL_INFO
     for(unsigned int i = 0; i < m_NumInputBuffers; i++)
     {
       const auto &inputBuffer = m_InputBuffers[i];
-      LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Buffer:%08x, Receptor type:%u",
-        i, inputBuffer.m_Buffer, inputBuffer.m_ReceptorType);
+      LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Buffer:%08x, Receptor type:%u, Left shift to S1615:%d",
+        i, inputBuffer.m_Buffer, inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
     }
 #endif
     return true;
+  }
+
+  bool SetupBufferDMA(unsigned int inputBufferIndex, unsigned int numNeurons, uint tag)
+  {
+    // If there are input buffers outstanding
+    if(inputBufferIndex < m_NumInputBuffers)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing input buffer index:%u", inputBufferIndex);
+
+      // Start DMA into input buffer
+      auto inputBuffer = m_InputBuffers[inputBufferIndex];
+      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffer),
+                         m_DMABuffer, DMA_READ, numNeurons * sizeof(T));
+      return false;
+    }
+    // Otherwise, all inputs are gathered - update neurons
+    else
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tAll input buffers processed, updating neurons");
+      return true;
+    }
+  }
+
+  template<typename G>
+  void ApplyDMABuffer(unsigned int inputBufferIndex, unsigned int numNeurons,
+                      G applyInputFunction)
+  {
+    // Get corresponding input buffer
+    auto inputBuffer = m_InputBuffers[inputBufferIndex];
+
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tApplying input buffer:%u to receptor:%u with left shift:%d",
+      inputBufferIndex, inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
+
+    // If input buffer needs to be right-shifted to S1615
+    const T *dmaEntry = m_DMABuffer;
+    if(inputBuffer.m_LeftShiftToS1615 < 0)
+    {
+      // Loop through neurons, right shift and apply input
+      auto rightShift = (const unsigned int)(-inputBuffer.m_LeftShiftToS1615);
+      for(unsigned int n = 0; n < numNeurons; n++)
+      {
+        S1615 input = (S1615)((*dmaEntry++) >> rightShift);
+        applyInputFunction(n, input, inputBuffer.m_ReceptorType);
+      }
+    }
+    // If input buffer needs to be left-shifted to S1615
+    else
+    {
+      // Loop through neurons, left shift and apply input
+      auto leftShift = (const unsigned int)inputBuffer.m_LeftShiftToS1615;
+      for(unsigned int n = 0; n < numNeurons; n++)
+      {
+        S1615 input = (S1615)((*dmaEntry++) << leftShift);
+        applyInputFunction(n, input, inputBuffer.m_ReceptorType);
+      }
+    }
   }
 
 private:
@@ -60,8 +125,9 @@ private:
   //-----------------------------------------------------------------------------
   struct Buffer
   {
-    const S1615 *m_Buffer;
+    const T *m_Buffer;
     uint32_t m_ReceptorType;
+    int32_t m_LeftShiftToS1615;
   };
 
   //-----------------------------------------------------------------------------
@@ -69,5 +135,7 @@ private:
   //-----------------------------------------------------------------------------
   Buffer *m_InputBuffers;
   unsigned int m_NumInputBuffers;
+
+  T *m_DMABuffer;
 };
 }

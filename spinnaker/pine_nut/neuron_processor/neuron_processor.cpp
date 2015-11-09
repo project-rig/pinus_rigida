@@ -1,5 +1,8 @@
 #include "neuron_processor.h"
 
+// Standard includes
+#include <climits>
+
 // Common includes
 #include "../common/config.h"
 #include "../common/fixed_point_number.h"
@@ -44,6 +47,8 @@ Synapse::MutableState *g_SynapseMutableState = NULL;
 Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
 InputBuffer g_InputBuffer;
+
+unsigned int g_InputBufferBeingProcessed = UINT_MAX;
 
 //----------------------------------------------------------------------------
 // Functions
@@ -148,12 +153,41 @@ bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
 
   // Read input buffer region
   if(!g_InputBuffer.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionInputBuffer), flags))
+    Common::Config::GetRegionStart(baseAddress, RegionInputBuffer), flags,
+    g_AppWords[AppWordNumNeurons]))
   {
     return false;
   }
 
   return true;
+}
+//-----------------------------------------------------------------------------
+void UpdateNeurons()
+{
+  // Loop through neurons
+  auto *neuronMutableState = g_NeuronMutableState;
+  auto *neuronImmutableState = g_NeuronImmutableState;
+  for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+  {
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
+
+    // Update neuron, if it spikes
+    S1615 exc_input = 0;
+    S1615 inh_input = 0;
+    S1615 external_input = 0;
+    if(Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
+      exc_input, inh_input, external_input))
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
+
+      // Send spike
+      uint32_t key = g_AppWords[AppWordKey] | n;
+      while(!spin1_send_mc_packet(key, 0, NO_PAYLOAD))
+      {
+        spin1_delay_us(1);
+      }
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -161,9 +195,32 @@ bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 static void DMATransferDone(uint, uint tag)
 {
+  LOG_PRINT(LOG_LEVEL_TRACE, "DMA transfer done tag:%u", tag);
+
   if(tag == DMATagInputRead)
   {
-    
+    // Create lambda function to apply scaled input to neuron
+    auto applyInputLambda =
+      [](unsigned int neuron, S1615 input, unsigned int receptorType)
+      {
+        Synapse::ApplyInput(g_SynapseMutableState[neuron],
+                            input, receptorType);
+      };
+
+    // Apply input in DMA buffer
+    g_InputBuffer.ApplyDMABuffer(g_InputBufferBeingProcessed,
+                                 g_AppWords[AppWordNumNeurons],
+                                 applyInputLambda);
+
+    // Advance to next input buffer
+    g_InputBufferBeingProcessed++;
+
+    // If there aren't any more input buffers to DMA, start neuron update
+    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed,
+      g_AppWords[AppWordNumNeurons], DMATagInputRead))
+    {
+      UpdateNeurons();
+    }
   }
   else
   {
@@ -186,31 +243,20 @@ static void TimerTick(uint tick, uint)
     //recording_finalise();
     spin1_exit(0);
   }
-  
-  // Loop through neurons
-  auto *neuronMutableState = g_NeuronMutableState;
-  auto *neuronImmutableState = g_NeuronImmutableState;
-  for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+  // Otherwise
+  else
   {
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
+    // Start at first input buffer
+    g_InputBufferBeingProcessed = 0;
 
-    // Update neuron, if it spikes
-    S1615 exc_input = 0;
-    S1615 inh_input = 0;
-    S1615 external_input = 0;
-    if(Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
-      exc_input, inh_input, external_input))
+    // If there aren't any input buffers to DMA, start neuron update
+    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed,
+      g_AppWords[AppWordNumNeurons], DMATagInputRead))
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
-
-      // Send spike
-      uint32_t key = g_AppWords[AppWordKey] | n;
-      while(!spin1_send_mc_packet(key, 0, NO_PAYLOAD)) 
-      {
-        spin1_delay_us(1);
-      }
+      UpdateNeurons();
     }
   }
+
 }
 } // Anonymous namespace
 

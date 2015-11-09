@@ -48,6 +48,19 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
+  static inline void ApplyInput(MutableState &mutableState, S1615 input, unsigned int receptorType)
+  {
+    // Apply input to correct receptor
+    if(receptorType == 0)
+    {
+      mutableState.m_ISynExc += input;
+    }
+    else
+    {
+      mutableState.m_ISynInh += input;
+    }
+  }
+
   static inline S1615 GetExcInput(const MutableState &mutableState, const ImmutableState &)
   {
     return mutableState.m_ISynExc;

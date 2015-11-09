@@ -403,7 +403,8 @@ class State(common.control.BaseState):
                     # Allocate two output buffers for this synapse population
                     out_buffer_bytes = v.post_neuron_slice.slice_length * 4
                     v.out_buffers = [
-                        machine_controller.sdram_alloc(out_buffer_bytes)
+                        machine_controller.sdram_alloc(out_buffer_bytes,
+                                                       clear=True)
                         for b in range(2)]
                     
                     # Calculate required memory size

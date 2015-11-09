@@ -71,12 +71,3 @@ private:
   Type m_Data[Size];
 };
 } // SynapseProcessor
-
-
-//-----------------------------------------------------------------------------
-// Global functions
-//-----------------------------------------------------------------------------
-//bool ring_buffer_init();
-//void ring_buffer_clear_output_buffer(uint32_t tick);
-
-//#endif  // RING_BUFFER_H
