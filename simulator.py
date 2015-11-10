@@ -452,7 +452,7 @@ class State(common.control.BaseState):
                 with machine_controller(x=vertex_placement[0],
                                         y=vertex_placement[1]):
                     # Get the input buffers from each synapse vertex
-                    in_buffers = [(s.out_buffers[1], s.receptor_index)
+                    in_buffers = [(s.out_buffers, s.receptor_index)
                                   for s in v.synapse_verts]
                     print "\t", in_buffers
 

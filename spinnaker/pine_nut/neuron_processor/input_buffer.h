@@ -56,23 +56,24 @@ public:
     for(unsigned int i = 0; i < m_NumInputBuffers; i++)
     {
       const auto &inputBuffer = m_InputBuffers[i];
-      LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Buffer:%08x, Receptor type:%u, Left shift to S1615:%d",
-        i, inputBuffer.m_Buffer, inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
+      LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Buffers:{%08x, %08x}, Receptor type:%u, Left shift to S1615:%d",
+        i, inputBuffer.m_Buffers[0], inputBuffer.m_Buffers[1], inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
     }
 #endif
     return true;
   }
 
-  bool SetupBufferDMA(unsigned int inputBufferIndex, unsigned int numNeurons, uint tag)
+  bool SetupBufferDMA(unsigned int inputBufferIndex, uint tick, unsigned int numNeurons, uint tag)
   {
     // If there are input buffers outstanding
     if(inputBufferIndex < m_NumInputBuffers)
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing input buffer index:%u", inputBufferIndex);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tStarting DMA of input buffer index:%u (%u)",
+                inputBufferIndex, tick % 2);
 
       // Start DMA into input buffer
       auto inputBuffer = m_InputBuffers[inputBufferIndex];
-      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffer),
+      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffers[tick % 2]),
                          m_DMABuffer, DMA_READ, numNeurons * sizeof(T));
       return false;
     }
@@ -125,7 +126,7 @@ private:
   //-----------------------------------------------------------------------------
   struct Buffer
   {
-    const T *m_Buffer;
+    const T *m_Buffers[2];
     uint32_t m_ReceptorType;
     int32_t m_LeftShiftToS1615;
   };

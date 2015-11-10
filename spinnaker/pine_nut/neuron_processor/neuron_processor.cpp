@@ -50,6 +50,8 @@ InputBuffer g_InputBuffer;
 
 unsigned int g_InputBufferBeingProcessed = UINT_MAX;
 
+uint g_Tick = 0;
+
 //----------------------------------------------------------------------------
 // Functions
 //----------------------------------------------------------------------------
@@ -216,7 +218,7 @@ static void DMATransferDone(uint, uint tag)
     g_InputBufferBeingProcessed++;
 
     // If there aren't any more input buffers to DMA, start neuron update
-    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed,
+    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed, g_Tick,
       g_AppWords[AppWordNumNeurons], DMATagInputRead))
     {
       UpdateNeurons();
@@ -231,6 +233,9 @@ static void DMATransferDone(uint, uint tag)
 static void TimerTick(uint tick, uint)
 {
   LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", tick);
+
+  // Cache tick
+  g_Tick = tick;
 
   // If a fixed number of simulation ticks are specified and these have passed
   if(g_Config.GetSimulationTicks() != UINT32_MAX
@@ -250,7 +255,7 @@ static void TimerTick(uint tick, uint)
     g_InputBufferBeingProcessed = 0;
 
     // If there aren't any input buffers to DMA, start neuron update
-    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed,
+    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed, tick,
       g_AppWords[AppWordNumNeurons], DMATagInputRead))
     {
       UpdateNeurons();
