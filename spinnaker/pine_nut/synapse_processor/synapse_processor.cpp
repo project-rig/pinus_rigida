@@ -276,14 +276,20 @@ void TimerTick(uint tick, uint)
             tick, (tick % 2), g_OutputBuffers[tick % 2]);
 
   // Get output buffer from 'back' of ring-buffer
-  const RingBuffer::Type *pOutputBuffer = g_RingBuffer.GetOutputBuffer(tick);
+  const RingBuffer::Type *outputBuffer = g_RingBuffer.GetOutputBuffer(tick);
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  for(unsigned int i = 0; i < g_AppWords[AppWordNumPostNeurons]; i++)
+  {
+    io_printf(IO_BUF, "%u,", outputBuffer[i]);
+  }
+  io_printf(IO_BUF, "\n");
+#endif
 
   // DMA output buffer into correct output buffer for this timer tick
-  //spin1_dma_transfer(DMATagOutputWrite,
-  //  g_OutputBuffers[tick % 2],
-  //  output_buffer,
-  //  DMA_WRITE,
-  //  output_buffer_bytes);
+  spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[tick % 2],
+                     const_cast<RingBuffer::Type*>(outputBuffer), DMA_WRITE,
+                     g_AppWords[AppWordNumPostNeurons] * sizeof(uint32_t));
 }
 } // anonymous namespace
 

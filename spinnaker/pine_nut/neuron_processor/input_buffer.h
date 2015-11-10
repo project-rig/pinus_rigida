@@ -103,8 +103,12 @@ public:
       auto rightShift = (const unsigned int)(-inputBuffer.m_LeftShiftToS1615);
       for(unsigned int n = 0; n < numNeurons; n++)
       {
-        S1615 input = (S1615)((*dmaEntry++) >> rightShift);
-        applyInputFunction(n, input, inputBuffer.m_ReceptorType);
+        T input = *dmaEntry++;
+        S1615 scaledInput = (S1615)(input >> rightShift);
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+        io_printf(IO_BUF, "%u (%knA),", input, scaledInput);
+#endif
+        applyInputFunction(n, scaledInput, inputBuffer.m_ReceptorType);
       }
     }
     // If input buffer needs to be left-shifted to S1615
@@ -114,10 +118,18 @@ public:
       auto leftShift = (const unsigned int)inputBuffer.m_LeftShiftToS1615;
       for(unsigned int n = 0; n < numNeurons; n++)
       {
-        S1615 input = (S1615)((*dmaEntry++) << leftShift);
-        applyInputFunction(n, input, inputBuffer.m_ReceptorType);
+        T input = *dmaEntry++;
+        S1615 scaledInput = (S1615)(input << leftShift);
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+        io_printf(IO_BUF, "%u (%knA),", input, scaledInput);
+#endif
+        applyInputFunction(n, scaledInput, inputBuffer.m_ReceptorType);
       }
     }
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    io_printf(IO_BUF, "\n");
+#endif
   }
 
 private:
