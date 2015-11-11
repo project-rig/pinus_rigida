@@ -168,17 +168,25 @@ void UpdateNeurons()
 {
   // Loop through neurons
   auto *neuronMutableState = g_NeuronMutableState;
-  auto *neuronImmutableState = g_NeuronImmutableState;
+  const auto *neuronImmutableState = g_NeuronImmutableState;
+  auto *synapseMutableState = g_SynapseMutableState;
+  const auto *synapseImmutableState = g_SynapseImmutableState;
   for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
 
+    // Get synaptic input
+    auto &synMutable = *synapseMutableState++;
+    const auto &synImmutable = *synapseImmutableState++;
+    S1615 excInput = Synapse::GetExcInput(synMutable, synImmutable);
+    S1615 inhInput = Synapse::GetInhInput(synMutable, synImmutable);
+
     // Update neuron, if it spikes
-    S1615 exc_input = 0;
-    S1615 inh_input = 0;
-    S1615 external_input = 0;
+    S1615 extCurrent = 0;
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tExcitatory input:%k, Inhibitory input:%k, External current:%knA",
+              excInput, inhInput, extCurrent);
     if(Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
-      exc_input, inh_input, external_input))
+      excInput, inhInput, extCurrent))
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
 
@@ -206,6 +214,7 @@ static void DMATransferDone(uint, uint tag)
       [](unsigned int neuron, S1615 input, unsigned int receptorType)
       {
         Synapse::ApplyInput(g_SynapseMutableState[neuron],
+                            g_SynapseImmutableState[neuron],
                             input, receptorType);
       };
 
@@ -251,6 +260,14 @@ static void TimerTick(uint tick, uint)
   // Otherwise
   else
   {
+    // Loop through neurons and shape synaptic inputs
+    auto *synapseMutableState = g_SynapseMutableState;
+    const auto *synapseImmutableState = g_SynapseImmutableState;
+    for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+    {
+      Synapse::Shape(*synapseMutableState++, *synapseImmutableState++);
+    }
+
     // Start at first input buffer
     g_InputBufferBeingProcessed = 0;
 

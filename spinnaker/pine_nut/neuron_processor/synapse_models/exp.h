@@ -2,6 +2,7 @@
 
 // Common includes
 #include "../../common/fixed_point_number.h"
+#include "../../common/spinnaker.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;
@@ -48,16 +49,17 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline void ApplyInput(MutableState &mutableState, S1615 input, unsigned int receptorType)
+  static inline void ApplyInput(MutableState &mutableState, const ImmutableState &immutableState, S1615 input, unsigned int receptorType)
   {
     // Apply input to correct receptor
+    // **TODO** Are m_ExpTauSynExc and m_ExpTauSynInh always going to be 16 bits? If so, can we use 16x32 DSP multiply
     if(receptorType == 0)
     {
-      mutableState.m_ISynExc += input;
+      mutableState.m_ISynExc += MulS1615(input, immutableState.m_InitE);
     }
     else
     {
-      mutableState.m_ISynInh += input;
+      mutableState.m_ISynInh += MulS1615(input, immutableState.m_InitI);
     }
   }
 
@@ -74,6 +76,7 @@ public:
   static inline void Shape(MutableState &mutableState, const ImmutableState &immutableState)
   {
     // Decay both currents
+    // **TODO** Are m_ExpTauSynExc and m_ExpTauSynInh always going to be 16 bits? If so, can we use 16x32 DSP multiply
     mutableState.m_ISynExc = MulS1615(mutableState.m_ISynExc, immutableState.m_ExpTauSynExc);
     mutableState.m_ISynInh = MulS1615(mutableState.m_ISynInh, immutableState.m_ExpTauSynInh);
   }

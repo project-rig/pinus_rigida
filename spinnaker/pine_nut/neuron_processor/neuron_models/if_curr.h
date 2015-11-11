@@ -65,16 +65,16 @@ public:
   // Static methods
   //-----------------------------------------------------------------------------
   static inline bool Update(MutableState &mutableState, const ImmutableState &immutableState,
-                            S1615 excInput, S1615 inhInput, S1615 extBiasCurrent)
+                            S1615 excInput, S1615 inhInput, S1615 extCurrent)
   {
     // If outside of the refractory period
     if (mutableState.m_RefractoryTimer <= 0)
     {
       // Get the input in nA
       S1615 inputThisTimestep = excInput - inhInput
-        + extBiasCurrent + immutableState.m_I_Offset;
+        + extCurrent + immutableState.m_I_Offset;
 
-      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tInput this timestep:%.4knA %.4kMOhm", inputThisTimestep, immutableState.m_R_Membrane);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tInput this timestep:%.4knA", inputThisTimestep);
 
       // Convert input from current to voltage
       S1615 alpha = MulS1615(inputThisTimestep, immutableState.m_R_Membrane) + immutableState.m_V_Rest;
