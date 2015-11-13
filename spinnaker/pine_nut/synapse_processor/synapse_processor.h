@@ -13,7 +13,7 @@ enum Region
   RegionSynapticMatrix      = 4,
   RegionPlasticity          = 5,
   RegionOutputBuffer        = 7,
-  RegionProfiler            = 11,
+  RegionProfiler            = 10,
 };
 
 // Indexes of application words

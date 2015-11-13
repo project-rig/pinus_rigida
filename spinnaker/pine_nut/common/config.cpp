@@ -44,7 +44,7 @@ bool Config::ReadSystemRegion(const uint32_t *region, uint32_t,
   return true;
 }
 //-----------------------------------------------------------------------------
-const uint32_t *Config::GetBaseAddressAllocTag()
+uint32_t *Config::GetBaseAddressAllocTag()
 {
   // Get core and app ID from sark
   unsigned int coreID = sark_core_id();
@@ -52,7 +52,7 @@ const uint32_t *Config::GetBaseAddressAllocTag()
 
   // Find tag for this core's base address
   // **TODO** next SARK will have build in function to do this
-  const uint32_t *address = (const uint32_t*)sv->alloc_tag[(appID << 8) + coreID];
+  uint32_t *address = (uint32_t*)sv->alloc_tag[(appID << 8) + coreID];
   LOG_PRINT(LOG_LEVEL_INFO, "Based on allocated tag, SDRAM for app_id %u running on core %u begins at %08x", appID, coreID, address);
   return address;
 }

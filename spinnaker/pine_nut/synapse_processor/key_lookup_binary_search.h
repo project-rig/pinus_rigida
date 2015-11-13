@@ -76,16 +76,16 @@ public:
     return false;
   }
 
-  bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t)
+  bool ReadSDRAMData(uint32_t *region, uint32_t)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "ReadKeyLookupRegion");
 
     // Read base address and num lookup entries from 1st 2 words
-    m_NumLookupEntries = baseAddress[0];
+    m_NumLookupEntries = region[0];
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum lookup entries:%u", m_NumLookupEntries);
 
     // Copy key lookup entries
-    const uint32_t *structArray = &baseAddress[1];
+    uint32_t *structArray = &region[1];
     if(!AllocateCopyStructArray(m_NumLookupEntries, structArray, m_LookupEntries))
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate key lookup array");

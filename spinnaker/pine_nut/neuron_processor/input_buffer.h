@@ -28,16 +28,16 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t, unsigned int numNeurons)
+  bool ReadSDRAMData(uint32_t *region, uint32_t, unsigned int numNeurons)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "ReadInputBufferRegion");
+    LOG_PRINT(LOG_LEVEL_INFO, "InputBufferBase::ReadSDRAMData");
 
     // Read base address and num lookup entries from 1st 2 words
-    m_NumInputBuffers = baseAddress[0];
+    m_NumInputBuffers = region[0];
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum input buffers:%u", m_NumInputBuffers);
 
     // Copy key lookup entries
-    const uint32_t *structArray = &baseAddress[1];
+    uint32_t *structArray = &region[1];
     if(!AllocateCopyStructArray(m_NumInputBuffers, structArray, m_InputBuffers))
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate key lookup array");

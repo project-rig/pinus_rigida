@@ -6,6 +6,7 @@ EXTRA_SOURCES = ../../neuron_models/if_curr.cpp \
 
 # Build object list
 SOURCES = ../../../common/config.cpp \
+	../../../common/bit_field.cpp \
 	../../neuron_processor.cpp \
 	$(EXTRA_SOURCES)
 

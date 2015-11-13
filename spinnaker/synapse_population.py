@@ -33,7 +33,7 @@ class SynapsePopulation(object):
         self.regions[4] = regions.SynapticMatrix()
         #self.regions[5] = regions.Plasticity()
         self.regions[7] = regions.OutputBuffer()
-        #self.regions[11] = regions.Profiler()
+        #self.regions[10] = regions.Profiler()
 
     #--------------------------------------------------------------------------
     # Public methods

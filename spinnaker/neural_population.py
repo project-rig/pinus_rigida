@@ -13,17 +13,17 @@ class NeuralPopulation(object):
     MAX_CELLS = 1024
     
     def __init__(self, cell_type, parameters, initial_values,
-                 simulation_timestep_us, timer_period_us, simulation_ticks):
+                 simulation_timestep_us, timer_period_us, simulation_ticks,
+                 indices_to_record):
         # List of regions
         self.regions = [None] * 12
         self.regions[0] = regions.System(timer_period_us, simulation_ticks)
         self.regions[1] = regions.Neuron(cell_type, parameters, initial_values)
         self.regions[2] = regions.Synapse(cell_type, parameters, initial_values)
         self.regions[6] = regions.InputBuffer()
-        #self.regions[8] = SpikeRecordingRegion()
-        #self.regions[9] = VoltageRecordingRegion()
-        #self.regions[10] = CurrentRecordingRegion()
-        #self.regions[11] = ProfilerRegion()
+        self.regions[8] = regions.SpikeRecording(indices_to_record, simulation_ticks)
+        #self.regions[9] = AnalogueRecordingRegion()
+        #self.regions[10] = ProfilerRegion()
     
     #--------------------------------------------------------------------------
     # Public methods

@@ -70,7 +70,7 @@ inline DMABuffer &DMANextRowBuffer()
 //-----------------------------------------------------------------------------
 // Module functions
 //-----------------------------------------------------------------------------
-bool ReadSynapticMatrixRegion(const uint32_t *region, uint32_t)
+bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadSynapticMatrixRegion");
 
@@ -83,7 +83,7 @@ bool ReadSynapticMatrixRegion(const uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadOutputBufferRegion(const uint32_t *region, uint32_t)
+bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
 {
   // Copy two output buffer pointers from region
   spin1_memcpy(g_OutputBuffers, region, 2 * sizeof(uint32_t*));
@@ -99,7 +99,7 @@ bool ReadOutputBufferRegion(const uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
+bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 {
   // Verify data header
   if(!g_Config.VerifyHeader(baseAddress, flags))
@@ -300,7 +300,7 @@ extern "C" void c_main()
 {
   //static_init();
   // Get this core's base address using alloc tag
-  const uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
 
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))

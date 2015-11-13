@@ -101,7 +101,8 @@ class Population(common.Population, ContextMixin):
         # Create neural population
         return NeuralPopulation(self.celltype, parameters,
                                 self.initial_values, simulation_timestep_us,
-                                timer_period_us, simulation_ticks)
+                                timer_period_us, simulation_ticks,
+                                self.recorder.indices_to_record)
 
     def create_spinnaker_synapse_population(self, matrices, 
                                             incoming_weight_range, 

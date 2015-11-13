@@ -12,6 +12,7 @@
 
 // Neuron processor includes
 #include "input_buffer.h"
+#include "spike_recording.h"
 
 // Configuration include
 #include "config.h"
@@ -47,6 +48,7 @@ Synapse::MutableState *g_SynapseMutableState = NULL;
 Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
 InputBuffer g_InputBuffer;
+SpikeRecording g_SpikeRecording;
 
 unsigned int g_InputBufferBeingProcessed = UINT_MAX;
 
@@ -55,7 +57,7 @@ uint g_Tick = 0;
 //----------------------------------------------------------------------------
 // Functions
 //----------------------------------------------------------------------------
-bool ReadNeuronRegion(const uint32_t *region, uint32_t)
+bool ReadNeuronRegion(uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadNeuronRegion");
 
@@ -87,7 +89,7 @@ bool ReadNeuronRegion(const uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadSynapseRegion(const uint32_t *region, uint32_t)
+bool ReadSynapseRegion(uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadSynapseRegion");
 
@@ -118,7 +120,7 @@ bool ReadSynapseRegion(const uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
+bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 {
   // Verify data header
   if(!g_Config.VerifyHeader(baseAddress, flags))
@@ -161,6 +163,14 @@ bool ReadSDRAMData(const uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read spike recording region
+  if(!g_SpikeRecording.ReadSDRAMData(
+    Common::Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
+    g_AppWords[AppWordNumNeurons]))
+  {
+    return false;
+  }
+
   return true;
 }
 //-----------------------------------------------------------------------------
@@ -171,7 +181,7 @@ void UpdateNeurons()
   const auto *neuronImmutableState = g_NeuronImmutableState;
   auto *synapseMutableState = g_SynapseMutableState;
   const auto *synapseImmutableState = g_SynapseImmutableState;
-  for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+  for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
 
@@ -181,12 +191,18 @@ void UpdateNeurons()
     S1615 excInput = Synapse::GetExcInput(synMutable, synImmutable);
     S1615 inhInput = Synapse::GetInhInput(synMutable, synImmutable);
 
-    // Update neuron, if it spikes
+    // Update neuron
     S1615 extCurrent = 0;
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tExcitatory input:%k, Inhibitory input:%k, External current:%knA",
               excInput, inhInput, extCurrent);
-    if(Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
-      excInput, inhInput, extCurrent))
+    bool spiked = Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
+      excInput, inhInput, extCurrent);
+
+    // Record spike
+    g_SpikeRecording.RecordSpike(n, spiked);
+
+    // If it spikes
+    if(spiked)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
 
@@ -198,6 +214,9 @@ void UpdateNeurons()
       }
     }
   }
+
+  // Transfer spike recording buffer to SDRAM
+  g_SpikeRecording.TransferBuffer();
 }
 
 //-----------------------------------------------------------------------------
@@ -288,7 +307,7 @@ static void TimerTick(uint tick, uint)
 extern "C" void c_main()
 {
   // Get this core's base address using alloc tag
-  const uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
   
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))

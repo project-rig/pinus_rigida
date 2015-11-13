@@ -15,7 +15,7 @@ namespace Utils
 {
 // **TODO** const somewhere on inputPointer!
 template<typename T>
-bool AllocateCopyStructArray(unsigned int numElements, const uint32_t *&inputPointer, T *&outputArray)
+bool AllocateCopyStructArray(unsigned int numElements, uint32_t *&inputPointer, T *&outputArray)
 {
   static_assert(sizeof(T) % 4 == 0, "Only word-aligned structures are supported");
 
