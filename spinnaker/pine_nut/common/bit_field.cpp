@@ -56,68 +56,51 @@
  */
 
 #include "bit_field.h"
-//#include "sark.h"
-//#include "debug.h"
 
+// Common includes
+#include "spinnaker.h"
+
+//-----------------------------------------------------------------------------
+// Common::BitField
+//-----------------------------------------------------------------------------
+namespace Common
+{
+namespace BitField
+{
 //! \brief This function prints out an individual word of a bit_field,
 // as a sequence of ones and zeros.
 //! \param[in] e The word of a bit_field to be printed.
-static inline void print_bit_field_entry(uint32_t e)
+void PrintWord(char *stream, uint32_t e)
 {
-    counter_t i = 32;
-
-    for ( ; i > 0; i--) {
-	    log_debug("%c", ((e & 0x1) == 0)? ' ': '1');
-	    e = e >> 1;
+    for (unsigned int i = 32 ; i > 0; i--)
+    {
+      io_printf(stream, "%c", ((e & 0x1) == 0) ? '0': '1');
+      e = e >> 1;
     }
-
-    log_debug("\n");
 }
 
 //! \brief This function prints out an entire bit_field,
 // as a sequence of ones and zeros.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
-void print_bit_field_bits(bit_field_t b, size_t s)
+void PrintBits(char *stream, uint32_t *b, unsigned int s)
 {
-    use(b);
-    use(s);
-#if LOG_LEVEL >= LOG_DEBUG
-    index_t i; //!< For indexing through the bit field
-
-    for (i = 0; i < s; i++)
-	    print_bit_field_entry(b [i]);
-#endif // LOG_LEVEL >= LOG_DEBUG
+    for(unsigned int i = 0; i < s; i++)
+    {
+      PrintWord(stream, b[i]);
+    }
 }
 
 //! \brief This function prints out an entire bit_field,
 // as a sequence of hexadecimal numbers, one per line.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
-void print_bit_field(bit_field_t b, size_t s)
+void Print(char *stream, uint32_t *b, unsigned int s)
 {
-    use(b);
-    use(s);
-#if LOG_LEVEL >= LOG_DEBUG
-    index_t i; //!< For indexing through the bit field
-
-    for (i = 0; i < s; i++)
-	    log_debug("%08x\n", b [i]);
-#endif // LOG_LEVEL >= LOG_DEBUG
+    for(unsigned int i = 0; i < s; i++)
+    {
+      io_printf(stream, "%08x",b[i]);
+    }
 }
-
-//! \brief This function generates a random bit_field.
-//! \param[in] b The sequence of words representing a bit_field.
-//! \param[in] s The size of the bit_field.
-
-void random_bit_field(bit_field_t b, size_t s)
-{
-    use(b);
-    use(s);
-#if LOG_LEVEL >= LOG_DEBUG
-    index_t i; //!< For indexing through the bit field
-
-    for (i = 0; i < s; i++)
-	    b[i] = sark_rand();
-#endif // LOG_LEVEL >= LOG_DEBUG
-}
+} // namespace BitField
+} // namespace Common

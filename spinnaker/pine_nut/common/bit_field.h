@@ -54,60 +54,52 @@
  *    $Log$
  *
  */
-
-#ifndef BIT_FIELD_H
-#define BIT_FIELD_H
+#pragma once
 
 // Standard includes
-#include <stdint.h>
-#include <stdbool.h>
-
-// Sark includes
-#include <sark.h>
+#include <cstdint>
 
 //-----------------------------------------------------------------------------
-// Typedefines
+// Common::BitField
 //-----------------------------------------------------------------------------
-typedef uint32_t *bit_field_t;
-
-//-----------------------------------------------------------------------------
-// Inline functions
-//-----------------------------------------------------------------------------
+namespace Common
+{
+namespace BitField
+{
 //! \brief This function tests a particular bit of a bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] n The size of the bit_field.
 //! \return The function returns true if the bit is set or false otherwise.
-static inline bool bit_field_test_bit(bit_field_t b, uint n)
+inline bool TestBit(uint32_t *b, unsigned int n)
 {
-    return ((b [n >> 5] & (1 << (n & 0x1F))) != 0); 
+  return ((b [n >> 5] & (1 << (n & 0x1F))) != 0);
 }
 
 //! \brief This function clears a particular bit of a bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] n The size of the bit_field.
-static inline void bit_field_clear_bit(bit_field_t b, uint n)
+inline void ClearBit(uint32_t *b, unsigned int n)
 {
-    b [n >> 5] &= ~(1 << (n & 0x1F)); 
+  b [n >> 5] &= ~(1 << (n & 0x1F));
 }
 
 //! \brief This function sets a particular bit of a bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] n The bit in the bit_field of interest.
-static inline void bit_field_set_bit(bit_field_t b, uint n)
-{ 
-    b [n >> 5] |= (1 << (n & 0x1F)); 
+inline void SetBit(uint32_t *b, unsigned int n)
+{
+  b [n >> 5] |= (1 << (n & 0x1F));
 }
 
 //! \brief This function negates the bits of an entire bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
-static inline void bit_field_flip(bit_field_t b, uint s)
-{ 
-    for ( ; s > 0; s--) 
-    {
-        b [s-1] = ~ (b [s-1]); 
-        
-    }
+inline void Flip(uint32_t *b, unsigned int s)
+{
+  for ( ; s > 0; s--)
+  {
+    b [s-1] = ~ (b [s-1]);
+  }
 }
 
 //! \brief This function ands two bit_fields together.
@@ -115,11 +107,11 @@ static inline void bit_field_flip(bit_field_t b, uint s)
 //! the result is returned in this parameter.
 //! \param[in] b2 The sequence of words representing the second bit_field.
 //! \param[in] s The size of the bit_field.
-static inline void bit_field_and(bit_field_t b1, bit_field_t b2, uint s)
-{ 
-    for ( ; s > 0; s--) 
+inline void And(uint32_t *b1, uint32_t *b2, unsigned int s)
+{
+    for ( ; s > 0; s--)
     {
-        b1 [s-1] &= b2 [s-1]; 
+      b1 [s-1] &= b2 [s-1];
     }
 }
 
@@ -128,33 +120,33 @@ static inline void bit_field_and(bit_field_t b1, bit_field_t b2, uint s)
 //! the result is returned in this parameter.
 //! \param[in] b2 The sequence of words representing the second bit_field.
 //! \param[in] s The size of the bit_field.
-static inline void bit_field_or(bit_field_t b1, bit_field_t b2, uint s)
-{ 
-    for ( ; s > 0; s--) 
+inline void Or(uint32_t *b1, uint32_t *b2, unsigned int s)
+{
+    for ( ; s > 0; s--)
     {
-        b1 [s-1] |= b2 [s-1]; 
+        b1 [s-1] |= b2 [s-1];
     }
 }
 
 //! \brief This function clears an entire bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
-static inline void bit_field_clear(bit_field_t b, uint s)
-{ 
-    for ( ; s > 0; s--) 
+inline void Clear(uint32_t *b, unsigned int s)
+{
+    for ( ; s > 0; s--)
     {
-        b [s-1] = 0; 
+        b [s-1] = 0;
     }
 }
 
 //! \brief This function sets an entire bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
-static inline void bit_field_set(bit_field_t b, uint s)
-{ 
+inline void Set(uint32_t *b, unsigned int s)
+{
     for ( ; s > 0; s--)
     {
-        b [s-1] = 0xFFFFFFFF; 
+        b [s-1] = 0xFFFFFFFF;
     }
 }
 
@@ -162,7 +154,7 @@ static inline void bit_field_set(bit_field_t b, uint s)
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 //! \return The function returns true if every bit is zero, or false otherwise.
-static inline bool bit_field_is_empty(bit_field_t b, uint s)
+inline bool IsEmpty(uint32_t *b, unsigned int s)
 {
     bool empty = true;
 
@@ -170,8 +162,8 @@ static inline bool bit_field_is_empty(bit_field_t b, uint s)
     {
         empty = empty && (b [s-1] == 0);
     }
-    
-    return (empty);
+
+    return empty;
 }
 
 //! \brief Testing whether a bit_field is non-empty, _i.e._ if there is at
@@ -179,26 +171,22 @@ static inline bool bit_field_is_empty(bit_field_t b, uint s)
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 //! \return The function returns true if at least one bit is set; otherwise false.
-static inline bool bit_field_is_nonempty(bit_field_t b, uint s)
+inline bool IsNonEmpty(uint32_t *b, unsigned int s)
 {
-    return !bit_field_is_empty(b, s); 
+    return !IsEmpty(b, s);
 }
 
 //! \brief A function that calculates the size of a bit_field to hold 'bits'
 //! bits.
 //! \param[in] bits The number of bits required for this bit_field.
 //! \return The size (or number of words) in the bit_field.
-static inline uint bit_field_get_word_size(uint bits)
+inline unsigned int GetWordSize(unsigned int bits)
 {
-    // **NOTE** in floating point terms this is ceil(num_neurons / 32)
-    const uint bits_to_words_shift = 5;
-    const uint bits_to_words_remainder = (1 << bits_to_words_shift) - 1;
-
     // Down shift number of bits to words
-    uint words = bits >> bits_to_words_shift;
+    unsigned int words = bits >> 5;
 
     // If there was a remainder, add an extra word
-    if ((bits & bits_to_words_remainder) != 0)
+    if ((bits & 0xFFFFFFFF) != 0)
     {
         words++;
     }
@@ -209,12 +197,12 @@ static inline uint bit_field_get_word_size(uint bits)
 //! \brief Prints a bit_field as ones and zeros.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
-void bit_field_print_bits(bit_field_t b, uint s);
+void PrintBits(char *stream, uint32_t *b, unsigned int s);
 
 //! \brief Prints a bit_field as a sequence of hexadecimal characters.
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 
-void bit_field_print(bit_field_t b, uint s);
-
-#endif // BIT_FIELD_H
+void Print(char *stream, uint32_t *b, unsigned int s);
+} // namespace BitField
+} // namespace Common
