@@ -16,7 +16,7 @@ class KeyLookupBinarySearch(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, sub_matrices, matrix_placements):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -35,9 +35,9 @@ class KeyLookupBinarySearch(Region):
             of the region.
         """
         # 1 word header followed by a 3 word struct for each sub-matrix
-        return 4 + (len(formatter_args["sub_matrices"]) * 12)
+        return 4 + (len(sub_matrices) * 12)
 
-    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
+    def write_subregion_to_file(self, fp, sub_matrices, matrix_placements):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -52,9 +52,6 @@ class KeyLookupBinarySearch(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
-        sub_matrices = formatter_args["sub_matrices"]
-        matrix_placements = formatter_args["matrix_placements"]
-
         # Write header
         data = b''
         data += struct.pack("I", len(sub_matrices))

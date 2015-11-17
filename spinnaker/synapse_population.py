@@ -1,10 +1,24 @@
 # Import modules
+import enum
 import math
 import regions
 
+# Import classes
+from collections import defaultdict
+
 # Import functions
 from utils import (
-    create_app_ptr_and_region_files, sizeof_regions)
+    Args, create_app_ptr_and_region_files_named, sizeof_regions_named)
+
+#------------------------------------------------------------------------------
+# SynapsePopulationRegions
+#------------------------------------------------------------------------------
+class SynapsePopulationRegions(enum.IntEnum):
+    """Region names, corresponding to those defined in `ensemble.h`"""
+    system = 0,
+    key_lookup = 3,
+    synaptic_matrix = 4,
+    output_buffer = 7
 
 #------------------------------------------------------------------------------
 # SynapsePopulation
@@ -26,13 +40,17 @@ class SynapsePopulation(object):
         # Calculate where the weight format fixed-point lies
         self.weight_fixed_point = 16 - int(weight_msb[1])
         
-        # List of regions
-        self.regions = [None] * 12
-        self.regions[0] = regions.System(timer_period_us, simulation_ticks)
-        self.regions[3] = regions.KeyLookupBinarySearch()
-        self.regions[4] = regions.SynapticMatrix()
+        # Dictionary of regions
+        self.regions = {}
+        self.regions[SynapsePopulationRegions.system] =\
+            regions.System(timer_period_us, simulation_ticks)
+        self.regions[SynapsePopulationRegions.key_lookup] =\
+            regions.KeyLookupBinarySearch()
+        self.regions[SynapsePopulationRegions.synaptic_matrix] =\
+            regions.SynapticMatrix()
         #self.regions[5] = regions.Plasticity()
-        self.regions[7] = regions.OutputBuffer()
+        self.regions[SynapsePopulationRegions.output_buffer] =\
+            regions.OutputBuffer()
         #self.regions[10] = regions.Profiler()
 
     #--------------------------------------------------------------------------
@@ -50,46 +68,52 @@ class SynapsePopulation(object):
         return sub_matrices, matrix_placements
 
     def get_size(self, post_vertex_slice, sub_matrices, matrix_placements, out_buffers):
-        # Build region kwargs
-        region_kwargs = {
-            "application_words": [self.weight_fixed_point, 
-                                  post_vertex_slice.slice_length],
-            "sub_matrices": sub_matrices,
-            "matrix_placements": matrix_placements,
-            "out_buffers": out_buffers,
-            "weight_fixed_point": self.weight_fixed_point
-        }
+        region_arguments = self._get_region_arguments(
+            post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions(self.regions, post_vertex_slice, 
-                                           **region_kwargs)
+        vertex_size_bytes = sizeof_regions_named(self.regions, region_arguments)
 
         print("\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements, 
                       out_buffers, fp):
-        # Build region kwargs
-        region_kwargs = {
-            "application_words": [self.weight_fixed_point, 
-                                  post_vertex_slice.slice_length],
-            "sub_matrices": sub_matrices,
-            "matrix_placements": matrix_placements,
-            "out_buffers": out_buffers,
-            "weight_fixed_point": self.weight_fixed_point
-        }
+        region_arguments = self._get_region_arguments(
+            post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
 
         # Layout the slice of SDRAM we have been given
-        region_memory = create_app_ptr_and_region_files(
-            fp, self.regions, post_vertex_slice, **region_kwargs)
+        self.region_memory = create_app_ptr_and_region_files_named(
+            fp, self.regions, region_arguments)
 
-        # Write in each region
-        for region, mem in zip(self.regions, region_memory):
-            if region is None:
-                pass
-            #elif region is self.output_keys_region:
-            #    self.output_keys_region.write_subregion_to_file(
-            #        mem, vertex.slice, cluster=vertex.cluster)
-            else:
-                region.write_subregion_to_file(mem, post_vertex_slice, 
-                                               **region_kwargs)
+        # Write each region into memory
+        for key in SynapsePopulationRegions:
+            # Get the arguments and the memory
+            args, kwargs = region_arguments[key]
+            mem = self.region_memory[key]
+
+            # Get the region
+            region = self.regions[key]
+
+            # Perform the write
+            region.write_subregion_to_file(mem, *args, **kwargs)
+
+    #--------------------------------------------------------------------------
+    # Private methods
+    #--------------------------------------------------------------------------
+    def _get_region_arguments(self, post_vertex_slice, sub_matrices, matrix_placements, out_buffers):
+        region_arguments = defaultdict(Args)
+
+        # Add kwargs for regions that require them
+        region_arguments[SynapsePopulationRegions.system].kwargs["application_words"] = [self.weight_fixed_point, post_vertex_slice.slice_length]
+
+        region_arguments[SynapsePopulationRegions.key_lookup].kwargs["sub_matrices"] = sub_matrices
+        region_arguments[SynapsePopulationRegions.key_lookup].kwargs["matrix_placements"] = matrix_placements
+
+        region_arguments[SynapsePopulationRegions.synaptic_matrix].kwargs["sub_matrices"] = sub_matrices
+        region_arguments[SynapsePopulationRegions.synaptic_matrix].kwargs["matrix_placements"] = matrix_placements
+        region_arguments[SynapsePopulationRegions.synaptic_matrix].kwargs["weight_fixed_point"] = self.weight_fixed_point
+
+        region_arguments[SynapsePopulationRegions.output_buffer].kwargs["out_buffers"] = out_buffers
+
+        return region_arguments

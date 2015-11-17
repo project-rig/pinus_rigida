@@ -6,6 +6,13 @@ import struct
 # Import classes
 from collections import namedtuple
 
+# Import functions
+from six import (iteritems, iterkeys)
+
+class Args(namedtuple("Args", "args, kwargs")):
+    def __new__(cls, *args, **kwargs):
+        return super(Args, cls).__new__(cls, args, kwargs)
+
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     @property
     def slice_length(self):
@@ -48,44 +55,82 @@ def apply_param_map(lazy_params, param_map, size):
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
 # to the start, this is common with Nengo SpiNNaker
-def create_app_ptr_and_region_files(fp, regions, vertex_slice, **kwargs):
+def create_app_ptr_and_region_files_named(fp, regions, region_args):
     """Split up a file-like view of memory into smaller views, one per region,
     and write into the first region of memory the offsets to these later
     regions.
 
+    Parameters
+    ----------
+    regions : {name: Region, ...}
+        Map from keys to region objects.  The keys MUST support `int`, items
+        from :py:class:`enum.IntEnum` are recommended.
+    region_args : {name: (*args, **kwargs)}
+        Map from keys to the arguments and keyword-arguments that should be
+        used when determining the size of a region.
+
     Returns
     -------
-    [file-like view, ...]
-        A file-like view of memory for each region.
+    {name: file-like}
+        Map from region name to file-like view of memory.
     """
-    # First we split off the application pointer region
-    ptrs = [0 for n in range(len(regions))]
-    offset = 4 + (len(ptrs) * 4)  # 1 word per region and magic number
+    # Determine the number of entries needed in the application pointer table
+    ptr_len = max(int(k) for k in iterkeys(regions)) + 1
 
-    # Then we go through and assign each region in turn
-    region_memory = list()
-    for i, r in enumerate(regions):
-        if r is None:
-            region_memory.append(None)
-        else:
-            ptrs[i] = offset
-            next_offset = offset + r.sizeof_padded(vertex_slice, **kwargs)
-            region_memory.append(fp[offset:next_offset])
-            offset = next_offset
+    # Construct an empty pointer table of the correct length
+    ptrs = [0] * ptr_len
 
-    # Write magic number followed by pointer table
+    # Update the offset and then begin to allocate memory
+    region_memory = dict()
+    offset = (ptr_len * 4) + 4  # 1 word per region and magic number
+    for k, region in iteritems(regions):
+        # Get the size of this region
+        args, kwargs = region_args[k]
+        region_size = region.sizeof_padded(*args, **kwargs)
+
+        # Store the current offset as the pointer for this region
+        ptrs[int(k)] = offset
+
+        # Get the memory region and update the offset
+        next_offset = offset + region_size
+        region_memory[k] = fp[offset:next_offset]
+        offset = next_offset
+
+    # Write the pointer table into memory
     fp.seek(0)
-    fp.write(struct.pack("<%uI" % (1 + len(ptrs)), 0xAD130AD6, *ptrs))
+    fp.write(struct.pack("<{}I".format(1 + ptr_len), 0xAD130AD6, *ptrs))
+    fp.seek(0)
 
-    # Return the file views
+    # Return the region memories
     return region_memory
 
-# **FUTUREFRONTEND** this is common with Nengo SpiNNaker
-def sizeof_regions(regions, vertex_slice, include_app_ptr=True, **kwargs):
-    """Return the total amount of memory required to represent all the regions
-    when they are padded to take a whole number of words each.
+def sizeof_regions_named(regions, region_args, include_app_ptr=True):
+    """Return the total amount of memory required to represent all regions when
+    padded to a whole number of words each.
+
+    Parameters
+    ----------
+    regions : {name: Region, ...}
+        Map from keys to region objects.  The keys MUST support `int`, items
+        from :py:class:`enum.IntEnum` are recommended.
+    region_args : {name: (*args, **kwargs)}
+        Map from keys to the arguments and keyword-arguments that should be
+        used when determining the size of a region.
     """
-    size = sum(r.sizeof_padded(vertex_slice, **kwargs) for r in regions if r is not None)
     if include_app_ptr:
-        size += (len(regions) * 4) + 4
+        # Get the size of the application pointer
+        size = 4 + ((max(int(k) for k in iterkeys(regions)) + 1) * 4)
+    else:
+        # Don't include the application pointer
+        size = 0
+
+    # Get the size of all the regions
+    for key, region in iteritems(regions):
+        # Get the arguments for the region
+        args, kwargs = region_args[key]
+
+        print region.__class__.__name__
+        # Add the size of the region
+        size += region.sizeof_padded(*args, **kwargs)
+
     return size

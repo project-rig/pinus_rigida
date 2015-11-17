@@ -13,7 +13,7 @@ class OutputBuffer(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, out_buffers):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -34,7 +34,7 @@ class OutputBuffer(Region):
         # Two pointers
         return 2 * 4
 
-    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
+    def write_subregion_to_file(self, fp, out_buffers):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -49,7 +49,6 @@ class OutputBuffer(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
-        out_buffers = formatter_args["out_buffers"]
         assert len(out_buffers) == 2
         
         # Write output buffer pointers to file

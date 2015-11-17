@@ -21,7 +21,7 @@ class System(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **kwargs):
+    def sizeof(self, application_words):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -39,12 +39,9 @@ class System(Region):
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        # Extract application words from formatter
-        application_words = kwargs["application_words"]
-
         return 4 * (2 + len(application_words))
 
-    def write_subregion_to_file(self, fp, vertex_slice, **kwargs):
+    def write_subregion_to_file(self, fp, application_words):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -59,9 +56,6 @@ class System(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
-        # Extract application words from formatter
-        application_words = kwargs["application_words"]
-
         # Write structure
         fp.write(struct.pack("%uI" % (2 + len(application_words)),
             self.timer_period_us,

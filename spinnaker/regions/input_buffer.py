@@ -13,7 +13,7 @@ class InputBuffer(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, in_buffers):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -31,12 +31,10 @@ class InputBuffer(Region):
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        in_buffers = formatter_args["in_buffers"]
-
         # A count followed by two words for each buffer
         return (1 + (4 * len(in_buffers))) * 4
 
-    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
+    def write_subregion_to_file(self, fp, in_buffers):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -51,8 +49,6 @@ class InputBuffer(Region):
             Arguments which will be passed to the (optional) formatter along
             with each value that is being written.
         """
-        in_buffers = formatter_args["in_buffers"]
-
         # Write header
         data = b''
         data += struct.pack("I", len(in_buffers))

@@ -30,7 +30,7 @@ class Neuron(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, vertex_slice):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -53,7 +53,7 @@ class Neuron(Region):
         return self.immutable_params[vertex_slice.python_slice].nbytes +\
             self.mutable_params[vertex_slice.python_slice].nbytes
 
-    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
+    def write_subregion_to_file(self, fp, vertex_slice):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters

@@ -26,7 +26,7 @@ class SynapticMatrix(Region):
     #--------------------------------------------------------------------------
     # Region methods
     #--------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, sub_matrices, matrix_placements, weight_fixed_point):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -46,14 +46,12 @@ class SynapticMatrix(Region):
         """
         # Get the offset of last matrix, add its size and convert to bytes
         # **NOTE** assumes placement is monotonic
-        sub_matrices = formatter_args["sub_matrices"]
-        matrix_placements = formatter_args["matrix_placements"]
         if len(matrix_placements) == 0:
             return 0
         else:
             return 4 * (matrix_placements[-1] + sub_matrices[-1].size_words)
     
-    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
+    def write_subregion_to_file(self, fp, sub_matrices, matrix_placements, weight_fixed_point):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -71,14 +69,9 @@ class SynapticMatrix(Region):
         # Define record array type for rows
         row_dtype = [("w", np.float32),("d", np.float32),("i", np.uint32)]
         
-        # Extract formatter arguments
-        sub_matrices = formatter_args["sub_matrices"]
-        matrix_placements = formatter_args["matrix_placements"]
-        weight_fixed_point = formatter_args["weight_fixed_point"]
-        
         # Create a numpy fixed point convert to convert
         # Floating point weights to this format
-        # **NOTE** weights are only 16-bit, but final words need to be 32-bit
+        # **NOTE** weights are only 16-bit, but final words need tsub_matriceso be 32-bit
         float_to_weight = NumpyFloatToFixConverter(False, 32, 
                                                    weight_fixed_point)
         
