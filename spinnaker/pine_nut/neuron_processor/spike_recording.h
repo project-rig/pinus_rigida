@@ -75,10 +75,13 @@ public:
     // If we should record this neuron's spikingness
     if(BitField::TestBit(m_IndicesToRecord, neuron))
     {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tRecording neuron:%u, spikes:%u",
+                neuron, spiked ? 1 : 0);
+
       // If it's spiked, set current bit
       if(spiked)
       {
-        BitField::SetBit(m_IndicesToRecord, m_CurrentBit);
+        BitField::SetBit(m_RecordBuffer, m_CurrentBit);
       }
 
       // Increment current bit
@@ -88,6 +91,13 @@ public:
 
   void TransferBuffer()
   {
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tTransferring record buffer to SDRAM:%08x",
+      m_RecordSDRAM);
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    BitField::PrintBits(IO_BUF, m_RecordBuffer, m_NumWords);
+    io_printf(IO_BUF, "\n");
+#endif
+
     // Copy record buffer into SDRAM
     const uint32_t *recordBuffer = m_RecordBuffer;
     unsigned int count = m_NumWords;

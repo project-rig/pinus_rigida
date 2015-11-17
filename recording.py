@@ -18,7 +18,9 @@ class Recorder(recording.Recorder):
         super(Recorder, self).__init__(population, file)
 
         # Create default dictionary of population-size bitarrays
-        self.indices_to_record = defaultdict(lambda: bitarray(itertools.repeat(0, population.size)))
+        self.indices_to_record = defaultdict(
+            lambda: bitarray(itertools.repeat(0, population.size),
+                             endian="little"))
 
     def _record(self, variable, new_ids, sampling_interval=None):
         # Get bitarray of indices to record for this variable
