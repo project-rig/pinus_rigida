@@ -2,12 +2,14 @@
 import itertools
 import math
 import os
+import time
 from rig import machine
 
 # Import classes
 from collections import defaultdict
 from pyNN import common
 from rig.bitfield import BitField
+from rig.machine_control.consts import AppState
 from rig.machine_control.machine_controller import MachineController, MemoryIO
 from rig.place_and_route.constraints import SameChipConstraint
 from rig.netlist import Net
@@ -125,6 +127,11 @@ class State(common.control.BaseState):
         self.t = 0
         self.t_start = 0
         self.segment_counter += 1
+
+    def end(self):
+        if self.machine_controller is not None:
+            print("Stopping SpiNNaker application")
+            self.machine_controller.send_signal("stop")
     
     def _build(self, duration_ms):
         # Convert timestep to microseconds
@@ -350,12 +357,12 @@ class State(common.control.BaseState):
         print("Connecting to SpiNNaker")
 
         # Get machine controller from connected SpiNNaker board
-        machine_controller = MachineController(self.spinnaker_hostname)
+        self.machine_controller = MachineController(self.spinnaker_hostname)
         # **TODO** some sensible/ideally standard with Nengo booting behaviour
-        machine_controller.boot(2, 2)
+        self.machine_controller.boot(2, 2)
 
         # Retrieve a machine object
-        spinnaker_machine = machine_controller.get_machine()
+        spinnaker_machine = self.machine_controller.get_machine()
 
         print("Found %ux%u chip machine" %
             (spinnaker_machine.width, spinnaker_machine.height))
@@ -398,13 +405,13 @@ class State(common.control.BaseState):
                                                      v.incoming_connections)
 
                 # Select placed chip
-                with machine_controller(x=vertex_placement[0],
-                                        y=vertex_placement[1]):
+                with self.machine_controller(x=vertex_placement[0],
+                                             y=vertex_placement[1]):
                     # Allocate two output buffers for this synapse population
                     out_buffer_bytes = v.post_neuron_slice.slice_length * 4
                     v.out_buffers = [
-                        machine_controller.sdram_alloc(out_buffer_bytes,
-                                                       clear=True)
+                        self.machine_controller.sdram_alloc(
+                            out_buffer_bytes, clear=True)
                         for b in range(2)]
                     
                     # Calculate required memory size
@@ -415,7 +422,7 @@ class State(common.control.BaseState):
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
                     # **NOTE** this is tagged by core
-                    memory_io = machine_controller.sdram_alloc_as_filelike(
+                    memory_io = self.machine_controller.sdram_alloc_as_filelike(
                         size, tag=core.start)
                     print("\tMemory begins at %08x" % memory_io.address)
 
@@ -449,8 +456,8 @@ class State(common.control.BaseState):
                 assert (core.stop - core.start) == 1
 
                 # Select placed chip
-                with machine_controller(x=vertex_placement[0],
-                                        y=vertex_placement[1]):
+                with self.machine_controller(x=vertex_placement[0],
+                                             y=vertex_placement[1]):
                     # Get the input buffers from each synapse vertex
                     in_buffers = [(s.out_buffers, s.receptor_index)
                                   for s in v.synapse_verts]
@@ -463,7 +470,7 @@ class State(common.control.BaseState):
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
                     # **NOTE** this is tagged by core
-                    memory_io = machine_controller.sdram_alloc_as_filelike(
+                    memory_io = self.machine_controller.sdram_alloc_as_filelike(
                         size, tag=core.start)
                     print("\tMemory begins at %08x" % memory_io.address)
 
@@ -473,17 +480,44 @@ class State(common.control.BaseState):
 
         # Load routing tables and applications
         print("Loading routing tables")
-        machine_controller.load_routing_tables(routing_tables)
+        self.machine_controller.load_routing_tables(routing_tables)
         print("Loading applications")
-        machine_controller.load_application(application_map)
+        self.machine_controller.load_application(application_map)
 
         # Wait for all cores to hit SYNC0
         print("Waiting for synch")
-        machine_controller.wait_for_cores_to_reach_state(
-            "sync0", len(vertex_resources)
-        )
+        num_vertices = len(vertex_resources)
+        self.machine_controller.wait_for_cores_to_reach_state("sync0",
+                                                              num_vertices)
 
         # Sync!
-        machine_controller.send_signal("sync0")
+        self.machine_controller.send_signal("sync0")
+
+        # Wait for simulation to complete
+        print("Simulating")
+        time.sleep(float(duration_ms) / 1000.0)
+
+        # Wait for all cores to hit SYNC0
+        print("Waiting for exit")
+        while True:
+            # If no cores are still running stop
+            if not self.machine_controller.count_cores_in_state("run"):
+                break
+
+            # Wait a bit
+            time.sleep(1.0)
+
+        # Check if any cores haven't exited cleanly
+        if self.machine_controller.count_cores_in_state("exit") != num_vertices:
+            for pop, vertices in itertools.chain(
+                iteritems(pop_neuron_vertices), iteritems(pop_synapse_vertices)):
+                for v in vertices:
+                    x, y = placements[vertex]
+                    p = allocations[vertex][machine.Cores].start
+                    status = self.machine_controller.get_processor_status(p, x, y)
+                    if status.cpu_state is not AppState.sync0:
+                        print("Core ({}, {}, {}) in state {!s}".format(
+                            x, y, p, status.cpu_state))
+                    raise Exception("Unexpected core failures.")
         
 state = State()

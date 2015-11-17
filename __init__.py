@@ -45,6 +45,9 @@ def end(compatible_output=True):
         io = get_io(filename)
         population.write_data(io, variables)
     simulator.state.write_on_end = []
+
+    # End SpiNNaker simulation
+    simulator.state.end()
     # should have common implementation of end()
 
 run, run_until = common.build_run(simulator)
