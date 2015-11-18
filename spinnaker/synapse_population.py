@@ -24,11 +24,8 @@ class SynapsePopulationRegions(enum.IntEnum):
 # SynapsePopulation
 #------------------------------------------------------------------------------
 class SynapsePopulation(object):
-    def __init__(self, matrices, incoming_weight_range, timer_period_us, 
+    def __init__(self, incoming_weight_range, timer_period_us,
                  simulation_ticks):
-        self.matrices = matrices
-        #self.incoming_weight_range = incoming_weight_range
-        
         # Get MSB of minimum and maximum weight and get magnitude of range
         weight_msb = [math.floor(math.log(r, 2)) + 1 
                       for r in incoming_weight_range]

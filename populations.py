@@ -104,12 +104,11 @@ class Population(common.Population, ContextMixin):
                                 timer_period_us, simulation_ticks,
                                 self.recorder.indices_to_record)
 
-    def create_spinnaker_synapse_population(self, matrices, 
-                                            incoming_weight_range, 
+    def create_spinnaker_synapse_population(self, incoming_weight_range,
                                             timer_period_us, 
                                             simulation_ticks):
         # Create synapse population
-        return SynapsePopulation(matrices, incoming_weight_range, 
+        return SynapsePopulation(incoming_weight_range,
                                  timer_period_us, simulation_ticks)
 
     def build_incoming_connection(self):

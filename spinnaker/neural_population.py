@@ -41,7 +41,8 @@ class NeuralPopulation(object):
         self.regions[NeuralPopulationRegions.input_buffer] =\
             regions.InputBuffer()
         self.regions[NeuralPopulationRegions.spike_recording] =\
-            regions.SpikeRecording(indices_to_record, simulation_ticks)
+            regions.SpikeRecording(indices_to_record, simulation_timestep_us,
+                                   simulation_ticks)
         #self.regions[9] = AnalogueRecordingRegion()
         #self.regions[10] = ProfilerRegion()
     
@@ -75,6 +76,17 @@ class NeuralPopulation(object):
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
+
+    def read_spike_times(self, vertex_slice):
+        # Get the spike recording region and
+        # the memory block associated with it
+        region = self.regions[
+            NeuralPopulationRegions.spike_recording]
+        region_mem = self.region_memory[
+            NeuralPopulationRegions.spike_recording]
+
+        # Use spike recording region to get spike times
+        return region.read_spike_times(vertex_slice, region_mem)
 
     #--------------------------------------------------------------------------
     # Private methods

@@ -1,21 +1,25 @@
 # Import modules
 import itertools
-import numpy
+import numpy as np
 from pyNN import recording
 
 # Import classes
 from bitarray import bitarray
 from collections import defaultdict
+from rig.utils.contexts import ContextMixin, Required
 
 from . import simulator
 
 
-class Recorder(recording.Recorder):
+class Recorder(recording.Recorder, ContextMixin):
     _simulator = simulator
 
     def __init__(self, population, file=None):
         # Superclass
         super(Recorder, self).__init__(population, file)
+
+        # Initialise the context stack
+        ContextMixin.__init__(self, {})
 
         # Create default dictionary of population-size bitarrays
         self.indices_to_record = defaultdict(
@@ -34,13 +38,45 @@ class Recorder(recording.Recorder):
             # Set this bit in indices
             indices[new_index] = True
 
-    def _get_spiketimes(self, id):
-        return numpy.array([id, id+5], dtype=float) % self._simulator.state.t
+    def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
+        variables_to_include = set(self.recorded.keys())
+        if variables is not "all":
+            variables_to_include = variables_to_include.intersection(set(variables))
+
+        # If a SpiNNaker neuron population was created for the recorded population
+        sim_state = self._simulator.state
+        spike_times = {}
+        if self.population in sim_state.spinnaker_neuron_pops:
+            # Get SpiNNaker neuron population
+            spinnaker_pop = sim_state.spinnaker_neuron_pops[self.population]
+
+            # If any vertices were actually instantiated
+            if self.population in sim_state.pop_neuron_vertices:
+                # Loop through all neuron vertices
+                for i, v in enumerate(sim_state.pop_neuron_vertices[self.population]):
+                    # Loop through all variables to include
+                    for variable in variables_to_include:
+                        # If this variable is a spike recording, update the
+                        # spike times dictionary with spikes from this vertex
+                        if variable == "spikes":
+                            spike_times.update(spinnaker_pop.read_spike_times(v.neuron_slice))
+
+        # Create context containing data read from spinnaker and call superclass
+        with self.get_new_context(spike_times=spike_times):
+            return super(Recorder, self)._get_current_segment(filter_ids, variables, clear)
+
+    @ContextMixin.use_contextual_arguments()
+    def _get_spiketimes(self, id, spike_times):
+        # Convert id to index
+        index = self.population.id_to_index(id)
+
+        # Return the numpy array of spike times associated with this index
+        return spike_times[index]
 
     def _get_all_signals(self, variable, ids, clear=False):
         # assuming not using cvode, otherwise need to get times as well and use IrregularlySampledAnalogSignal
         n_samples = int(round(self._simulator.state.t/self._simulator.state.dt)) + 1
-        return numpy.vstack((numpy.random.uniform(size=n_samples) for id in ids)).T
+        return np.vstack((np.random.uniform(size=n_samples) for id in ids)).T
 
     def _local_count(self, variable, filter_ids=None):
         N = {}

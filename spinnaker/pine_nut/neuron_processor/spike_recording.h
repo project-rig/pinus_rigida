@@ -55,13 +55,16 @@ public:
     m_RecordSDRAM = region;
     LOG_PRINT(LOG_LEVEL_INFO, "\tRecording starting at %08x", m_RecordSDRAM);
 
-
-    // Allocate local record buffer
-    m_RecordBuffer = (uint32_t*)spin1_malloc(m_NumWords * sizeof(uint32_t));
-    if(m_RecordBuffer == NULL)
+    // If we need to record anything
+    if(m_NumWords > 0)
     {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate local record buffer");
-      return false;
+      // Allocate local record buffer
+      m_RecordBuffer = (uint32_t*)spin1_malloc(m_NumWords * sizeof(uint32_t));
+      if(m_RecordBuffer == NULL)
+      {
+        LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate local record buffer");
+        return false;
+      }
     }
 
     // Reset

@@ -159,7 +159,7 @@ class State(common.control.BaseState):
         print("Partitioning neuron vertices")
 
         # Loop through populations
-        pop_neuron_vertices = {}
+        self.pop_neuron_vertices = {}
         vertex_applications = {}
         vertex_resources = {}
         for pop_id, pop in enumerate(self.populations):
@@ -173,7 +173,7 @@ class State(common.control.BaseState):
                                for vert_id, neuron_slice in enumerate(neuron_slices)]
             
             # Add resultant list of vertices to dictionary
-            pop_neuron_vertices[pop] = neuron_vertices
+            self.pop_neuron_vertices[pop] = neuron_vertices
             
             # Get neuron application name
             # **THINK** is there any point in doing anything cleverer than this
@@ -200,7 +200,7 @@ class State(common.control.BaseState):
         # neuron processor, split more and try again
         # **TODO** post-synaptic limits should perhaps be based on
         # shifts down of 1024 to avoid overlapping weirdness
-        pop_synapse_vertices = {}
+        self.pop_synapse_vertices = {}
         for pop in self.populations:
             print "Population:", pop
 
@@ -248,7 +248,7 @@ class State(common.control.BaseState):
 
                         # Loop through the vertices which the pre-synaptic
                         # population has been partitioned into
-                        for pre_vertex in pop_neuron_vertices[projection.pre]:
+                        for pre_vertex in self.pop_neuron_vertices[projection.pre]:
                             print "\t\t\t\tPre slice:", pre_vertex.neuron_slice
 
                             # Estimate number of synapses the connection between
@@ -285,7 +285,7 @@ class State(common.control.BaseState):
             print "\t\t%u synapse vertices" % len(synapse_vertices)
 
             # Add synapse vertices to dictionary
-            pop_synapse_vertices[pop] = synapse_vertices
+            self.pop_synapse_vertices[pop] = synapse_vertices
 
             # Loop through synapse vertices
             for v in synapse_vertices:
@@ -304,8 +304,8 @@ class State(common.control.BaseState):
             print "\tPopulation:", pop
 
             # Get lists of synapse and neuron vertices associated with this list
-            s_verts = pop_synapse_vertices[pop]
-            n_verts = pop_neuron_vertices[pop]
+            s_verts = self.pop_synapse_vertices[pop]
+            n_verts = self.pop_neuron_vertices[pop]
 
             # Loop through neuron vertices
             num_assoc_s_verts = 0
@@ -337,7 +337,7 @@ class State(common.control.BaseState):
                     # Generate list of nets and their key coming from this population
                     vertex_nets, vertex_net_keys = generate_nets_and_keys(
                         pre_pop, proj.post,
-                        pop_neuron_vertices, pop_synapse_vertices)
+                        self.pop_neuron_vertices, self.pop_synapse_vertices)
                     
                     # Add to global lists
                     nets.extend(vertex_nets)
@@ -348,7 +348,7 @@ class State(common.control.BaseState):
                 # Generate list of nets and their key coming from this population
                 vertex_nets, vertex_net_keys = generate_nets_and_keys(
                     proj.pre, proj.post,
-                    pop_neuron_vertices, pop_synapse_vertices)
+                    self.pop_neuron_vertices, self.pop_synapse_vertices)
                 
                 # Add to global lists
                 nets.extend(vertex_nets)
@@ -377,7 +377,8 @@ class State(common.control.BaseState):
         print("Writing synapse vertices")
 
         # Build synapse populations
-        for pop, vertices in iteritems(pop_synapse_vertices):
+        self.spinnaker_synapse_pops = {}
+        for pop, vertices in iteritems(self.pop_synapse_vertices):
             print("\tPopulation %s" % pop)
 
             # Expand any incoming connections
@@ -385,8 +386,11 @@ class State(common.control.BaseState):
 
             # Create a spinnaker population
             spinnaker_pop = pop.create_spinnaker_synapse_population(
-                matrices, incoming_weight_range, 
-                hardware_timestep_us, duration_timesteps)
+                incoming_weight_range, hardware_timestep_us,
+                duration_timesteps)
+
+            # Add spinnaker population to dictionary
+            self.spinnaker_synapse_pops[pop] = spinnaker_pop
 
             # Loop through vertices
             for v in vertices:
@@ -435,13 +439,17 @@ class State(common.control.BaseState):
         print("Writing neuron vertices")
         
         # Build neural populations
-        for pop, vertices in iteritems(pop_neuron_vertices):
+        self.spinnaker_neuron_pops = {}
+        for pop, vertices in iteritems(self.pop_neuron_vertices):
+            print("\tPopulation %s" % pop)
+
             # Create spinnaker neural population
             spinnaker_pop = pop.create_spinnaker_neural_population(
                 simulation_timestep_us, hardware_timestep_us,
                 duration_timesteps)
 
-            print("\tPopulation %s" % pop)
+            # Add spinnaker population to dictionary
+            self.spinnaker_neuron_pops[pop] = spinnaker_pop
 
             # Loop through vertices
             for v in vertices:
@@ -500,8 +508,8 @@ class State(common.control.BaseState):
         # Wait for all cores to hit SYNC0
         print("Waiting for exit")
         while True:
-            # If no cores are still running stop
-            if not self.machine_controller.count_cores_in_state("run"):
+            # If no cores are still running, stop
+            if self.machine_controller.count_cores_in_state("run") == 0:
                 break
 
             # Wait a bit
@@ -510,10 +518,11 @@ class State(common.control.BaseState):
         # Check if any cores haven't exited cleanly
         if self.machine_controller.count_cores_in_state("exit") != num_vertices:
             for pop, vertices in itertools.chain(
-                iteritems(pop_neuron_vertices), iteritems(pop_synapse_vertices)):
+                iteritems(self.pop_neuron_vertices),
+                iteritems(self.pop_synapse_vertices)):
                 for v in vertices:
-                    x, y = placements[vertex]
-                    p = allocations[vertex][machine.Cores].start
+                    x, y = placements[v]
+                    p = allocations[v][machine.Cores].start
                     status = self.machine_controller.get_processor_status(p, x, y)
                     if status.cpu_state is not AppState.sync0:
                         print("Core ({}, {}, {}) in state {!s}".format(
