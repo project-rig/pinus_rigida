@@ -31,7 +31,7 @@ public:
     LOG_PRINT(LOG_LEVEL_INFO, "SpikeRecording::ReadSDRAMData");
 
     // Read number of words per sample from first word
-    m_NumWords = region[0];
+    m_NumWords = *region++;
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum words per sample:%u", m_NumWords);
 
     // Calculate number of words that are required to build a bitfield for ALL neurons
@@ -39,8 +39,7 @@ public:
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum words per population:%u", numWords);
 
     // Copy indices to record
-    uint32_t *structArray = &region[1];
-    if(!AllocateCopyStructArray(numWords, structArray, m_IndicesToRecord))
+    if(!AllocateCopyStructArray(numWords, region, m_IndicesToRecord))
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate indices to record array");
       return false;

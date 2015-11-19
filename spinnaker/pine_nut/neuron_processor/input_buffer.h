@@ -33,12 +33,11 @@ public:
     LOG_PRINT(LOG_LEVEL_INFO, "InputBufferBase::ReadSDRAMData");
 
     // Read base address and num lookup entries from 1st 2 words
-    m_NumInputBuffers = region[0];
+    m_NumInputBuffers = *region++;
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum input buffers:%u", m_NumInputBuffers);
 
     // Copy key lookup entries
-    uint32_t *structArray = &region[1];
-    if(!AllocateCopyStructArray(m_NumInputBuffers, structArray, m_InputBuffers))
+    if(!AllocateCopyStructArray(m_NumInputBuffers, region, m_InputBuffers))
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate key lookup array");
       return false;
