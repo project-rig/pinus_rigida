@@ -258,11 +258,12 @@ void UserEvent(uint, uint)
 void TimerTick(uint tick, uint)
 {
   // Cache tick
-  g_Tick = tick;
+  // **NOTE** ticks start at 1
+  g_Tick = (tick - 1);
 
   // If a fixed number of simulation ticks are specified and these have passed
   if(g_Config.GetSimulationTicks() != UINT32_MAX
-    && tick >= g_Config.GetSimulationTicks())
+    && g_Tick >= g_Config.GetSimulationTicks())
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
@@ -273,10 +274,10 @@ void TimerTick(uint tick, uint)
   }
 
   LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%08x)",
-            tick, (tick % 2), g_OutputBuffers[tick % 2]);
+            g_Tick, (g_Tick % 2), g_OutputBuffers[g_Tick % 2]);
 
   // Get output buffer from 'back' of ring-buffer
-  const RingBuffer::Type *outputBuffer = g_RingBuffer.GetOutputBuffer(tick);
+  const RingBuffer::Type *outputBuffer = g_RingBuffer.GetOutputBuffer(g_Tick);
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
   for(unsigned int i = 0; i < g_AppWords[AppWordNumPostNeurons]; i++)
@@ -287,7 +288,7 @@ void TimerTick(uint tick, uint)
 #endif
 
   // DMA output buffer into correct output buffer for this timer tick
-  spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[tick % 2],
+  spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[g_Tick % 2],
                      const_cast<RingBuffer::Type*>(outputBuffer), DMA_WRITE,
                      g_AppWords[AppWordNumPostNeurons] * sizeof(uint32_t));
 }

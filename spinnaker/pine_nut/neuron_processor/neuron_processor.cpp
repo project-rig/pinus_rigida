@@ -260,14 +260,13 @@ static void DMATransferDone(uint, uint tag)
 //-----------------------------------------------------------------------------
 static void TimerTick(uint tick, uint)
 {
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", tick);
-
   // Cache tick
-  g_Tick = tick;
+  // **NOTE** ticks start at 1
+  g_Tick = (tick - 1);
 
   // If a fixed number of simulation ticks are specified and these have passed
   if(g_Config.GetSimulationTicks() != UINT32_MAX
-    && tick >= g_Config.GetSimulationTicks())
+    && g_Tick >= g_Config.GetSimulationTicks())
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
@@ -279,6 +278,8 @@ static void TimerTick(uint tick, uint)
   // Otherwise
   else
   {
+    LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", g_Tick);
+
     // Loop through neurons and shape synaptic inputs
     auto *synapseMutableState = g_SynapseMutableState;
     const auto *synapseImmutableState = g_SynapseImmutableState;
@@ -291,7 +292,7 @@ static void TimerTick(uint tick, uint)
     g_InputBufferBeingProcessed = 0;
 
     // If there aren't any input buffers to DMA, start neuron update
-    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed, tick,
+    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed, g_Tick,
       g_AppWords[AppWordNumNeurons], DMATagInputRead))
     {
       UpdateNeurons();
