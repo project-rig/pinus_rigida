@@ -133,6 +133,35 @@ class State(common.control.BaseState):
             print("Stopping SpiNNaker application")
             self.machine_controller.send_signal("stop")
     
+    def _wait_for_transition(self, placements, allocations,
+                             from_state, desired_to_state,
+                             num_vertices):
+        while True:
+            # If no cores are still in from_state, stop
+            if self.machine_controller.count_cores_in_state(from_state) == 0:
+                break
+
+            # Wait a bit
+            time.sleep(1.0)
+
+        # Check if any cores haven't exited cleanly
+        if self.machine_controller.count_cores_in_state(desired_to_state) != num_vertices:
+            # Loop through all SpiNNaker populations
+            for pop, vertices in itertools.chain(
+                iteritems(self.pop_neuron_vertices),
+                iteritems(self.pop_synapse_vertices)):
+
+                # Loop through their vertices
+                for v in vertices:
+                    x, y = placements[v]
+                    p = allocations[v][machine.Cores].start
+                    status = self.machine_controller.get_processor_status(p, x, y)
+                    if status.cpu_state is not desired_to_state:
+                        print("Core ({}, {}, {}) in state {!s}".format(
+                            x, y, p, status.cpu_state))
+                        print self.machine_controller.get_iobuf(p, x, y)
+            raise Exception("Unexpected core failures before reaching %s state." % desired_to_state)
+
     def _build(self, duration_ms):
         # Convert timestep to microseconds
         simulation_timestep_us = int(round(1000.0 * self.dt))
@@ -495,8 +524,9 @@ class State(common.control.BaseState):
         # Wait for all cores to hit SYNC0
         print("Waiting for synch")
         num_vertices = len(vertex_resources)
-        self.machine_controller.wait_for_cores_to_reach_state("sync0",
-                                                              num_vertices)
+        self._wait_for_transition(placements, allocations,
+                                  AppState.init, AppState.sync0,
+                                  num_vertices)
 
         # Sync!
         self.machine_controller.send_signal("sync0")
@@ -505,28 +535,9 @@ class State(common.control.BaseState):
         print("Simulating")
         time.sleep(float(duration_ms) / 1000.0)
 
-        # Wait for all cores to hit SYNC0
+        # Wait for all cores to exit
         print("Waiting for exit")
-        while True:
-            # If no cores are still running, stop
-            if self.machine_controller.count_cores_in_state("run") == 0:
-                break
-
-            # Wait a bit
-            time.sleep(1.0)
-
-        # Check if any cores haven't exited cleanly
-        if self.machine_controller.count_cores_in_state("exit") != num_vertices:
-            for pop, vertices in itertools.chain(
-                iteritems(self.pop_neuron_vertices),
-                iteritems(self.pop_synapse_vertices)):
-                for v in vertices:
-                    x, y = placements[v]
-                    p = allocations[v][machine.Cores].start
-                    status = self.machine_controller.get_processor_status(p, x, y)
-                    if status.cpu_state is not AppState.sync0:
-                        print("Core ({}, {}, {}) in state {!s}".format(
-                            x, y, p, status.cpu_state))
-                    raise Exception("Unexpected core failures.")
-        
+        self._wait_for_transition(placements, allocations,
+                                  AppState.run, AppState.exit,
+                                  num_vertices)
 state = State()
