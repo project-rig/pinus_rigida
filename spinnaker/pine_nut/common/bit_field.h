@@ -186,7 +186,7 @@ inline unsigned int GetWordSize(unsigned int bits)
     unsigned int words = bits >> 5;
 
     // If there was a remainder, add an extra word
-    if ((bits & 0xFFFFFFFF) != 0)
+    if ((bits & 0x1F) != 0)
     {
         words++;
     }
