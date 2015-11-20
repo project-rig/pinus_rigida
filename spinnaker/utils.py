@@ -129,7 +129,6 @@ def sizeof_regions_named(regions, region_args, include_app_ptr=True):
         # Get the arguments for the region
         args, kwargs = region_args[key]
 
-        print region.__class__.__name__
         # Add the size of the region
         size += region.sizeof_padded(*args, **kwargs)
 

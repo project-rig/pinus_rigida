@@ -1,5 +1,6 @@
 # Import modules
 import enum
+import logging
 import math
 import regions
 
@@ -9,6 +10,8 @@ from collections import defaultdict
 # Import functions
 from utils import (
     Args, create_app_ptr_and_region_files_named, sizeof_regions_named)
+
+logger = logging.getLogger("pinus_rigida")
 
 #------------------------------------------------------------------------------
 # SynapsePopulationRegions
@@ -71,7 +74,7 @@ class SynapsePopulation(object):
         # Calculate region size
         vertex_size_bytes = sizeof_regions_named(self.regions, region_arguments)
 
-        print("\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements, 

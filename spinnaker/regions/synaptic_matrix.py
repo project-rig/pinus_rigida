@@ -1,4 +1,5 @@
 # Import modules
+import logging
 import math
 import numpy as np
 import struct
@@ -14,6 +15,8 @@ from six import iteritems
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
                                      "max_cols", "matrix"])
+
+logger = logging.getLogger("pinus_rigida")
 
 #------------------------------------------------------------------------------
 # SynapticMatrix
@@ -78,7 +81,7 @@ class SynapticMatrix(Region):
         # Loop through sub matrices
         assert fp.tell() == 0
         for m, p in zip(sub_matrices, matrix_placements):
-            print("\t\tWriting matrix placement:%u, max cols:%u" % (p, m.max_cols))
+            logger.debug("\t\tWriting matrix placement:%u, max cols:%u" % (p, m.max_cols))
             
             # Seek to the absolute offset for this matrix
             fp.seek(p, 0)
