@@ -31,21 +31,23 @@ class NeuralPopulation(object):
     MAX_CELLS = 1024
     
     def __init__(self, cell_type, parameters, initial_values,
-                 simulation_timestep_us, timer_period_us, simulation_ticks,
+                 sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record):
         # Dictionary of regions
         self.regions = {}
         self.regions[NeuralPopulationRegions.system] =\
-            regions.System(timer_period_us, simulation_ticks)
+            regions.System(timer_period_us, sim_ticks)
         self.regions[NeuralPopulationRegions.neuron] =\
-            regions.Neuron(cell_type, parameters, initial_values)
+            regions.Neuron(cell_type, parameters, initial_values,
+                           sim_timestep_ms)
         self.regions[NeuralPopulationRegions.synapse] =\
-            regions.Synapse(cell_type, parameters, initial_values)
+            regions.Synapse(cell_type, parameters, initial_values,
+                            sim_timestep_ms)
         self.regions[NeuralPopulationRegions.input_buffer] =\
             regions.InputBuffer()
         self.regions[NeuralPopulationRegions.spike_recording] =\
-            regions.SpikeRecording(indices_to_record, simulation_timestep_us,
-                                   simulation_ticks)
+            regions.SpikeRecording(indices_to_record, sim_timestep_ms,
+                                   sim_ticks)
         #self.regions[9] = AnalogueRecordingRegion()
         #self.regions[10] = ProfilerRegion()
     

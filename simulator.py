@@ -166,18 +166,16 @@ class State(common.control.BaseState):
             raise Exception("Unexpected core failures before reaching %s state." % desired_to_state)
 
     def _build(self, duration_ms):
-        # Convert timestep to microseconds
-        simulation_timestep_us = int(round(1000.0 * self.dt))
-        
-        # Divide by realtime proportion to get hardware timestep 
-        hardware_timestep_us = int(round(float(simulation_timestep_us) /
+        # Convert dt into microseconds and divide by
+        # realtime proportion to get hardware timestep
+        hardware_timestep_us = int(round((1000.0 * float(self.dt)) /
                                          float(self.realtime_proportion)))
         
         # Determine how long simulation is in timesteps
-        duration_timesteps = int(round(float(duration_ms) / float(self.dt)))
+        duration_timesteps = int(math.ceil(float(duration_ms) / float(self.dt)))
         
-        logger.info("Simulating for %u %uus timesteps using a hardware timestep of %uus" %
-            (duration_timesteps, simulation_timestep_us, hardware_timestep_us))
+        logger.info("Simulating for %u %ums timesteps using a hardware timestep of %uus" %
+            (duration_timesteps, self.dt, hardware_timestep_us))
         
         # Create a 32-bit keyspace
         keyspace = BitField(32)
@@ -403,7 +401,7 @@ class State(common.control.BaseState):
             vertex_resources, vertex_applications, nets, net_keys,
             spinnaker_machine, constraints)
         
-        logger.info("Writing synapse vertices")
+        logger.info("Loading synapse data")
 
         # Build synapse populations
         self.spinnaker_synapse_pops = {}
@@ -464,7 +462,7 @@ class State(common.control.BaseState):
                         v.post_neuron_slice, sub_matrices,
                         matrix_placements, v.out_buffers, memory_io)
         
-        logger.info("Writing neuron vertices")
+        logger.info("Loading neuron data")
         
         # Build neural populations
         self.spinnaker_neuron_pops = {}
@@ -473,7 +471,7 @@ class State(common.control.BaseState):
 
             # Create spinnaker neural population
             spinnaker_pop = pop.create_spinnaker_neural_population(
-                simulation_timestep_us, hardware_timestep_us,
+                self.dt, hardware_timestep_us,
                 duration_timesteps)
 
             # Add spinnaker population to dictionary

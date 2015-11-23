@@ -28,7 +28,7 @@ class SynapsePopulationRegions(enum.IntEnum):
 #------------------------------------------------------------------------------
 class SynapsePopulation(object):
     def __init__(self, incoming_weight_range, timer_period_us,
-                 simulation_ticks):
+                 sim_ticks):
         # Get MSB of minimum and maximum weight and get magnitude of range
         weight_msb = [math.floor(math.log(r, 2)) + 1 
                       for r in incoming_weight_range]
@@ -43,7 +43,7 @@ class SynapsePopulation(object):
         # Dictionary of regions
         self.regions = {}
         self.regions[SynapsePopulationRegions.system] =\
-            regions.System(timer_period_us, simulation_ticks)
+            regions.System(timer_period_us, sim_ticks)
         self.regions[SynapsePopulationRegions.key_lookup] =\
             regions.KeyLookupBinarySearch()
         self.regions[SynapsePopulationRegions.synaptic_matrix] =\

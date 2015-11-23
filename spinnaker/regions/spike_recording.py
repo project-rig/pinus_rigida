@@ -14,10 +14,9 @@ def calc_bitfield_words(bits):
 # SpikeRecording
 #------------------------------------------------------------------------------
 class SpikeRecording(Region):
-    def __init__(self, indices_to_record,
-                 simulation_timestep_us, simulation_ticks):
+    def __init__(self, indices_to_record, sim_timestep_ms, simulation_ticks):
         self.indices_to_record = indices_to_record["spikes"]
-        self.simulation_timestep_ms = float(simulation_timestep_us) / 1000.0
+        self.sim_timestep_ms = sim_timestep_ms
         self.simulation_ticks = simulation_ticks
 
     #--------------------------------------------------------------------------
@@ -102,7 +101,7 @@ class SpikeRecording(Region):
         # Swap endianness
         data = data.view(dtype=np.uint32).byteswap().view(dtype=np.uint8)
 
-        # Reverse bit order within each word
+        # Reverse bit order within each wordsimulation_timestep_ms
         data = np.fliplr(np.unpackbits(data).reshape(-1, 32))
 
         # Finally reshape into a sample shaped vector
@@ -122,7 +121,7 @@ class SpikeRecording(Region):
 
                 # Scale these into floating point ms
                 times = times.astype(np.float32, copy=False)
-                times *= self.simulation_timestep_ms
+                times *= self.sim_timestep_ms
                 
                 # Add to dictionary
                 spike_times[i + vertex_slice.start] = times

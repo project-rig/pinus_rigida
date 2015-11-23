@@ -1,30 +1,28 @@
 # Import modules
+from .. import lazy_param_map
 import struct
 
 # Import classes
 from region import Region
 
-# Import functions
-from ..utils import apply_param_map
-
 #------------------------------------------------------------------------------
 # Synapse
 #------------------------------------------------------------------------------
 class Synapse(Region):
-    def __init__(self, cell_type, parameters, initial_values):
+    def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
         num_neurons = parameters.shape[0]
 
         # Use neurons mutable parameter map to
         # transform lazy array of mutable parameters
-        self.mutable_params = apply_param_map(
+        self.mutable_params = lazy_param_map.apply(
             initial_values, cell_type.synapse_mutable_param_map,
-            num_neurons)
+            num_neurons, sim_timestep_ms)
 
         # Use neurons immutable parameter map to transform
         # lazy array of immutable parameters
-        self.immutable_params = apply_param_map(
+        self.immutable_params = lazy_param_map.apply(
             parameters, cell_type.synapse_immutable_param_map,
-            num_neurons)
+            num_neurons, sim_timestep_ms)
     
     #--------------------------------------------------------------------------
     # Region methods
