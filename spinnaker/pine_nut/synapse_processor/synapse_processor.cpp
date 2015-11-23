@@ -151,7 +151,7 @@ void SetupNextDMARowRead()
 {
   // If there's more incoming spikes
   uint32_t key;
-  if(g_SpikeInputBuffer.GetNextSpike(&key))
+  if(g_SpikeInputBuffer.GetNextSpike(key))
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
     

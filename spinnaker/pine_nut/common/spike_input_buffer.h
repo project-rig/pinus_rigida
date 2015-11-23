@@ -52,13 +52,13 @@ public:
     return success;
   }
 
-  bool GetNextSpike(uint32_t *e)
+  bool GetNextSpike(uint32_t &e)
   {
     bool success = NonEmpty();
     if (success)
     {
-      *e = m_Buffer[m_Output];
       m_Output = (m_Output - 1) % Size;
+      e = m_Buffer[m_Output];
     }
     else
     {
