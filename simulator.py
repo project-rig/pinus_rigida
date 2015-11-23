@@ -276,7 +276,7 @@ class State(common.control.BaseState):
                         # Loop through the vertices which the pre-synaptic
                         # population has been partitioned into
                         for pre_vertex in self.pop_neuron_vertices[projection.pre]:
-                            logger.debug("\t\t\t\tPre slice:", pre_vertex.neuron_slice)
+                            logger.debug("\t\t\t\tPre slice:%s", str(pre_vertex.neuron_slice))
 
                             # Estimate number of synapses the connection between
                             # The pre and the post-slice of neurons will contain
@@ -328,7 +328,7 @@ class State(common.control.BaseState):
         # together synapse and neuron vertices
         constraints = []
         for pop in self.populations:
-            logger.debug("\tPopulation:", pop)
+            logger.debug("\tPopulation:%s", pop.label)
 
             # Get lists of synapse and neuron vertices associated with this list
             s_verts = self.pop_synapse_vertices[pop]

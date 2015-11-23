@@ -1,5 +1,6 @@
 # Import modules
 import lazyarray as la
+import math
 import numpy as np
 import struct
 
@@ -11,10 +12,16 @@ from copy import (copy, deepcopy)
 from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
+#------------------------------------------------------------------------------
+# Args
+#------------------------------------------------------------------------------
 class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
 
+#------------------------------------------------------------------------------
+# UnitStrideSlice
+#------------------------------------------------------------------------------
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     @property
     def slice_length(self):
@@ -95,6 +102,9 @@ class LazyArrayFloatToFixConverter(object):
         vals.dtype = self.dtype
         return vals
 
+#------------------------------------------------------------------------------
+# Functions
+#------------------------------------------------------------------------------
 def evenly_slice(quantity, maximum_slice_size):
      # Build lists of start and end indices of slices
     slice_starts = range(0, quantity, maximum_slice_size)
@@ -102,6 +112,12 @@ def evenly_slice(quantity, maximum_slice_size):
 
     # Zip starts and ends together into list of slices and pair these with resources
     return [UnitStrideSlice(s, e) for s, e in zip(slice_starts, slice_ends)]
+
+def calc_bitfield_words(bits):
+    return int(math.ceil(float(bits) / 32.0))
+
+def calc_slice_bitfield_words(vertex_slice):
+    return calc_bitfield_words(vertex_slice.slice_length)
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
 # to the start, this is common with Nengo SpiNNaker

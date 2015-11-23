@@ -4,16 +4,17 @@ import struct
 
 # Import classes
 from region import Region
+from rig.type_casts import NumpyFixToFloatConverter
 
 # Import functions
 from ..utils import (calc_bitfield_words, calc_slice_bitfield_words)
 
 #------------------------------------------------------------------------------
-# SpikeRecording
+# AnalogueRecording
 #------------------------------------------------------------------------------
-class SpikeRecording(Region):
-    def __init__(self, indices_to_record, sim_timestep_ms, simulation_ticks):
-        self.indices_to_record = indices_to_record["spikes"]
+class AnalogueRecording(Region):
+    def __init__(self, indices_to_record, channel, sim_timestep_ms, simulation_ticks):
+        self.indices_to_record = indices_to_record[channel]
         self.sim_timestep_ms = sim_timestep_ms
         self.simulation_ticks = simulation_ticks
 
@@ -45,13 +46,12 @@ class SpikeRecording(Region):
         # Slice out the vertex indices to record
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
 
-        # Each sample is a word-aligned bitfield
-        # with a bit for each neuron in slice
-        sample_bytes = calc_bitfield_words(vertex_indices.count()) * 4
+        # Each sample requires one word per neuron
+        sample_bytes = vertex_indices.count() * 4
 
         # Header word specifiying how many words are in each sample, indices
         # bit field and a sample bit field for each simulation tick
-        return 4 + indices_bytes + (sample_bytes * self.simulation_ticks)
+        return indices_bytes + (sample_bytes * self.simulation_ticks)
 
     def write_subregion_to_file(self, fp, vertex_slice):
         """Write a portion of the region to a file applying the formatter.
@@ -71,9 +71,6 @@ class SpikeRecording(Region):
         # Slice out the vertex indices to record
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
 
-        # Write number of words required to contain a suitable bitfield
-        fp.write(struct.pack("I", calc_bitfield_words(vertex_indices.count())))
-
         # Write bitfield to file
         # **NOTE** as there's no neurons after this,
         # the word-aligned bits don't matter
@@ -82,51 +79,43 @@ class SpikeRecording(Region):
     #--------------------------------------------------------------------------
     # Public API
     #--------------------------------------------------------------------------
-    def read_spike_times(self, vertex_slice, region_memory):
+    def read_signal(self, vertex_slice, region_memory):
         # Get the indices within this vertes that were recorded
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
 
-        # Determine how many bytes each bitfield sample will be
-        num_bits = vertex_indices.count()
-        sample_bytes = calc_bitfield_words(num_bits) * 4
+        # Each sample requires one word per neuron
+        sample_words = vertex_indices.count()
 
         # Seek to start of recording memory
-        region_memory.seek(4 + (calc_slice_bitfield_words(vertex_slice) * 4))
+        region_memory.seek(calc_slice_bitfield_words(vertex_slice) * 4)
 
         # Read data from memory
-        data = region_memory.read(sample_bytes * self.simulation_ticks)
+        data = region_memory.read(sample_words * 4 * self.simulation_ticks)
 
         # Load into numpy
-        data = np.fromstring(data, dtype=np.uint8)
-
-        # Swap endianness
-        data = data.view(dtype=np.uint32).byteswap().view(dtype=np.uint8)
-
-        # Reverse bit order within each wordsimulation_timestep_ms
-        data = np.fliplr(np.unpackbits(data).reshape(-1, 32))
+        data = np.fromstring(data, dtype=np.int32)
 
         # Finally reshape into a sample shaped vector
-        data = data.reshape((-1, sample_bytes * 8))
+        data = data.reshape((-1, sample_words))
+
+        # Convert to fixed point
+        data = NumpyFixToFloatConverter(15)(data)
 
         # Loop through bits of vertex indices
         # **YUCK** this seems mega-innefficient
-        spike_times = {}
+        signals = {}
+        c = 0
         for i, b in enumerate(vertex_indices):
             # If bit is set
             if b:
-                # Extract spike vector column
-                vector = data[:,i]
+                # Extract neuron column
+                vector = data[:,c]
 
-                # Find times where neuron fired
-                times = np.where(vector == 1)[0]
+                # Go onto next column
+                c += 1
 
-                # Scale these into floating point ms
-                times = times.astype(np.float32, copy=False)
-                times *= self.sim_timestep_ms
-                
                 # Add to dictionary
-                spike_times[i + vertex_slice.start] = times
+                signals[i + vertex_slice.start] = vector
 
-        # Return dictionary of spike times
-        return spike_times
-        
+        # Return dictionary of signals
+        return signals

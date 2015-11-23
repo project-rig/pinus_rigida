@@ -46,6 +46,7 @@ class Recorder(recording.Recorder, ContextMixin):
         # If a SpiNNaker neuron population was created for the recorded population
         sim_state = self._simulator.state
         spike_times = {}
+        signals = defaultdict(dict)
         if self.population in sim_state.spinnaker_neuron_pops:
             # Get SpiNNaker neuron population
             spinnaker_pop = sim_state.spinnaker_neuron_pops[self.population]
@@ -60,29 +61,40 @@ class Recorder(recording.Recorder, ContextMixin):
                         # spike times dictionary with spikes from this vertex
                         if variable == "spikes":
                             spike_times.update(spinnaker_pop.read_spike_times(v.neuron_slice))
+                        # Otherwise
+                        else:
+                            # Convert variable name to channel number
+                            # **HACK** subtract one assuming first entry is spikes
+                            channel = self.population.celltype.recordable.index(variable) - 1
+
+                            # Update this variables dictionary with values from this vertex
+                            signals[variable].update(spinnaker_pop.read_signal(channel, v.neuron_slice))
 
         # Create context containing data read from spinnaker and call superclass
-        with self.get_new_context(spike_times=spike_times):
+        with self.get_new_context(spike_times=spike_times, signals=signals):
             return super(Recorder, self)._get_current_segment(filter_ids, variables, clear)
 
     @ContextMixin.use_contextual_arguments()
-    def _get_spiketimes(self, id, spike_times):
+    def _get_spiketimes(self, id, spike_times, signals):
         # Convert id to index
         index = self.population.id_to_index(id)
 
         # Return the numpy array of spike times associated with this index
         return spike_times[index]
 
-    def _get_all_signals(self, variable, ids, clear=False):
-        # assuming not using cvode, otherwise need to get times as well and use IrregularlySampledAnalogSignal
-        n_samples = int(round(self._simulator.state.t/self._simulator.state.dt)) + 1
-        return np.vstack((np.random.uniform(size=n_samples) for id in ids)).T
+    @ContextMixin.use_contextual_arguments()
+    def _get_all_signals(self, variable, ids, spike_times, signals, clear=False):
+        # Stack together signals for this variable from all ids
+        signal = signals[variable]
+        return np.vstack((signal[self.population.id_to_index(id)]
+                          for id in ids)).T
 
-    def _local_count(self, variable, filter_ids=None):
+    def _localpass_count(self, variable, filter_ids=None):
         N = {}
         if variable == 'spikes':
-            for id in self.filter_recorded(variable, filter_ids):
-                N[int(id)] = 2
+            raise NotImplementedError("Not implemented")
+            #for id in self.filter_recorded(variable, filter_ids):
+            #    N[int(id)] = 2
         else:
             raise Exception("Only implemented for spikes")
         return N

@@ -21,6 +21,15 @@ class IFCurr
 {
 public:
   //-----------------------------------------------------------------------------
+  // Constants
+  //-----------------------------------------------------------------------------
+  enum RecordingChannel
+  {
+    RecordingChannelV,
+    RecordingChannelMax,
+  };
+
+  //-----------------------------------------------------------------------------
   // MutableState
   //-----------------------------------------------------------------------------
   struct MutableState
@@ -106,6 +115,20 @@ public:
     }
 
     return false;
+  }
+
+  static S1615 GetRecordable(RecordingChannel c, const MutableState &mutableState,
+                             const ImmutableState &)
+  {
+    switch(c)
+    {
+      case RecordingChannelV:
+        return mutableState.m_V_Membrane;
+
+      default:
+        LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant recording channel %u", c);
+        return 0;
+    }
   }
 
   static void Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState);

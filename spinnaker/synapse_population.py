@@ -8,15 +8,16 @@ import regions
 from collections import defaultdict
 
 # Import functions
+from six import iteritems
 from utils import (
     Args, create_app_ptr_and_region_files_named, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
 
 #------------------------------------------------------------------------------
-# SynapsePopulationRegions
+# Regions
 #------------------------------------------------------------------------------
-class SynapsePopulationRegions(enum.IntEnum):
+class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
     key_lookup = 3,
@@ -41,17 +42,13 @@ class SynapsePopulation(object):
         self.weight_fixed_point = 16 - int(weight_msb[1])
         
         # Dictionary of regions
-        self.regions = {}
-        self.regions[SynapsePopulationRegions.system] =\
-            regions.System(timer_period_us, sim_ticks)
-        self.regions[SynapsePopulationRegions.key_lookup] =\
-            regions.KeyLookupBinarySearch()
-        self.regions[SynapsePopulationRegions.synaptic_matrix] =\
-            regions.SynapticMatrix()
-        #self.regions[5] = regions.Plasticity()
-        self.regions[SynapsePopulationRegions.output_buffer] =\
-            regions.OutputBuffer()
-        #self.regions[10] = regions.Profiler()
+        self.regions = {
+            Regions.system:           regions.System(timer_period_us,
+                                                     sim_ticks),
+            Regions.key_lookup:       regions.KeyLookupBinarySearch(),
+            Regions.synaptic_matrix:  regions.SynapticMatrix(),
+            Regions.output_buffer:    regions.OutputBuffer(),
+        }
 
     #--------------------------------------------------------------------------
     # Public methods
@@ -87,13 +84,12 @@ class SynapsePopulation(object):
             fp, self.regions, region_arguments)
 
         # Write each region into memory
-        for key in SynapsePopulationRegions:
-            # Get the arguments and the memory
-            args, kwargs = region_arguments[key]
+        for key, region in iteritems(self.regions):
+            # Get memory
             mem = self.region_memory[key]
 
-            # Get the region
-            region = self.regions[key]
+            # Get the arguments
+            args, kwargs = region_arguments[key]
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
@@ -105,15 +101,21 @@ class SynapsePopulation(object):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
-        region_arguments[SynapsePopulationRegions.system].kwargs["application_words"] = [self.weight_fixed_point, post_vertex_slice.slice_length]
+        region_arguments[Regions.system].kwargs["application_words"] =\
+            [self.weight_fixed_point, post_vertex_slice.slice_length]
 
-        region_arguments[SynapsePopulationRegions.key_lookup].kwargs["sub_matrices"] = sub_matrices
-        region_arguments[SynapsePopulationRegions.key_lookup].kwargs["matrix_placements"] = matrix_placements
+        region_arguments[Regions.key_lookup].kwargs["sub_matrices"] =\
+            sub_matrices
+        region_arguments[Regions.key_lookup].kwargs["matrix_placements"] =\
+            matrix_placements
+        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrices"] =\
+            sub_matrices
+        region_arguments[Regions.synaptic_matrix].kwargs["matrix_placements"] =\
+            matrix_placements
+        region_arguments[Regions.synaptic_matrix].kwargs["weight_fixed_point"] =\
+            self.weight_fixed_point
 
-        region_arguments[SynapsePopulationRegions.synaptic_matrix].kwargs["sub_matrices"] = sub_matrices
-        region_arguments[SynapsePopulationRegions.synaptic_matrix].kwargs["matrix_placements"] = matrix_placements
-        region_arguments[SynapsePopulationRegions.synaptic_matrix].kwargs["weight_fixed_point"] = self.weight_fixed_point
-
-        region_arguments[SynapsePopulationRegions.output_buffer].kwargs["out_buffers"] = out_buffers
+        region_arguments[Regions.output_buffer].kwargs["out_buffers"] =\
+            out_buffers
 
         return region_arguments

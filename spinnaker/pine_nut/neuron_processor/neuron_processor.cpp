@@ -11,6 +11,7 @@
 #include "../common/utils.h"
 
 // Neuron processor includes
+#include "analogue_recording.h"
 #include "input_buffer.h"
 #include "spike_recording.h"
 
@@ -48,7 +49,9 @@ Synapse::MutableState *g_SynapseMutableState = NULL;
 Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
 InputBuffer g_InputBuffer;
+
 SpikeRecording g_SpikeRecording;
+AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax];
 
 unsigned int g_InputBufferBeingProcessed = UINT_MAX;
 
@@ -171,6 +174,23 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Check that there are enough analogue recording regions for this neuron model
+  static_assert(RegionAnalogueRecordingEnd - RegionAnalogueRecordingStart >= Neuron::RecordingChannelMax,
+                "Not enough analogue recording regions for neuron models channels");
+
+  // Loop through neuron model's recording channels
+  for(unsigned int r = 0; r < Neuron::RecordingChannelMax; r++)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "Analogue recording channel %u", r);
+
+    // Read analogue recording region
+    if(!g_AnalogueRecording[r].ReadSDRAMData(
+      Common::Config::GetRegionStart(baseAddress, RegionAnalogueRecordingStart + r), flags,
+      g_AppWords[AppWordNumNeurons]))
+    {
+      return false;
+    }
+  }
   return true;
 }
 //-----------------------------------------------------------------------------
@@ -195,7 +215,9 @@ void UpdateNeurons()
     S1615 extCurrent = 0;
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tExcitatory input:%k, Inhibitory input:%k, External current:%knA",
               excInput, inhInput, extCurrent);
-    bool spiked = Neuron::Update(*neuronMutableState++, *neuronImmutableState++,
+    auto &neuronMutable = *neuronMutableState++;
+    const auto &neuronImmutable = *neuronImmutableState++;
+    bool spiked = Neuron::Update(neuronMutable, neuronImmutable,
       excInput, inhInput, extCurrent);
 
     // Record spike
@@ -212,6 +234,16 @@ void UpdateNeurons()
       {
         spin1_delay_us(1);
       }
+    }
+
+    // Loop through neuron model's analogue recording channels
+    for(unsigned int r = 0; r < Neuron::RecordingChannelMax; r++)
+    {
+      // Record the value from each one
+      g_AnalogueRecording[r].RecordValue(n,
+        Neuron::GetRecordable((Neuron::RecordingChannel)r,
+                              neuronMutable, neuronImmutable)
+      );
     }
   }
 

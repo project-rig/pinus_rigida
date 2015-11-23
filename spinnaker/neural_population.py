@@ -1,5 +1,6 @@
 # Import modules
 import enum
+import itertools
 import logging
 import numpy as np
 import regions
@@ -8,21 +9,28 @@ import regions
 from collections import defaultdict
 
 # Import functions
+from six import iteritems
 from utils import (
     Args, create_app_ptr_and_region_files_named, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
 
 #------------------------------------------------------------------------------
-# NeuralPopulationRegions
+# Regions
 #------------------------------------------------------------------------------
-class NeuralPopulationRegions(enum.IntEnum):
+class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
     neuron = 1,
     synapse = 2,
     input_buffer = 6,
-    spike_recording = 8
+    spike_recording = 8,
+    analogue_recording_start = 9,
+    analogue_recording_0 = 9,
+    analogue_recording_1 = 10,
+    analogue_recording_2 = 11,
+    analogue_recording_3 = 12,
+    analogue_recording_end = 13,
 
 #------------------------------------------------------------------------------
 # NeuralPopulation
@@ -34,23 +42,35 @@ class NeuralPopulation(object):
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record):
         # Dictionary of regions
-        self.regions = {}
-        self.regions[NeuralPopulationRegions.system] =\
-            regions.System(timer_period_us, sim_ticks)
-        self.regions[NeuralPopulationRegions.neuron] =\
-            regions.Neuron(cell_type, parameters, initial_values,
-                           sim_timestep_ms)
-        self.regions[NeuralPopulationRegions.synapse] =\
-            regions.Synapse(cell_type, parameters, initial_values,
-                            sim_timestep_ms)
-        self.regions[NeuralPopulationRegions.input_buffer] =\
-            regions.InputBuffer()
-        self.regions[NeuralPopulationRegions.spike_recording] =\
-            regions.SpikeRecording(indices_to_record, sim_timestep_ms,
-                                   sim_ticks)
-        #self.regions[9] = AnalogueRecordingRegion()
+        self.regions = {
+            Regions.system:         regions.System(timer_period_us, sim_ticks),
+            Regions.neuron:         regions.Neuron(cell_type, parameters,
+                                                   initial_values,
+                                                   sim_timestep_ms),
+            Regions.synapse:          regions.Synapse(cell_type, parameters,
+                                                      initial_values,
+                                                      sim_timestep_ms),
+            Regions.input_buffer:     regions.InputBuffer(),
+            Regions.spike_recording:  regions.SpikeRecording(indices_to_record,
+                                                             sim_timestep_ms,
+                                                             sim_ticks),
+        }
+
+        # Assert that there are sufficient analogue
+        # recording regions for this celltype's needs
+        assert (Regions.analogue_recording_end -
+                Regions.analogue_recording_start) >=\
+                    (len(cell_type.recordable) - 1)
+
+        # Loop through cell's non-spike recordables
+        # and create analogue recording regions
+        # **HACK** this assumes the first entry is spike
+        for i, v in enumerate(cell_type.recordable[1:]):
+            self.regions[Regions(Regions.analogue_recording_start + i)] =\
+                regions.AnalogueRecording(indices_to_record, v,
+                                          sim_timestep_ms, sim_ticks)
         #self.regions[10] = ProfilerRegion()
-    
+
     #--------------------------------------------------------------------------
     # Public methods
     #--------------------------------------------------------------------------
@@ -71,13 +91,12 @@ class NeuralPopulation(object):
                 fp, self.regions, region_arguments)
 
         # Write each region into memory
-        for key in NeuralPopulationRegions:
-            # Get the arguments and the memory
-            args, kwargs = region_arguments[key]
+        for key, region in iteritems(self.regions):
+            # Get memory
             mem = self.region_memory[key]
 
-            # Get the region
-            region = self.regions[key]
+            # Get the arguments
+            args, kwargs = region_arguments[key]
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
@@ -86,12 +105,24 @@ class NeuralPopulation(object):
         # Get the spike recording region and
         # the memory block associated with it
         region = self.regions[
-            NeuralPopulationRegions.spike_recording]
+            Regions.spike_recording]
         region_mem = self.region_memory[
-            NeuralPopulationRegions.spike_recording]
+            Regions.spike_recording]
 
         # Use spike recording region to get spike times
         return region.read_spike_times(vertex_slice, region_mem)
+
+    def read_signal(self, channel, vertex_slice):
+        # Get index of channel
+        r = Regions(Regions.analogue_recording_start + channel)
+
+        # Get the analogue recording region and
+        # the memory block associated with it
+        region = self.regions[r]
+        region_mem = self.region_memory[r]
+
+        # Use analogue recording region to get signal
+        return region.read_signal(vertex_slice, region_mem)
 
     #--------------------------------------------------------------------------
     # Private methods
@@ -99,14 +130,15 @@ class NeuralPopulation(object):
     def _get_region_arguments(self, key, vertex_slice, in_buffers):
         region_arguments = defaultdict(Args)
 
+        analogue_recording_regions = range(Regions.analogue_recording_start,
+                                           Regions.analogue_recording_end)
         # Add vertex slice to regions that require it
-        for r in (NeuralPopulationRegions.neuron,
-                  NeuralPopulationRegions.synapse,
-                  NeuralPopulationRegions.spike_recording):
-            region_arguments[r] = Args(vertex_slice)
+        for r in itertools.chain((Regions.neuron, Regions.synapse,
+                                  Regions.spike_recording), analogue_recording_regions):
+            region_arguments[Regions(r)] = Args(vertex_slice)
 
         # Add kwargs for regions that require them
-        region_arguments[NeuralPopulationRegions.system].kwargs["application_words"] = [key, vertex_slice.slice_length]
-        region_arguments[NeuralPopulationRegions.input_buffer].kwargs["in_buffers"] = in_buffers
+        region_arguments[Regions.system].kwargs["application_words"] = [key, vertex_slice.slice_length]
+        region_arguments[Regions.input_buffer].kwargs["in_buffers"] = in_buffers
 
         return region_arguments
