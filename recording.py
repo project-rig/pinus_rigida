@@ -1,5 +1,6 @@
 # Import modules
 import itertools
+import logging
 import numpy as np
 from pyNN import recording
 
@@ -10,6 +11,7 @@ from rig.utils.contexts import ContextMixin, Required
 
 from . import simulator
 
+logger = logging.getLogger("pinus_rigida")
 
 class Recorder(recording.Recorder, ContextMixin):
     _simulator = simulator
@@ -39,6 +41,8 @@ class Recorder(recording.Recorder, ContextMixin):
             indices[new_index] = True
 
     def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
+        logger.info("Downloading recorded data")
+
         variables_to_include = set(self.recorded.keys())
         if variables is not "all":
             variables_to_include = variables_to_include.intersection(set(variables))
