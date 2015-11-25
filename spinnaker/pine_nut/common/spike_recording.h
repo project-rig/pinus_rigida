@@ -4,19 +4,15 @@
 #include <cstdint>
 
 // Common includes
-#include "../common/bit_field.h"
-#include "../common/log.h"
-#include "../common/spinnaker.h"
-#include "../common/utils.h"
-
-// Namespaces
-using namespace Common;
-using namespace Common::Utils;
+#include "bit_field.h"
+#include "log.h"
+#include "spinnaker.h"
+#include "utils.h"
 
 //-----------------------------------------------------------------------------
-// NeuronProcessor::SpikeRecording
+// Common::SpikeRecording
 //-----------------------------------------------------------------------------
-namespace NeuronProcessor
+namespace Common
 {
 class SpikeRecording
 {
@@ -39,7 +35,7 @@ public:
     LOG_PRINT(LOG_LEVEL_INFO, "\tNum words per population:%u", numWords);
 
     // Copy indices to record
-    if(!AllocateCopyStructArray(numWords, region, m_IndicesToRecord))
+    if(!Utils::AllocateCopyStructArray(numWords, region, m_IndicesToRecord))
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate indices to record array");
       return false;

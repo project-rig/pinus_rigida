@@ -7,13 +7,13 @@
 #include "../common/config.h"
 #include "../common/fixed_point_number.h"
 #include "../common/log.h"
+#include "../common/spike_recording.h"
 #include "../common/spinnaker.h"
 #include "../common/utils.h"
 
 // Neuron processor includes
 #include "analogue_recording.h"
 #include "input_buffer.h"
-#include "spike_recording.h"
 
 // Configuration include
 #include "config.h"
