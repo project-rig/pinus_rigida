@@ -383,10 +383,9 @@ class State(common.control.BaseState):
             
         logger.info("Connecting to SpiNNaker")
 
-        # Get machine controller from connected SpiNNaker board
+        # Get machine controller from connected SpiNNaker board and boot
         self.machine_controller = MachineController(self.spinnaker_hostname)
-        # **TODO** some sensible/ideally standard with Nengo booting behaviour
-        self.machine_controller.boot(2, 2)
+        self.machine_controller.boot(self.spinnaker_width, self.spinnaker_height)
 
         # Retrieve a machine object
         spinnaker_machine = self.machine_controller.get_machine()
