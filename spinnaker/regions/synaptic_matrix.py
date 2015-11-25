@@ -74,7 +74,7 @@ class SynapticMatrix(Region):
         
         # Create a numpy fixed point convert to convert
         # Floating point weights to this format
-        # **NOTE** weights are only 16-bit, but final words need tsub_matriceso be 32-bit
+        # **NOTE** weights are only 16-bit, but final words need to be 32-bit
         float_to_weight = NumpyFloatToFixConverter(False, 32, 
                                                    weight_fixed_point)
         

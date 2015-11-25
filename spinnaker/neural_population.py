@@ -43,10 +43,11 @@ class NeuralPopulation(object):
                  indices_to_record):
         # Dictionary of regions
         self.regions = {
-            Regions.system:         regions.System(timer_period_us, sim_ticks),
-            Regions.neuron:         regions.Neuron(cell_type, parameters,
-                                                   initial_values,
-                                                   sim_timestep_ms),
+            Regions.system:           regions.System(timer_period_us,
+                                                     sim_ticks),
+            Regions.neuron:           regions.Neuron(cell_type, parameters,
+                                                     initial_values,
+                                                     sim_timestep_ms),
             Regions.synapse:          regions.Synapse(cell_type, parameters,
                                                       initial_values,
                                                       sim_timestep_ms),

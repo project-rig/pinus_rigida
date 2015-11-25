@@ -103,7 +103,7 @@ public:
         mutableState.m_V_Membrane = immutableState.m_V_Reset;
 
         // Reset refractory timer
-        mutableState.m_RefractoryTimer  = immutableState.m_T_Refractory;
+        mutableState.m_RefractoryTimer = immutableState.m_T_Refractory;
 
         return true;
       }
