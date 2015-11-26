@@ -8,13 +8,13 @@ namespace NeuronProcessor
 // Indices or regions
 enum Region
 {
-  RegionSystem                  = 0,
-  RegionNeuron                  = 1,
-  RegionSynapse                 = 2,
-  RegionInputBuffer             = 6,
-  RegionSpikeRecording          = 8,
-  RegionAnalogueRecordingStart  = 9,
-  RegionAnalogueRecordingEnd    = 12,
+  RegionSystem,
+  RegionNeuron,
+  RegionSynapse,
+  RegionInputBuffer,
+  RegionSpikeRecording,
+  RegionAnalogueRecordingStart,
+  RegionAnalogueRecordingEnd    = RegionAnalogueRecordingStart + 4,
   RegionProfiler                = RegionAnalogueRecordingEnd,
 };
 

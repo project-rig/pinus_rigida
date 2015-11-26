@@ -20,9 +20,11 @@ logger = logging.getLogger("pinus_rigida")
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
-    key_lookup = 3,
-    synaptic_matrix = 4,
-    output_buffer = 7
+    key_lookup = 1,
+    synaptic_matrix = 2,
+    plasticity = 3,
+    output_buffer = 4,
+    profiler = 5,
 
 #------------------------------------------------------------------------------
 # SynapsePopulation
@@ -55,11 +57,11 @@ class SynapsePopulation(object):
     #--------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
         # Partition matrices
-        sub_matrices = self.regions[4].partition_matrices(
+        sub_matrices = self.regions[Regions.synaptic_matrix].partition_matrices(
             matrices, vertex_slice, incoming_connections)
 
         # Place them in memory
-        matrix_placements = self.regions[3].place_matrices(sub_matrices)
+        matrix_placements = self.regions[Regions.key_lookup].place_matrices(sub_matrices)
 
         # Return both
         return sub_matrices, matrix_placements

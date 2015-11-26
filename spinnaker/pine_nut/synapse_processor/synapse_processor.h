@@ -8,12 +8,12 @@ namespace SynapseProcessor
 // Indexes of synapse executable regions
 enum Region
 {
-  RegionSystem              = 0,
-  RegionKeyLookup           = 3,
-  RegionSynapticMatrix      = 4,
-  RegionPlasticity          = 5,
-  RegionOutputBuffer        = 7,
-  RegionProfiler            = 10,
+  RegionSystem,
+  RegionKeyLookup,
+  RegionSynapticMatrix,
+  RegionPlasticity,
+  RegionOutputBuffer,
+  RegionProfiler,
 };
 
 // Indexes of application words

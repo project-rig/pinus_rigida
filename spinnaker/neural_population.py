@@ -23,14 +23,15 @@ class Regions(enum.IntEnum):
     system = 0,
     neuron = 1,
     synapse = 2,
-    input_buffer = 6,
-    spike_recording = 8,
-    analogue_recording_start = 9,
-    analogue_recording_0 = 9,
-    analogue_recording_1 = 10,
-    analogue_recording_2 = 11,
-    analogue_recording_3 = 12,
-    analogue_recording_end = 13,
+    input_buffer = 3,
+    spike_recording = 4,
+    analogue_recording_start = 5,
+    analogue_recording_0 = 5,
+    analogue_recording_1 = 6,
+    analogue_recording_2 = 7,
+    analogue_recording_3 = 8,
+    analogue_recording_end = 9,
+    profiler = 9,
 
 #------------------------------------------------------------------------------
 # NeuralPopulation
