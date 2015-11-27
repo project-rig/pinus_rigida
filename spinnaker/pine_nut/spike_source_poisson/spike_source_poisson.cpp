@@ -123,6 +123,16 @@ bool ReadPoissonSourceRegion(uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadPoissonSourceRegion");
 
+  // Read RNG seed
+  uint32_t seed[MarsKiss64::SeedSize];
+  LOG_PRINT(LOG_LEVEL_TRACE, "\tSeed:");
+  for(unsigned int s = 0; s < MarsKiss64::SeedSize; s++)
+  {
+    seed[s] = *region++;
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t%u", seed[s]);
+  }
+  g_RNG.SetSeed(seed);
+
   // Read number of slow spikes sources, followed by array of structs
   g_NumSlow = (unsigned int)*region++;
   LOG_PRINT(LOG_LEVEL_INFO, "\t%u slow spike sources", g_NumSlow);
