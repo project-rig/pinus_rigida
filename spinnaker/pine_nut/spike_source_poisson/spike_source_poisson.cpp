@@ -25,10 +25,15 @@ using namespace SpikeSourcePoisson;
 //-----------------------------------------------------------------------------
 namespace
 {
-
+//-----------------------------------------------------------------------------
+// ImmutableBase
+//-----------------------------------------------------------------------------
 class ImmutableBase
 {
 public:
+  //-----------------------------------------------------------------------------
+  // Public API
+  //-----------------------------------------------------------------------------
   bool IsActive(unsigned int tick) const
   {
     return ((tick >= m_StartTick) && (tick < m_EndTick));
@@ -37,17 +42,26 @@ public:
   uint32_t GetNeuronID() const { return m_NeuronID; }
 
 private:
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
   uint32_t m_NeuronID;
   uint32_t m_StartTick;
   uint32_t m_EndTick;
 };
 
+//-----------------------------------------------------------------------------
+// SlowImmutable
+//-----------------------------------------------------------------------------
 //! data structure for spikes which have multiple timer tick between firings
 //! this is separated from spikes which fire at least once every timer tick as
 //! there are separate algorithms for each type.
 class SlowImmutable : public ImmutableBase
 {
 public:
+  //-----------------------------------------------------------------------------
+  // Public API
+  //-----------------------------------------------------------------------------
   template<typename R>
   S1615 CalculateTTS(R rng) const
   {
@@ -55,20 +69,24 @@ public:
   }
 
 private:
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
   S1615 m_MeanISI;
 };
 
-struct SlowMutable
-{
-  S1615 m_TTS;
-};
-
+//-----------------------------------------------------------------------------
+// FastImmutable
+//-----------------------------------------------------------------------------
 //! data structure for spikes which have at least one spike fired per timer tick
 //! this is separated from spikes which have multiple timer ticks between firings
 //! as there are separate algorithms for each type.
 class FastImmutable : public ImmutableBase
 {
 public:
+  //-----------------------------------------------------------------------------
+  // GetNumSpikes
+  //-----------------------------------------------------------------------------
   template<typename R>
   unsigned int GetNumSpikes(R rng) const
   {
@@ -76,6 +94,9 @@ public:
   }
 
 private:
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
   U032 m_ExpMinusLambda;
 };
 
@@ -90,7 +111,7 @@ MarsKiss64 g_RNG;
 
 unsigned int g_NumSlow = 0;
 SlowImmutable *g_SlowImmutableState = NULL;
-SlowMutable *g_SlowMutableState = NULL;
+S1615 *g_SlowTimeToSpike = NULL;
 
 unsigned int g_NumFast = 0;
 FastImmutable *g_FastImmutableState = NULL;
@@ -124,17 +145,17 @@ bool ReadPoissonSourceRegion(uint32_t *region, uint32_t)
   if(g_NumSlow > 0)
   {
     // Allocate array
-    g_SlowMutableState = (SlowMutable*)spin1_malloc(sizeof(SlowMutable) * g_NumSlow);
-    if(g_SlowMutableState == NULL)
+    g_SlowTimeToSpike = (S1615*)spin1_malloc(sizeof(S1615) * g_NumSlow);
+    if(g_SlowTimeToSpike == NULL)
     {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate slow spike source mutable state array");
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate slow spike source time to spikearray");
       return false;
     }
 
     // Calculate initial time-to-spike for each slow source
     for(unsigned int i = 0; i < g_NumSlow; i++)
     {
-      g_SlowMutableState[i].m_TTS = g_SlowImmutableState[i].CalculateTTS(g_RNG);
+      g_SlowTimeToSpike[i] = g_SlowImmutableState[i].CalculateTTS(g_RNG);
     }
   }
   
@@ -213,51 +234,51 @@ static void TimerTick(uint tick, uint)
   else
   {
     // Loop through slow source
-    auto *slowMutableState = g_SlowMutableState;
+    auto *slowTimeToSpike = g_SlowTimeToSpike;
     const auto *slowImmutableState = g_SlowImmutableState;
     for(unsigned int s = 0; s < g_NumSlow; s++)
     {
-      auto &slowMutable = *slowMutableState++;
-      const auto &slowImmutable = *slowImmutableState++;
+      auto &tts = *slowTimeToSpike++;
+      const auto &immutable = *slowImmutableState++;
 
       // If this source should be active
       bool spiked = false;
-      if(slowImmutable.IsActive(tick))
+      if(immutable.IsActive(tick))
       {
         // If it's time to spike
-        if(slowMutable.m_TTS <= 0)
+        if(tts <= 0)
         {
           // Set spiked flag
           spiked = true;
 
           // Emit a spike
           LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
-          EmitSpike(slowImmutable.GetNeuronID());
+          EmitSpike(immutable.GetNeuronID());
 
           // Update time-to-spike
-          slowMutable.m_TTS += slowImmutable.CalculateTTS(g_RNG);
+          tts += immutable.CalculateTTS(g_RNG);
         }
 
         // Subtract one
-        slowMutable.m_TTS -= S1615One;
+        tts -= S1615One;
       }
 
       // Record spike
-      g_SpikeRecording.RecordSpike(slowImmutable.GetNeuronID(), spiked);
+      g_SpikeRecording.RecordSpike(immutable.GetNeuronID(), spiked);
     }
 
     // Loop through fast source
     const auto *fastImmutableState = g_FastImmutableState;
     for(unsigned int f = 0; f < g_NumFast; f++)
     {
-      const auto &fastImmutable = *fastImmutableState++;
+      const auto &immutable = *fastImmutableState++;
 
       // If this source should be active
       bool spiked = false;
-      if(fastImmutable.IsActive(tick))
+      if(immutable.IsActive(tick))
       {
         // Get number of spikes to emit this timestep
-        unsigned int numSpikes = fastImmutable.GetNumSpikes(g_RNG);
+        unsigned int numSpikes = immutable.GetNumSpikes(g_RNG);
 
         // Determine if this means it spiked
         spiked = (numSpikes > 0);
@@ -265,15 +286,14 @@ static void TimerTick(uint tick, uint)
         // Emit spikes
         for(unsigned int s = 0; s < numSpikes; s++)
         {
-          EmitSpike(fastImmutable.GetNeuronID());
+          EmitSpike(immutable.GetNeuronID());
         }
       }
 
       // Record spike
-      g_SpikeRecording.RecordSpike(fastImmutable.GetNeuronID(), spiked);
+      g_SpikeRecording.RecordSpike(immutable.GetNeuronID(), spiked);
     }
   }
-
 }
 } // Anonymous namespace
 
