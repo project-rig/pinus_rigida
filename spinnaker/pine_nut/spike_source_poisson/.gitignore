@@ -1,3 +1,4 @@
 *.aplx
 *.elf
 *.txt
+/build/
