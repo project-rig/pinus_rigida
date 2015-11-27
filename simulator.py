@@ -209,7 +209,7 @@ class State(common.control.BaseState):
             # **THINK** is there any point in doing anything cleverer than this
             neuron_application = os.path.join(
                 backend_dir, "model_binaries",
-                "neuron_processor_" + pop.celltype.__class__.__name__.lower() + ".aplx")
+                pop.celltype.__class__.__name__.lower() + ".aplx")
 
             logger.debug("\tNeuron application:%s" % neuron_application)
             
@@ -259,7 +259,7 @@ class State(common.control.BaseState):
                 # **THINK** is there any point in doing anything cleverer than this
                 synapse_application = os.path.join(
                     backend_dir, "model_binaries",
-                    "synapse_processor_" + synapse_type[0].__name__.lower() + ".aplx")
+                    synapse_type[0].__name__.lower() + ".aplx")
                 logger.debug("\t\tSynapse application:%s" % synapse_application)
 
                 # Loop through the post-slices

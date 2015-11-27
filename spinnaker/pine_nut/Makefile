@@ -8,7 +8,7 @@
 # ----------------------------------------------------------------------------
 # Code derived from Andrew Rowley, University of Manchester
 
-APPS = neuron_processor synapse_processor
+APPS = neuron_processor synapse_processor spike_source_poisson
 
 all :
 	for a in $(APPS); do ( cd $$a; "$(MAKE)"  ) || exit $$?; done

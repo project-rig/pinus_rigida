@@ -46,17 +46,21 @@ class NeuralPopulation(object):
         self.regions = {
             Regions.system:           regions.System(timer_period_us,
                                                      sim_ticks),
-            Regions.neuron:           regions.Neuron(cell_type, parameters,
+            Regions.neuron:           cell_type.neuron_region_class(cell_type, parameters,
                                                      initial_values,
                                                      sim_timestep_ms),
-            Regions.synapse:          regions.Synapse(cell_type, parameters,
-                                                      initial_values,
-                                                      sim_timestep_ms),
-            Regions.input_buffer:     regions.InputBuffer(),
             Regions.spike_recording:  regions.SpikeRecording(indices_to_record,
                                                              sim_timestep_ms,
                                                              sim_ticks),
         }
+
+        # If cell type has a synapse region class
+        if hasattr(cell_type, "synapse_region_class"):
+            # Add a synapse region and an input buffer
+            self.regions[Regions.synapse] = cell_type.synapse_region_class(
+                cell_type, parameters, initial_values, sim_timestep_ms)
+
+            self.regions[Regions.input_buffer] = regions.InputBuffer()
 
         # Assert that there are sufficient analogue
         # recording regions for this celltype's needs

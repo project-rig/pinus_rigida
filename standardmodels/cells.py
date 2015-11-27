@@ -3,6 +3,7 @@ import functools
 import logging
 from pyNN.standardmodels import cells
 from ..spinnaker import lazy_param_map
+from ..spinnaker import regions
 
 # Import functions
 from copy import deepcopy
@@ -46,17 +47,17 @@ exp_synapse_translations = build_translations(
 #------------------------------------------------------------lazy_array_fixed_point-------
 # Build maps of where and how parameters need to be written into neuron regions
 if_curr_neuron_immutable_param_map = [
-    ("v_thresh",    "i4", lazy_param_map.fixed_point),
-    ("v_reset",     "i4", lazy_param_map.fixed_point),
-    ("v_rest",      "i4", lazy_param_map.fixed_point),
-    ("i_offset",    "i4", lazy_param_map.fixed_point),
-    ("r_membrane",  "i4", lazy_param_map.fixed_point),
-    ("tau_m",       "i4", lazy_param_map.fixed_point_exp_decay),
-    ("tau_refrac",  "i4", lazy_param_map.integer_time_divide),
+    ("v_thresh",    "i4", lazy_param_map.s1615),
+    ("v_reset",     "i4", lazy_param_map.s1615),
+    ("v_rest",      "i4", lazy_param_map.s1615),
+    ("i_offset",    "i4", lazy_param_map.s1615),
+    ("r_membrane",  "i4", lazy_param_map.s1615),
+    ("tau_m",       "i4", lazy_param_map.s1615_exp_decay),
+    ("tau_refrac",  "I4", lazy_param_map.integer_time_divide),
 ]
 
 if_curr_neuron_mutable_param_map = [
-    ("v", "i4", lazy_param_map.fixed_point),
+    ("v", "i4", lazy_param_map.s1615),
     (0,   "i4"),
 ]
 
@@ -64,15 +65,15 @@ if_curr_neuron_mutable_param_map = [
 # Synapse shaping region maps
 #-------------------------------------------------------------------
 exp_synapse_immutable_param_map = [
-    ("tau_syn_e", "i4", lazy_param_map.fixed_point_exp_decay),
-    ("tau_syn_e", "i4", lazy_param_map.fixed_point_exp_init),
-    ("tau_syn_i", "i4", lazy_param_map.fixed_point_exp_decay),
-    ("tau_syn_i", "i4", lazy_param_map.fixed_point_exp_init),
+    ("tau_syn_e", "i4", lazy_param_map.s1615_exp_decay),
+    ("tau_syn_e", "i4", lazy_param_map.s1615_exp_init),
+    ("tau_syn_i", "i4", lazy_param_map.s1615_exp_decay),
+    ("tau_syn_i", "i4", lazy_param_map.s1615_exp_init),
 ]
 
 exp_synapse_mutable_param_map = [
-    ("isyn_exc", "i4", lazy_param_map.fixed_point),
-    ("isyn_inh", "i4", lazy_param_map.fixed_point),
+    ("isyn_exc", "i4", lazy_param_map.s1615),
+    ("isyn_inh", "i4", lazy_param_map.s1615),
 ]
 
 #-------------------------------------------------------------------
@@ -84,6 +85,9 @@ class IF_curr_exp(cells.IF_curr_exp):
     translations = deepcopy(if_curr_neuron_translations)
     translations.update(exp_synapse_translations)
     
+    neuron_region_class = regions.Neuron
+    synapse_region_class = regions.Synapse
+
     neuron_immutable_param_map = if_curr_neuron_immutable_param_map
     neuron_mutable_param_map = if_curr_neuron_mutable_param_map
 
@@ -94,7 +98,7 @@ class IF_curr_exp(cells.IF_curr_exp):
 class IF_cond_exp(cells.IF_cond_exp):
     __doc__ = cells.IF_cond_exp.__doc__
 
-    translations = deepcopy(lif_neuron_translations)
+    translations = deepcopiy(lif_neuron_translations)
     translations.update(conductance_synapse_translations)
     
     neuron_immutable_param_map = lif_neuron_immutable_param_map
@@ -105,16 +109,32 @@ class Izhikevich(cells.Izhikevich):
     
     translations = deepcopy(izhikevich_neuron_translations)
     translations.update(current_synapse_translations)
-
+'''
 class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     __doc__ = cells.SpikeSourcePoisson.__doc__
 
     translations = build_translations(
-        ('start',    'START'),
-        ('rate',     'INTERVAL',  "1000.0/rate",  "1000.0/INTERVAL"),
-        ('duration', 'DURATION'),
+        ("start",    "start_time"),
+        ("rate",     "rate"),
+        ("duration", "end_time",  "start + duration", "end_time - start_time"),
     )
 
+    neuron_region_class = regions.SpikeSourcePoisson
+
+    slow_immutable_param_map = [
+        (None, "I4"),
+        ("start_time", "I4", lazy_param_map.integer_time_divide),
+        ("end_time", "I4", lazy_param_map.integer_time_divide),
+        ("rate", "i4", lazy_param_map.s1615_rate_isi),
+    ]
+
+    fast_immutable_param_map = [
+        (None, "I4"),
+        ("start_time", "I4", lazy_param_map.integer_time_divide),
+        ("end_time", "I4", lazy_param_map.integer_time_divide),
+        ("rate", "I4", lazy_param_map.u032_rate_exp_minus_lambda),
+    ]
+'''
 class SpikeSourceArray(cells.SpikeSourceArray):
     __doc__ = cells.SpikeSourceArray.__doc__
 

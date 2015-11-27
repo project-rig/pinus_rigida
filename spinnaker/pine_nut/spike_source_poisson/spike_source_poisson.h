@@ -10,8 +10,7 @@ enum Region
 {
   RegionSystem,
   RegionPoissonSource,
-  RegionSpikeRecording,
-  RegionProfiler,
+  RegionSpikeRecording = 4,
 };
 
 // Indexes of application words

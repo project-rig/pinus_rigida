@@ -41,6 +41,13 @@ public:
 
   uint32_t GetNeuronID() const { return m_NeuronID; }
 
+  void Print(char *stream)
+  {
+    io_printf(stream, "\t\tNeuronID   = %u\n", m_NeuronID);
+    io_printf(stream, "\t\tStartTick  = %u\n", m_StartTick);
+    io_printf(stream, "\t\tEndTick    = %u\n", m_EndTick);
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Members
@@ -66,6 +73,14 @@ public:
   S1615 CalculateTTS(R rng) const
   {
     return MulS1615(m_MeanISI, NonUniform::ExponentialDistVariate(rng));
+  }
+
+  void Print(char *stream)
+  {
+    // Superclass
+    ImmutableBase::Print(stream);
+
+    io_printf(stream, "\t\tMeanISI    = %k\n", m_MeanISI);
   }
 
 private:
@@ -141,6 +156,12 @@ bool ReadPoissonSourceRegion(uint32_t *region, uint32_t)
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate slow spike source immutable state array");
     return false;
   }
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  for(unsigned int i = 0; i < g_NumSlow; i++)
+  {
+    g_SlowImmutableState[i].Print(IO_BUF);
+  }
+#endif
 
   // Read number of fast spikes sources, followed by array of structs
   g_NumFast = (unsigned int)*region++;
