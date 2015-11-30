@@ -30,18 +30,10 @@ class Regions(enum.IntEnum):
 # SynapsePopulation
 #------------------------------------------------------------------------------
 class SynapsePopulation(object):
-    def __init__(self, incoming_weight_range, timer_period_us,
+    def __init__(self, weight_fixed_point, timer_period_us,
                  sim_ticks):
-        # Get MSB of minimum and maximum weight and get magnitude of range
-        weight_msb = [math.floor(math.log(r, 2)) + 1 
-                      for r in incoming_weight_range]
-        weight_range = weight_msb[1] - weight_msb[0]
-        
-        # Check there's enough bits to represent this is any form
-        assert weight_range < 16
-        
         # Calculate where the weight format fixed-point lies
-        self.weight_fixed_point = 16 - int(weight_msb[1])
+        self.weight_fixed_point = weight_fixed_point
         
         # Dictionary of regions
         self.regions = {
@@ -55,10 +47,10 @@ class SynapsePopulation(object):
     #--------------------------------------------------------------------------
     # Public methods
     #--------------------------------------------------------------------------
-    def partition_matrices(self, matrices, vertex_slice, incoming_connections):
+    def partition_matrices(self, matrices, vertex_slice, in_connections):
         # Partition matrices
         sub_matrices = self.regions[Regions.synaptic_matrix].partition_matrices(
-            matrices, vertex_slice, incoming_connections)
+            matrices, vertex_slice, in_connections)
 
         # Place them in memory
         matrix_placements = self.regions[Regions.key_lookup].place_matrices(sub_matrices)

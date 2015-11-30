@@ -1,4 +1,5 @@
 # Import modules
+import math
 import numpy
 import sys
 from rig import machine
@@ -104,18 +105,19 @@ class Population(common.Population, ContextMixin):
                                 timer_period_us, simulation_ticks,
                                 self.recorder.indices_to_record)
 
-    def create_spinnaker_synapse_population(self, incoming_weight_range,
+    def create_spinnaker_synapse_population(self, weight_fixed_point,
                                             timer_period_us, 
                                             simulation_ticks):
         # Create synapse population
-        return SynapsePopulation(incoming_weight_range,
+        return SynapsePopulation(weight_fixed_point,
                                  timer_period_us, simulation_ticks)
 
     def build_incoming_connection(self):
         population_matrix_rows = {}
         
-        # Create, initially masked mask arrays to hold range of incoming weights
-        incoming_weight_range = [sys.float_info.max, sys.float_info.min]
+        # Create list to hold min and max weight
+        # **NOTE** needs to be a list rather than a tuple so it's mutable
+        weight_range = [sys.float_info.max, sys.float_info.min]
         
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
@@ -128,7 +130,7 @@ class Population(common.Population, ContextMixin):
 
             # Build each projection, adding the matrix rows to the context
             with self.get_new_context(matrix_rows=population_matrix_rows[pre_pop],
-                                      incoming_weight_range=incoming_weight_range):
+                                      weight_range=weight_range):
                 for projection in projections:
                     projection.build()
 
@@ -138,19 +140,30 @@ class Population(common.Population, ContextMixin):
             for r in population_matrix_rows[pre_pop]:
                 r.sort(key=itemgetter(2))
         
-        return population_matrix_rows, incoming_weight_range
+        # Get MSB of minimum and maximum weight and get magnitude of range
+        weight_msb = [math.floor(math.log(r, 2)) + 1
+                    for r in weight_range]
+        weight_range = weight_msb[1] - weight_msb[0]
+
+        # Check there's enough bits to represent this is any form
+        assert weight_range < 16
+
+        # Calculate where the weight format fixed-point lies
+        weight_fixed_point = 16 - int(weight_msb[1])
+
+        return population_matrix_rows, weight_fixed_point
 
     @ContextMixin.use_contextual_arguments()
     def convergent_connect(self, projection, presynaptic_indices,
                            postsynaptic_index, matrix_rows,
-                           incoming_weight_range, **connection_parameters):
+                           weight_range, **connection_parameters):
         # Extract connection parameters
         weight = connection_parameters["weight"]
         delay = connection_parameters["delay"]
 
         # Update incoming weight range
-        incoming_weight_range[0] = min(incoming_weight_range[0], weight)
-        incoming_weight_range[1] = max(incoming_weight_range[1], weight)
+        weight_range[0] = min(weight_range[0], weight)
+        weight_range[1] = max(weight_range[1], weight)
         
         # Add synapse to each row
         for p in matrix_rows[presynaptic_indices]:

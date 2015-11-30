@@ -76,6 +76,7 @@ class SynapseVertex:
     def __init__(self, post_neuron_slice, receptor_index):
         self.post_neuron_slice = post_neuron_slice
         self.incoming_connections = defaultdict(list)
+        self.weight_fixed_point = None
         self.receptor_index = receptor_index
         self.out_buffers = None
 
@@ -330,7 +331,8 @@ class State(common.control.BaseState):
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
 
-            # Get lists of synapse and neuron vertices associated with this list
+            # Get lists of synapse and neuron vertices
+            # associated with this PyNN population
             s_verts = self.pop_synapse_vertices[pop]
             n_verts = self.pop_neuron_vertices[pop]
 
@@ -350,8 +352,12 @@ class State(common.control.BaseState):
                 # Build same chip constraint and add to list
                 constraints.append(SameChipConstraint(n.synapse_verts + [n]))
 
+        logger.info("Assigning keyspaces")
+
         # Finalise keyspace fields
         keyspace.assign_fields()
+
+        logger.info("Building nets")
 
         # Loop through all projections in simulation
         nets = []
@@ -408,11 +414,11 @@ class State(common.control.BaseState):
             logger.debug("\tPopulation %s" % pop)
 
             # Expand any incoming connections
-            matrices, incoming_weight_range = pop.build_incoming_connection()
+            matrices, weight_fixed_point = pop.build_incoming_connection()
 
             # Create a spinnaker population
             spinnaker_pop = pop.create_spinnaker_synapse_population(
-                incoming_weight_range, hardware_timestep_us,
+                weight_fixed_point, hardware_timestep_us,
                 duration_timesteps)
 
             # Add spinnaker population to dictionary
@@ -420,6 +426,9 @@ class State(common.control.BaseState):
 
             # Loop through vertices
             for v in vertices:
+                # Cache weight fixed-point for this synapse point in vertex
+                v.weight_fixed_point = weight_fixed_point
+
                 # Get placement and allocation
                 vertex_placement = placements[v]
                 vertex_allocation = allocations[v]
@@ -492,8 +501,9 @@ class State(common.control.BaseState):
                 with self.machine_controller(x=vertex_placement[0],
                                              y=vertex_placement[1]):
                     # Get the input buffers from each synapse vertex
-                    in_buffers = [(s.out_buffers, s.receptor_index)
-                                  for s in v.synapse_verts]
+                    in_buffers = [
+                        (s.out_buffers, s.receptor_index, s.weight_fixed_point)
+                        for s in v.synapse_verts]
 
                     # Calculate required memory size
                     size = spinnaker_pop.get_size(

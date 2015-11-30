@@ -54,9 +54,8 @@ class InputBuffer(Region):
         data += struct.pack("I", len(in_buffers))
 
         # Write each buffer entry
-        # **TODO** insert weight scale in buffer somehow
-        for p, r in in_buffers:
-            data += struct.pack("IIII", p[0], p[1], r, 1)
+        for p, r, w in in_buffers:
+            data += struct.pack("IIII", p[0], p[1], r, 15 - w)
 
         # Write data to filelike
         fp.write(data)
