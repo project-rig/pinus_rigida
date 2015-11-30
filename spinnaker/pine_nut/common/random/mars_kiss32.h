@@ -10,32 +10,37 @@ namespace Random
 class MarsKiss32
 {
 public:
-  MarsKiss32() : m_Seed{123456789, 234567891, 345678912, 456789123, 0}
+  //-----------------------------------------------------------------------------
+  // Constants
+  //-----------------------------------------------------------------------------
+  static const unsigned int StateSize = 5;
+
+  MarsKiss32() : m_State{123456789, 234567891, 345678912, 456789123, 0}
   {
   }
 
   //-----------------------------------------------------------------------------
   // Operators
   //-----------------------------------------------------------------------------
-  uint32_t operator()()
+  uint32_t GetNext()
   {
-    m_Seed[1] ^= (m_Seed[1] << 5);
-    m_Seed[1] ^= (m_Seed[1] >> 7);
-    m_Seed[1] ^= (m_Seed[1] << 22);
-    int32_t t  = m_Seed[2] + m_Seed[3] + m_Seed[4];
-    m_Seed[2]  = m_Seed[3];
-    m_Seed[4]  = t < 0;
-    m_Seed[3]  = t & 2147483647;
-    m_Seed[0] += 1411392427;
+    m_State[1] ^= (m_State[1] << 5);
+    m_State[1] ^= (m_State[1] >> 7);
+    m_State[1] ^= (m_State[1] << 22);
+    int32_t t  = m_State[2] + m_State[3] + m_State[4];
+    m_State[2]  = m_State[3];
+    m_State[4]  = t < 0;
+    m_State[3]  = t & 2147483647;
+    m_State[0] += 1411392427;
 
-    return ((uint32_t)m_Seed[0] + m_Seed[1] + m_Seed[3]);
+    return ((uint32_t)m_State[0] + m_State[1] + m_State[3]);
   }
 
 private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  uint32_t m_Seed[5];
+  uint32_t m_State[StateSize];
 };
 } // Random
 } // Common

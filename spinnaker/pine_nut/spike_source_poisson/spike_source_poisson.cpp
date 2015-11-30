@@ -41,11 +41,11 @@ public:
 
   uint32_t GetNeuronID() const { return m_NeuronID; }
 
-  void Print(char *stream)
+  void Print(char *stream) const
   {
-    io_printf(stream, "\t\tNeuronID   = %u\n", m_NeuronID);
-    io_printf(stream, "\t\tStartTick  = %u\n", m_StartTick);
-    io_printf(stream, "\t\tEndTick    = %u\n", m_EndTick);
+    io_printf(stream, "\tNeuronID       = %u\n", m_NeuronID);
+    io_printf(stream, "\tStartTick      = %u\n", m_StartTick);
+    io_printf(stream, "\tEndTick        = %u\n", m_EndTick);
   }
 
 private:
@@ -70,17 +70,17 @@ public:
   // Public API
   //-----------------------------------------------------------------------------
   template<typename R>
-  S1615 CalculateTTS(R rng) const
+  S1615 CalculateTTS(R &rng) const
   {
     return MulS1615(m_MeanISI, NonUniform::ExponentialDistVariate(rng));
   }
 
-  void Print(char *stream)
+  void Print(char *stream) const
   {
     // Superclass
     ImmutableBase::Print(stream);
 
-    io_printf(stream, "\t\tMeanISI    = %k\n", m_MeanISI);
+    io_printf(stream, "\tMeanISI        = %k\n", m_MeanISI);
   }
 
 private:
@@ -103,9 +103,17 @@ public:
   // GetNumSpikes
   //-----------------------------------------------------------------------------
   template<typename R>
-  unsigned int GetNumSpikes(R rng) const
+  unsigned int GetNumSpikes(R &rng) const
   {
     return NonUniform::PoissonDistVariate(rng, m_ExpMinusLambda);
+  }
+
+  void Print(char *stream) const
+  {
+    // Superclass
+    ImmutableBase::Print(stream);
+
+    io_printf(stream, "\tExpMinusLambda = %k\n", (S1615)(m_ExpMinusLambda >> 17));
   }
 
 private:
@@ -139,14 +147,14 @@ bool ReadPoissonSourceRegion(uint32_t *region, uint32_t)
   LOG_PRINT(LOG_LEVEL_INFO, "ReadPoissonSourceRegion");
 
   // Read RNG seed
-  uint32_t seed[MarsKiss64::SeedSize];
+  uint32_t seed[MarsKiss64::StateSize];
   LOG_PRINT(LOG_LEVEL_TRACE, "\tSeed:");
-  for(unsigned int s = 0; s < MarsKiss64::SeedSize; s++)
+  for(unsigned int s = 0; s < MarsKiss64::StateSize; s++)
   {
     seed[s] = *region++;
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t%u", seed[s]);
   }
-  g_RNG.SetSeed(seed);
+  g_RNG.SetState(seed);
 
   // Read number of slow spikes sources, followed by array of structs
   g_NumSlow = (unsigned int)*region++;
@@ -156,22 +164,7 @@ bool ReadPoissonSourceRegion(uint32_t *region, uint32_t)
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate slow spike source immutable state array");
     return false;
   }
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-  for(unsigned int i = 0; i < g_NumSlow; i++)
-  {
-    g_SlowImmutableState[i].Print(IO_BUF);
-  }
-#endif
 
-  // Read number of fast spikes sources, followed by array of structs
-  g_NumFast = (unsigned int)*region++;
-  LOG_PRINT(LOG_LEVEL_TRACE, "\tNeuron immutable state");
-  if(!AllocateCopyStructArray(g_NumFast, region, g_FastImmutableState))
-  {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate fast spike source immutable state array");
-    return false;
-  }
-  
   // If there are any slow spike sources
   if(g_NumSlow > 0)
   {
@@ -184,12 +177,35 @@ bool ReadPoissonSourceRegion(uint32_t *region, uint32_t)
     }
 
     // Calculate initial time-to-spike for each slow source
-    for(unsigned int i = 0; i < g_NumSlow; i++)
+    for(unsigned int s = 0; s < g_NumSlow; s++)
     {
-      g_SlowTimeToSpike[i] = g_SlowImmutableState[i].CalculateTTS(g_RNG);
+      g_SlowTimeToSpike[s] = g_SlowImmutableState[s].CalculateTTS(g_RNG);
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+      io_printf(IO_BUF, "Slow spike source %u:\n", s);
+      g_SlowImmutableState[s].Print(IO_BUF);
+      io_printf(IO_BUF, "\tTTS            = %k\n", g_SlowTimeToSpike[s]);
+#endif
     }
   }
-  
+
+  // Read number of fast spikes sources, followed by array of structs
+  g_NumFast = (unsigned int)*region++;
+  LOG_PRINT(LOG_LEVEL_INFO, "\t%u fast spike sources", g_NumFast);
+  if(!AllocateCopyStructArray(g_NumFast, region, g_FastImmutableState))
+  {
+    LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate fast spike source immutable state array");
+    return false;
+  }
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  for(unsigned int s = 0; s < g_NumFast; s++)
+  {
+    io_printf(IO_BUF, "Fast spike source %u:\n", s);
+    g_FastImmutableState[s].Print(IO_BUF);
+  }
+#endif
+
   return true;
 }
 //-----------------------------------------------------------------------------
@@ -264,11 +280,15 @@ static void TimerTick(uint tick, uint)
   // Otherwise
   else
   {
+    LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", tick);
+
     // Loop through slow source
     auto *slowTimeToSpike = g_SlowTimeToSpike;
     const auto *slowImmutableState = g_SlowImmutableState;
     for(unsigned int s = 0; s < g_NumSlow; s++)
     {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating slow spike source %u", s);
+
       auto &tts = *slowTimeToSpike++;
       const auto &immutable = *slowImmutableState++;
 
@@ -276,6 +296,8 @@ static void TimerTick(uint tick, uint)
       bool spiked = false;
       if(immutable.IsActive(tick))
       {
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tTime-to-spike:%k ticks", tts);
+
         // If it's time to spike
         if(tts <= 0)
         {
@@ -287,7 +309,9 @@ static void TimerTick(uint tick, uint)
           EmitSpike(immutable.GetNeuronID());
 
           // Update time-to-spike
-          tts += immutable.CalculateTTS(g_RNG);
+          S1615 nextTTS = immutable.CalculateTTS(g_RNG);
+          LOG_PRINT(LOG_LEVEL_TRACE, "\t\tNext time-to-spike:%k ticks", nextTTS);
+          tts += nextTTS;
         }
 
         // Subtract one
@@ -302,6 +326,8 @@ static void TimerTick(uint tick, uint)
     const auto *fastImmutableState = g_FastImmutableState;
     for(unsigned int f = 0; f < g_NumFast; f++)
     {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating fast spike source %u", f);
+
       const auto &immutable = *fastImmutableState++;
 
       // If this source should be active
@@ -310,6 +336,7 @@ static void TimerTick(uint tick, uint)
       {
         // Get number of spikes to emit this timestep
         unsigned int numSpikes = immutable.GetNumSpikes(g_RNG);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting %u spikes", numSpikes);
 
         // Determine if this means it spiked
         spiked = (numSpikes > 0);
@@ -324,6 +351,9 @@ static void TimerTick(uint tick, uint)
       // Record spike
       g_SpikeRecording.RecordSpike(immutable.GetNeuronID(), spiked);
     }
+
+    // Transfer spike recording buffer to SDRAM
+    g_SpikeRecording.TransferBuffer();
   }
 }
 } // Anonymous namespace
