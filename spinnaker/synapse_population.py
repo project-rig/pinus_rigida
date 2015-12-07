@@ -78,20 +78,21 @@ class SynapsePopulation(object):
             post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
 
         # Layout the slice of SDRAM we have been given
-        self.region_memory = create_app_ptr_and_region_files_named(
+        region_memory = create_app_ptr_and_region_files_named(
             fp, self.regions, region_arguments)
 
         # Write each region into memory
         for key, region in iteritems(self.regions):
             # Get memory
-            mem = self.region_memory[key]
+            mem = region_memory[key]
 
             # Get the arguments
             args, kwargs = region_arguments[key]
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
-
+        return region_memory
+    
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------

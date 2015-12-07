@@ -91,42 +91,38 @@ class NeuralPopulation(object):
                                                       in_buffers)
 
         # Layout the slice of SDRAM we have been given
-        self.region_memory = create_app_ptr_and_region_files_named(
+        region_memory = create_app_ptr_and_region_files_named(
             fp, self.regions, region_arguments)
 
         # Write each region into memory
         for key, region in iteritems(self.regions):
             # Get memory
-            mem = self.region_memory[key]
+            mem = region_memory[key]
 
             # Get the arguments
             args, kwargs = region_arguments[key]
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
+        return region_memory
 
-    def read_spike_times(self, vertex_slice):
+    def read_spike_times(self, region_memory, vertex_slice):
         # Get the spike recording region and
         # the memory block associated with it
-        region = self.regions[
-            Regions.spike_recording]
-        region_mem = self.region_memory[
-            Regions.spike_recording]
+        region = self.regions[Regions.spike_recording]
 
         # Use spike recording region to get spike times
-        return region.read_spike_times(vertex_slice, region_mem)
+        return region.read_spike_times(vertex_slice,
+                                       region_memory[Regions.spike_recording])
 
-    def read_signal(self, channel, vertex_slice):
+    def read_signal(self, channel, region_memory, vertex_slice):
         # Get index of channel
         r = Regions(Regions.analogue_recording_start + channel)
 
         # Get the analogue recording region and
         # the memory block associated with it
-        region = self.regions[r]
-        region_mem = self.region_memory[r]
-
         # Use analogue recording region to get signal
-        return region.read_signal(vertex_slice, region_mem)
+        return self.regions[r].read_signal(vertex_slice, region_memory[r])
 
     # --------------------------------------------------------------------------
     # Private methods

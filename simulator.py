@@ -86,7 +86,10 @@ class State(common.control.BaseState):
 
     def run(self, simtime):
         # Build data
-        self._build(simtime)
+        try:
+            self._build(simtime)
+        except:
+            self.end()
         
         self.t += simtime
         self.running = True
@@ -436,7 +439,8 @@ class State(common.control.BaseState):
                         # **NOTE** this is tagged by core
                         memory_io = self.machine_controller.sdram_alloc_as_filelike(
                             size, tag=core.start)
-                        logger.debug("\t\t\tMemory begins at %08x" % memory_io.address)
+                        logger.debug("\t\t\tMemory with tag:%u begins at:%08x"
+                                     % (core.start, memory_io.address))
 
                         # Write the vertex to file
                         spinnaker_pop.write_to_file(
@@ -448,7 +452,7 @@ class State(common.control.BaseState):
         # Build neural populations
         self.spinnaker_neuron_pops = {}
         for pop, vertices in iteritems(self.pop_neuron_vertices):
-            logger.debug("\tPopulation %s" % pop.label)
+            logger.debug("\tPopulation label:%s" % pop.label)
 
             # Create spinnaker neural population
             spinnaker_pop = pop.create_spinnaker_neural_population(
@@ -487,11 +491,12 @@ class State(common.control.BaseState):
                     # **NOTE** this is tagged by core
                     memory_io = self.machine_controller.sdram_alloc_as_filelike(
                         size, tag=core.start)
-                    logger.debug("\t\t\tMemory begins at %08x" % memory_io.address)
+                    logger.debug("\t\t\tMemory with tag:%u begins at:%08x"
+                                 % (core.start, memory_io.address))
 
                     # Write the vertex to file
-                    spinnaker_pop.write_to_file(v.key, v.neuron_slice,
-                                                in_buffers, memory_io)
+                    v.region_memory = spinnaker_pop.write_to_file(
+                        v.key, v.neuron_slice, in_buffers, memory_io)
 
         # Load routing tables and applications
         logger.info("Loading routing tables")

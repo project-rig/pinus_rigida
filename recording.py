@@ -65,7 +65,8 @@ class Recorder(recording.Recorder, ContextMixin):
                         # If this variable is a spike recording, update the
                         # spike times dictionary with spikes from this vertex
                         if variable == "spikes":
-                            spike_times.update(spinnaker_pop.read_spike_times(v.neuron_slice))
+                            spike_times.update(spinnaker_pop.read_spike_times(
+                                v.region_memory, v.neuron_slice))
                         # Otherwise
                         else:
                             # Convert variable name to channel number
@@ -73,7 +74,8 @@ class Recorder(recording.Recorder, ContextMixin):
                             channel = self.population.celltype.recordable.index(variable) - 1
 
                             # Update this variables dictionary with values from this vertex
-                            signals[variable].update(spinnaker_pop.read_signal(channel, v.neuron_slice))
+                            signals[variable].update(spinnaker_pop.read_signal(
+                                channel, v.region_memory, v.neuron_slice))
 
         # Create context containing data read from spinnaker and call superclass
         with self.get_new_context(spike_times=spike_times, signals=signals):
