@@ -214,7 +214,9 @@ class State(common.control.BaseState):
 
             # Loop through newly partioned incoming projections
             for synapse_type, pre_pop_projections in iteritems(pop.incoming_projections):
-                projections = itertools.chain.from_iterable(itervalues(pre_pop_projections))
+                # Chain together incoming projections from all populations
+                projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
+
                 # Slice post-synaptic neurons evenly based on synapse type
                 post_slices = evenly_slice(
                     pop.size, synapse_type[0].max_post_neurons_per_core)
@@ -483,7 +485,7 @@ class State(common.control.BaseState):
                     # **NOTE** this is tagged by core
                     memory_io = self.machine_controller.sdram_alloc_as_filelike(
                         size, tag=core.start)
-                    logger.debug("\tMemory begins at %08x" % memory_io.address)
+                    logger.debug("\t\tMemory begins at %08x" % memory_io.address)
 
                     # Write the vertex to file
                     spinnaker_pop.write_to_file(v.key, v.neuron_slice,
