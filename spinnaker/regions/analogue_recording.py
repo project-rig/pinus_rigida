@@ -1,19 +1,20 @@
 # Import modules
 import numpy as np
-import struct
 
 # Import classes
 from region import Region
 from rig.type_casts import NumpyFixToFloatConverter
 
 # Import functions
-from ..utils import (calc_bitfield_words, calc_slice_bitfield_words)
+from ..utils import calc_slice_bitfield_words
+
 
 # ------------------------------------------------------------------------------
 # AnalogueRecording
 # ------------------------------------------------------------------------------
 class AnalogueRecording(Region):
-    def __init__(self, indices_to_record, channel, sim_timestep_ms, simulation_ticks):
+    def __init__(self, indices_to_record, channel,
+                 sim_timestep_ms, simulation_ticks):
         self.indices_to_record = indices_to_record[channel]
         self.sim_timestep_ms = sim_timestep_ms
         self.simulation_ticks = simulation_ticks
@@ -29,9 +30,6 @@ class AnalogueRecording(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
 
         Returns
         -------
@@ -59,14 +57,11 @@ class AnalogueRecording(Region):
         Parameters
         ----------
         vertex_slice : :py:func:`slice`
-            A slice object which indicnamedtupleates which rows, columns or other
-            elements of the region should be included.
+            A slice object which indicnamedtupleates which rows,
+            columns or other elements of the region should be included.
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
         """
         # Slice out the vertex indices to record
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
@@ -109,7 +104,7 @@ class AnalogueRecording(Region):
             # If bit is set
             if b:
                 # Extract neuron column
-                vector = data[:,c]
+                vector = data[:, c]
 
                 # Go onto next column
                 c += 1

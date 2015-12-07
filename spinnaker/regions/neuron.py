@@ -1,9 +1,9 @@
 # Import modules
 from .. import lazy_param_map
-import struct
 
 # Import classes
 from region import Region
+
 
 # ------------------------------------------------------------------------------
 # Neuron
@@ -24,7 +24,7 @@ class Neuron(Region):
         self.immutable_params = lazy_param_map.apply(
             parameters, cell_type.neuron_immutable_param_map,
             num_neurons, sim_timestep_ms)
-    
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
@@ -36,17 +36,14 @@ class Neuron(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
-            
+
         Returns
         -------
         int
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        
+
         # Add storage size of parameter slice to header and return
         return self.immutable_params[vertex_slice.python_slice].nbytes +\
             self.mutable_params[vertex_slice.python_slice].nbytes
@@ -62,12 +59,7 @@ class Neuron(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
         """
         # Write parameter slices as string
         fp.write(self.mutable_params[vertex_slice.python_slice].tostring())
         fp.write(self.immutable_params[vertex_slice.python_slice].tostring())
-
-        

@@ -1,7 +1,6 @@
 # Import modules
 import enum
 import logging
-import math
 import regions
 
 # Import classes
@@ -13,6 +12,7 @@ from utils import (
     Args, create_app_ptr_and_region_files_named, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
+
 
 # ------------------------------------------------------------------------------
 # Regions
@@ -26,6 +26,7 @@ class Regions(enum.IntEnum):
     output_buffer = 4,
     profiler = 5,
 
+
 # ------------------------------------------------------------------------------
 # SynapsePopulation
 # ------------------------------------------------------------------------------
@@ -34,7 +35,7 @@ class SynapsePopulation(object):
                  sim_ticks):
         # Calculate where the weight format fixed-point lies
         self.weight_fixed_point = weight_fixed_point
-        
+
         # Dictionary of regions
         self.regions = {
             Regions.system:           regions.System(timer_period_us,
@@ -53,22 +54,25 @@ class SynapsePopulation(object):
             matrices, vertex_slice, in_connections)
 
         # Place them in memory
-        matrix_placements = self.regions[Regions.key_lookup].place_matrices(sub_matrices)
+        matrix_placements = self.regions[Regions.key_lookup].place_matrices(
+            sub_matrices)
 
         # Return both
         return sub_matrices, matrix_placements
 
-    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements, out_buffers):
+    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements,
+                 out_buffers):
         region_arguments = self._get_region_arguments(
             post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions_named(self.regions, region_arguments)
+        vertex_size_bytes = sizeof_regions_named(self.regions,
+                                                 region_arguments)
 
         logger.debug("\t\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
-    def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements, 
+    def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
                       out_buffers, fp):
         region_arguments = self._get_region_arguments(
             post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
@@ -91,7 +95,8 @@ class SynapsePopulation(object):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_region_arguments(self, post_vertex_slice, sub_matrices, matrix_placements, out_buffers):
+    def _get_region_arguments(self, post_vertex_slice, sub_matrices,
+                              matrix_placements, out_buffers):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them

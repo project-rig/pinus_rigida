@@ -9,9 +9,9 @@ from collections import namedtuple
 
 # Import functions
 from copy import (copy, deepcopy)
-from functools import partial
 from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
+
 
 # ------------------------------------------------------------------------------
 # Args
@@ -19,6 +19,7 @@ from six import (iteritems, iterkeys)
 class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
+
 
 # ------------------------------------------------------------------------------
 # UnitStrideSlice
@@ -34,6 +35,7 @@ class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
 
     def __str__(self):
         return "[%u, %u)" % (self.start, self.stop)
+
 
 # ------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter
@@ -88,7 +90,7 @@ class LazyArrayFloatToFixConverter(object):
         self.copy = copy
 
     def __call__(self, values):
-        """Convert the given lazy array array of values into fixed point format."""
+        """Convert the given lazy array of values into fixed point format."""
         # Make a copy of the original lazy array
         # **YUCK** deep copy here as lazy array constructor doesn't give the
         # option to copy and hence doesn't deep copy operations
@@ -107,22 +109,27 @@ class LazyArrayFloatToFixConverter(object):
         vals.dtype = self.dtype
         return vals
 
+
 # ------------------------------------------------------------------------------
 # Functions
 # ------------------------------------------------------------------------------
 def evenly_slice(quantity, maximum_slice_size):
-     # Build lists of start and end indices of slices
+    # Build lists of start and end indices of slices
     slice_starts = range(0, quantity, maximum_slice_size)
     slice_ends = [min(s + maximum_slice_size, quantity) for s in slice_starts]
 
-    # Zip starts and ends together into list of slices and pair these with resources
+    # Zip starts and ends together into list
+    # of slices and pair these with resources
     return [UnitStrideSlice(s, e) for s, e in zip(slice_starts, slice_ends)]
+
 
 def calc_bitfield_words(bits):
     return int(math.ceil(float(bits) / 32.0))
 
+
 def calc_slice_bitfield_words(vertex_slice):
     return calc_bitfield_words(vertex_slice.slice_length)
+
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
 # to the start, this is common with Nengo SpiNNaker
@@ -174,6 +181,7 @@ def create_app_ptr_and_region_files_named(fp, regions, region_args):
 
     # Return the region memories
     return region_memory
+
 
 def sizeof_regions_named(regions, region_args, include_app_ptr=True):
     """Return the total amount of memory required to represent all regions when

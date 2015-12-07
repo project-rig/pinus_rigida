@@ -10,6 +10,7 @@ from region import Region
 # Import functions
 from copy import deepcopy
 
+
 def get_param_slice(params, vertex_slice):
     # Find start and end of slice within parameters
     start = np.searchsorted(params["f0"], vertex_slice.start, side="left")
@@ -17,6 +18,7 @@ def get_param_slice(params, vertex_slice):
 
     # Return slice
     return params[start:stop]
+
 
 # ------------------------------------------------------------------------------
 # SpikeSourcePoisson
@@ -28,12 +30,9 @@ class SpikeSourcePoisson(Region):
     SeedWords = 4
 
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
-        # Determine number of spike sources
-        num_spike_sources = parameters.shape[0]
-
         # Calculate mean spikes per-timestep each spike source will emit
         rates = deepcopy(parameters["rate"])
-        spikes_per_timestep = (rates * sim_timestep_ms)  / 1000.0
+        spikes_per_timestep = (rates * sim_timestep_ms) / 1000.0
 
         # Based on this determine which spikes sources should be
         # simulated using the slow rather than fast model

@@ -1,6 +1,7 @@
 import struct
 from region import Region
 
+
 # ------------------------------------------------------------------------------
 # System
 # ------------------------------------------------------------------------------
@@ -17,7 +18,7 @@ class System(Region):
         """
         self.timer_period_us = timer_period_us
         self.simulation_ticks = simulation_ticks
-    
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
@@ -26,13 +27,10 @@ class System(Region):
 
         Parameters
         ----------
-        vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
-            elements of the region should be included.
-        kwargs : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
-            
+        application_words: list
+            list of words to write to application-specific
+            area of system region
+
         Returns
         -------
         int
@@ -49,15 +47,12 @@ class System(Region):
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
-            elements of the region should be included.
-        kwargs : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
+        application_words: list
+            list of words to write to application-specific
+            area of system region
         """
         # Write structure
         fp.write(struct.pack("%uI" % (2 + len(application_words)),
-            self.timer_period_us,
-            self.simulation_ticks,
-            *application_words))
+                             self.timer_period_us,
+                             self.simulation_ticks,
+                             *application_words))

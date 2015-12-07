@@ -41,17 +41,14 @@ class NeuralPopulation(object):
     def __init__(self, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record):
-        # Dictionary of regions
-        self.regions = {
-            Regions.system:           regions.System(timer_period_us,
-                                                     sim_ticks),
-            Regions.neuron:           cell_type.neuron_region_class(cell_type, parameters,
-                                                     initial_values,
-                                                     sim_timestep_ms),
-            Regions.spike_recording:  regions.SpikeRecording(indices_to_record,
-                                                             sim_timestep_ms,
-                                                             sim_ticks),
-        }
+        # Create standard regions
+        self.regions = {}
+        self.regions[Regions.system] = regions.System(
+            timer_period_us, sim_ticks)
+        self.regions[Regions.neuron] = cell_type.neuron_region_class(
+            cell_type, parameters, initial_values, sim_timestep_ms)
+        self.regions[Regions.spike_recording] = regions.SpikeRecording(
+            indices_to_record, sim_timestep_ms, sim_ticks)
 
         # If cell type has a synapse region class
         if hasattr(cell_type, "synapse_region_class"):
@@ -74,26 +71,28 @@ class NeuralPopulation(object):
             self.regions[Regions(Regions.analogue_recording_start + i)] =\
                 regions.AnalogueRecording(indices_to_record, v,
                                           sim_timestep_ms, sim_ticks)
-        #self.regions[10] = ProfilerRegion()
 
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
     def get_size(self, key, vertex_slice, in_buffers):
-        region_arguments = self._get_region_arguments(key, vertex_slice, in_buffers)
-        
+        region_arguments = self._get_region_arguments(key, vertex_slice,
+                                                      in_buffers)
+
         # Calculate region size
-        vertex_size_bytes = sizeof_regions_named(self.regions, region_arguments)
+        vertex_size_bytes = sizeof_regions_named(self.regions,
+                                                 region_arguments)
 
         logger.debug("\t\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
-    
+
     def write_to_file(self, key, vertex_slice, in_buffers, fp):
-        region_arguments = self._get_region_arguments(key, vertex_slice, in_buffers)
-        
+        region_arguments = self._get_region_arguments(key, vertex_slice,
+                                                      in_buffers)
+
         # Layout the slice of SDRAM we have been given
         self.region_memory = create_app_ptr_and_region_files_named(
-                fp, self.regions, region_arguments)
+            fp, self.regions, region_arguments)
 
         # Write each region into memory
         for key, region in iteritems(self.regions):
@@ -138,12 +137,16 @@ class NeuralPopulation(object):
         analogue_recording_regions = range(Regions.analogue_recording_start,
                                            Regions.analogue_recording_end)
         # Add vertex slice to regions that require it
-        for r in itertools.chain((Regions.neuron, Regions.synapse,
-                                  Regions.spike_recording), analogue_recording_regions):
+        for r in itertools.chain((Regions.neuron,
+                                  Regions.synapse,
+                                  Regions.spike_recording),
+                                 analogue_recording_regions):
             region_arguments[Regions(r)] = Args(vertex_slice)
 
         # Add kwargs for regions that require them
-        region_arguments[Regions.system].kwargs["application_words"] = [key, vertex_slice.slice_length]
-        region_arguments[Regions.input_buffer].kwargs["in_buffers"] = in_buffers
+        region_arguments[Regions.system].kwargs["application_words"] =\
+            [key, vertex_slice.slice_length]
+        region_arguments[Regions.input_buffer].kwargs["in_buffers"] =\
+            in_buffers
 
         return region_arguments

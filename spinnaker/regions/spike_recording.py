@@ -8,6 +8,7 @@ from region import Region
 # Import functions
 from ..utils import (calc_bitfield_words, calc_slice_bitfield_words)
 
+
 # ------------------------------------------------------------------------------
 # SpikeRecording
 # ------------------------------------------------------------------------------
@@ -28,9 +29,6 @@ class SpikeRecording(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
 
         Returns
         -------
@@ -58,15 +56,12 @@ class SpikeRecording(Region):
 
         Parameters
         ----------
-        vertex_slice : :py:func:`slice`
-            A slice object which indicnamedtupleates which rows, columns or other
-            elements of the region should be included.
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
+        vertex_slice : :py:func:`slice`
+            A slice object which indicates which rows, columns or other
+            elements of the region should be included.
         """
         # Slice out the vertex indices to record
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
@@ -116,7 +111,7 @@ class SpikeRecording(Region):
             if b:
                 # Extract spike vector column
                 # **THINK** is this the right i
-                vector = data[:,i]
+                vector = data[:, i]
 
                 # Find times where neuron fired
                 times = np.where(vector == 1)[0]
@@ -124,10 +119,9 @@ class SpikeRecording(Region):
                 # Scale these into floating point ms
                 times = times.astype(np.float32, copy=False)
                 times *= self.sim_timestep_ms
-                
+
                 # Add to dictionary
                 spike_times[i + vertex_slice.start] = times
 
         # Return dictionary of spike times
         return spike_times
-        

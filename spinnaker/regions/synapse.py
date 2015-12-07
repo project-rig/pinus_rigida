@@ -1,9 +1,9 @@
 # Import modules
 from .. import lazy_param_map
-import struct
 
 # Import classes
 from region import Region
+
 
 # ------------------------------------------------------------------------------
 # Synapse
@@ -23,11 +23,11 @@ class Synapse(Region):
         self.immutable_params = lazy_param_map.apply(
             parameters, cell_type.synapse_immutable_param_map,
             num_neurons, sim_timestep_ms)
-    
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, **formatter_args):
+    def sizeof(self, vertex_slice):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -35,22 +35,19 @@ class Synapse(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
-            
+
         Returns
         -------
         int
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        
+
         # Add storage size of parameter slice to header and return
         return self.immutable_params[vertex_slice.python_slice].nbytes +\
             self.mutable_params[vertex_slice.python_slice].nbytes
 
-    def write_subregion_to_file(self, fp, vertex_slice, **formatter_args):
+    def write_subregion_to_file(self, fp, vertex_slice):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -61,9 +58,6 @@ class Synapse(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        formatter_args : optional
-            Arguments which will be passed to the (optional) formatter along
-            with each value that is being written.
         """
         # Write parameter slices as string
         fp.write(self.mutable_params[vertex_slice.python_slice].tostring())
