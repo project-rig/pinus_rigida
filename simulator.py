@@ -397,6 +397,8 @@ class State(common.control.BaseState):
 
                 # Loop through synapse verts
                 for v in s_verts:
+                    logger.debug("\t\tVertex %s" % v)
+
                     # Cache weight fixed-point for this synapse point in vertex
                     v.weight_fixed_point = weight_fixed_point
 
@@ -434,7 +436,7 @@ class State(common.control.BaseState):
                         # **NOTE** this is tagged by core
                         memory_io = self.machine_controller.sdram_alloc_as_filelike(
                             size, tag=core.start)
-                        logger.debug("\t\tMemory begins at %08x" % memory_io.address)
+                        logger.debug("\t\t\tMemory begins at %08x" % memory_io.address)
 
                         # Write the vertex to file
                         spinnaker_pop.write_to_file(
@@ -458,7 +460,7 @@ class State(common.control.BaseState):
 
             # Loop through vertices
             for v in vertices:
-                logger.debug("\t\tVertex slice %s" % str(v.neuron_slice))
+                logger.debug("\t\tVertex %s" % v)
 
                 # Get placement and allocation
                 vertex_placement = placements[v]
@@ -485,7 +487,7 @@ class State(common.control.BaseState):
                     # **NOTE** this is tagged by core
                     memory_io = self.machine_controller.sdram_alloc_as_filelike(
                         size, tag=core.start)
-                    logger.debug("\t\tMemory begins at %08x" % memory_io.address)
+                    logger.debug("\t\t\tMemory begins at %08x" % memory_io.address)
 
                     # Write the vertex to file
                     spinnaker_pop.write_to_file(v.key, v.neuron_slice,
