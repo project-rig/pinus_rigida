@@ -65,7 +65,7 @@ class SynapsePopulation(object):
         # Calculate region size
         vertex_size_bytes = sizeof_regions_named(self.regions, region_arguments)
 
-        logger.debug("\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\t\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements, 

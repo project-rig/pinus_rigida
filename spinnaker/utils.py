@@ -9,6 +9,7 @@ from collections import namedtuple
 
 # Import functions
 from copy import (copy, deepcopy)
+from functools import partial
 from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
@@ -30,6 +31,9 @@ class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     @property
     def python_slice(self):
         return slice(self.start, self.stop)
+
+    def __str__(self):
+        return "[%u, %u)" % (self.start, self.stop)
 
 #------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter
@@ -93,7 +97,8 @@ class LazyArrayFloatToFixConverter(object):
         # Saturate the values
         # **TODO** this needs implementing in terms of less and more
         #vals = np.clip(values, self.min_value, self.max_value)
-
+        #vals = vals.apply(partial(np.clip, a_min=self.min_value,
+        #                          m_max=self.max_value))
         # Scale and round
         vals *= (2.0 ** self.n_frac)
         vals = la.rint(vals)

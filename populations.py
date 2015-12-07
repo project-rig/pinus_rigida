@@ -1,4 +1,5 @@
 # Import modules
+import logging
 import math
 import numpy
 import sys
@@ -19,6 +20,8 @@ from spinnaker.synapse_population import SynapsePopulation
 
 # Import functions
 from spinnaker.utils import evenly_slice
+
+logger = logging.getLogger("pinus_rigida")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
@@ -73,8 +76,11 @@ class Population(common.Population, ContextMixin):
         # Initialise the context stack
         ContextMixin.__init__(self, {})
         
-        # Create empty list to hold incoming projections
-        self.incoming_projections = defaultdict(list)
+        # Create dictionary of pre-synaptic populations to incoming projections
+        self.incoming_projections = defaultdict(lambda: defaultdict(list))
+
+        # Create list of outgoing projections
+        self.outgoing_projections = list()
         
         # Add population to simulator
         self._simulator.state.populations.append(self)
@@ -112,7 +118,7 @@ class Population(common.Population, ContextMixin):
         return SynapsePopulation(weight_fixed_point,
                                  timer_period_us, simulation_ticks)
 
-    def build_incoming_connection(self):
+    def build_incoming_connection(self, synapse_type):
         population_matrix_rows = {}
         
         # Create list to hold min and max weight
@@ -121,7 +127,7 @@ class Population(common.Population, ContextMixin):
         
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
-        for pre_pop, projections in iteritems(self.incoming_projections):
+        for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
             # Create an array to hold matrix rows and initialize each one with an empty list
             population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size, dtype=object)
             
@@ -139,7 +145,7 @@ class Population(common.Population, ContextMixin):
             # PyNN always move left to right
             for r in population_matrix_rows[pre_pop]:
                 r.sort(key=itemgetter(2))
-        
+
         # Get MSB of minimum and maximum weight and get magnitude of range
         weight_msb = [math.floor(math.log(r, 2)) + 1
                     for r in weight_range]
@@ -150,6 +156,7 @@ class Population(common.Population, ContextMixin):
 
         # Calculate where the weight format fixed-point lies
         weight_fixed_point = 16 - int(weight_msb[1])
+        logger.debug("\t\tWeight fixed point:%u" % weight_fixed_point)
 
         return population_matrix_rows, weight_fixed_point
 
@@ -158,7 +165,7 @@ class Population(common.Population, ContextMixin):
                            postsynaptic_index, matrix_rows,
                            weight_range, **connection_parameters):
         # Extract connection parameters
-        weight = connection_parameters["weight"]
+        weight = abs(connection_parameters["weight"])
         delay = connection_parameters["delay"]
 
         # Update incoming weight range

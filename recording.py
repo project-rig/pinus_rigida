@@ -41,7 +41,8 @@ class Recorder(recording.Recorder, ContextMixin):
             indices[new_index] = True
 
     def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
-        logger.info("Downloading recorded data")
+        logger.info("Downloading recorded data for population %s" %
+                    self.population.label)
 
         variables_to_include = set(self.recorded.keys())
         if variables is not "all":

@@ -115,6 +115,7 @@ class SpikeRecording(Region):
             # If bit is set
             if b:
                 # Extract spike vector column
+                # **THINK** is this the right i
                 vector = data[:,i]
 
                 # Find times where neuron fired
