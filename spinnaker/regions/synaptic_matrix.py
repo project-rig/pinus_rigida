@@ -18,17 +18,17 @@ SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
 
 logger = logging.getLogger("pinus_rigida")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # SynapticMatrix
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class SynapticMatrix(Region):
     # Number of bits for various synapse components
     IndexBits = 10
     DelayBits = 3
   
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Region methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def sizeof(self, sub_matrices, matrix_placements, weight_fixed_point):
         """Get the size requirements of the region in bytes.
 
@@ -113,9 +113,9 @@ class SynapticMatrix(Region):
                 pad_words = m.max_cols - len(r_np)
                 fp.seek(pad_words * 4, 1)
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Public methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
         # Loop through all incoming connections
         sub_matrices = []

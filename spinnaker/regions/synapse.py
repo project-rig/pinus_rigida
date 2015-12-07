@@ -5,9 +5,9 @@ import struct
 # Import classes
 from region import Region
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Synapse
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class Synapse(Region):
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
         num_neurons = parameters.shape[0]
@@ -24,9 +24,9 @@ class Synapse(Region):
             parameters, cell_type.synapse_immutable_param_map,
             num_neurons, sim_timestep_ms)
     
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Region methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def sizeof(self, vertex_slice, **formatter_args):
         """Get the size requirements of the region in bytes.
 

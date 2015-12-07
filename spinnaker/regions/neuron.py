@@ -5,9 +5,9 @@ import struct
 # Import classes
 from region import Region
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Neuron
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class Neuron(Region):
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
         # Determine number of neurons
@@ -25,9 +25,9 @@ class Neuron(Region):
             parameters, cell_type.neuron_immutable_param_map,
             num_neurons, sim_timestep_ms)
     
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Region methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def sizeof(self, vertex_slice):
         """Get the size requirements of the region in bytes.
 

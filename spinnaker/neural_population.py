@@ -2,7 +2,6 @@
 import enum
 import itertools
 import logging
-import numpy as np
 import regions
 
 # Import classes
@@ -15,9 +14,10 @@ from utils import (
 
 logger = logging.getLogger("pinus_rigida")
 
-#------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Regions
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
@@ -33,9 +33,10 @@ class Regions(enum.IntEnum):
     analogue_recording_end = 9,
     profiler = 9,
 
-#------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # NeuralPopulation
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 class NeuralPopulation(object):
     def __init__(self, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
@@ -75,9 +76,9 @@ class NeuralPopulation(object):
                                           sim_timestep_ms, sim_ticks)
         #self.regions[10] = ProfilerRegion()
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Public methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def get_size(self, key, vertex_slice, in_buffers):
         region_arguments = self._get_region_arguments(key, vertex_slice, in_buffers)
         
@@ -128,9 +129,9 @@ class NeuralPopulation(object):
         # Use analogue recording region to get signal
         return region.read_signal(vertex_slice, region_mem)
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Private methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def _get_region_arguments(self, key, vertex_slice, in_buffers):
         region_arguments = defaultdict(Args)
 

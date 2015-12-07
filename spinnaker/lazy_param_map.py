@@ -6,15 +6,16 @@ import numpy as np
 from utils import LazyArrayFloatToFixConverter
 
 # Import functions
-from copy import copy, deepcopy
+from copy import deepcopy
 
 # Create a converter function to convert from float to S1615 format
 float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
 
-#------------------------------------------------------------------------------
+
+# -----------------------------------------------------------------------------
 # Functions
-#------------------------------------------------------------------------------
+# -----------------------------------------------------------------------------
 def apply(lazy_params, param_map, size, sim_timestep_us, indices=None):
     # Build numpy record datatype for neuron region
     # **TODO** this probably doesn't need to be a string:
@@ -38,6 +39,7 @@ def apply(lazy_params, param_map, size, sim_timestep_us, indices=None):
             params[f] = n[2](lazy_params[n[0]], sim_timestep_us).evaluate()
 
     return params
+
 
 def apply_indices(lazy_params, param_map, indices, sim_timestep_us):
     # Build numpy record datatype for neuron region
@@ -66,9 +68,11 @@ def apply_indices(lazy_params, param_map, indices, sim_timestep_us):
 
     return params
 
+
 def integer(values, sim_timestep_ms):
     vals = deepcopy(values)
     return la.rint(vals)
+
 
 def integer_time_divide(values, sim_timestep_ms):
     # Copy values and divide by timestep
@@ -78,9 +82,11 @@ def integer_time_divide(values, sim_timestep_ms):
     # Round and return
     return la.rint(scaled_vals)
 
+
 def s1615(values, sim_timestep_ms):
     vals = deepcopy(values)
     return float_to_s1615_no_copy(vals)
+
 
 def s1615_time_multiply(values, sim_timestep_ms):
     # Copy values and divide by timestep
@@ -90,6 +96,7 @@ def s1615_time_multiply(values, sim_timestep_ms):
     # Convert to fixed-point and return
     return float_to_s1615_no_copy(scaled_vals)
 
+
 def s1615_exp_decay(values, sim_timestep_ms):
     # Copy values and calculate exponential decay
     exp_decay_vals = deepcopy(values)
@@ -97,6 +104,7 @@ def s1615_exp_decay(values, sim_timestep_ms):
 
     # Convert to fixed-point and return
     return float_to_s1615_no_copy(exp_decay_vals)
+
 
 def s1615_exp_init(values, sim_timestep_ms):
     # Copy values and calculate exponential init
@@ -107,6 +115,7 @@ def s1615_exp_init(values, sim_timestep_ms):
     # Convert to fixed-point and return
     return float_to_s1615_no_copy(exp_init_vals)
 
+
 def s1615_rate_isi(values, sim_timestep_ms):
     # Copy values and convert rates to isis
     isi_vals = deepcopy(values)
@@ -115,10 +124,11 @@ def s1615_rate_isi(values, sim_timestep_ms):
     # Convert to fixed-point and return
     return float_to_s1615_no_copy(isi_vals)
 
+
 def u032_rate_exp_minus_lambda(values, sim_timestep_ms):
     # Copy values and convert to spikes per-tick
     lambda_vals = deepcopy(values)
-    lambda_vals = (lambda_vals * sim_timestep_ms)  / 1000.0
+    lambda_vals = (lambda_vals * sim_timestep_ms) / 1000.0
 
     # Calculate exponential
     lambda_vals = la.exp(-1.0 / lambda_vals)

@@ -9,18 +9,18 @@ from rig.type_casts import NumpyFixToFloatConverter
 # Import functions
 from ..utils import (calc_bitfield_words, calc_slice_bitfield_words)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # AnalogueRecording
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class AnalogueRecording(Region):
     def __init__(self, indices_to_record, channel, sim_timestep_ms, simulation_ticks):
         self.indices_to_record = indices_to_record[channel]
         self.sim_timestep_ms = sim_timestep_ms
         self.simulation_ticks = simulation_ticks
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Region methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def sizeof(self, vertex_slice):
         """Get the size requirements of the region in bytes.
 
@@ -76,9 +76,9 @@ class AnalogueRecording(Region):
         # the word-aligned bits don't matter
         fp.write(vertex_indices.tobytes())
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Public API
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def read_signal(self, vertex_slice, region_memory):
         # Get the indices within this vertes that were recorded
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]

@@ -91,11 +91,11 @@ public:
       return false;
     }
 
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
+#if LOG_LEVEL <= LOG_LEVEL_INFO
   for(unsigned int i = 0; i < m_NumLookupEntries; i++)
   {
     const auto &lookupEntry = m_LookupEntries[i];
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEntry:%u, Key:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Key:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
       i, lookupEntry.m_Key, lookupEntry.m_Mask,
       GetNumSynapses(lookupEntry.m_WordOffsetRowSynapses),
       GetWordOffset(lookupEntry.m_WordOffsetRowSynapses));

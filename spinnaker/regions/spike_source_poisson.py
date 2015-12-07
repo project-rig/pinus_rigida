@@ -18,9 +18,9 @@ def get_param_slice(params, vertex_slice):
     # Return slice
     return params[start:stop]
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # SpikeSourcePoisson
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class SpikeSourcePoisson(Region):
     # What is the maximum number of spikes per tick
     # when a 'slow' spike source is the best solution
@@ -56,9 +56,9 @@ class SpikeSourcePoisson(Region):
             parameters, cell_type.fast_immutable_param_map,
             fast_indices, sim_timestep_ms)
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Region methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def sizeof(self, vertex_slice):
         """Get the size requirements of the region in bytes.
 

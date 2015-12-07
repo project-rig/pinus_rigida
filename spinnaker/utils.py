@@ -13,16 +13,16 @@ from functools import partial
 from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Args
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # UnitStrideSlice
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     @property
     def slice_length(self):
@@ -35,9 +35,9 @@ class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     def __str__(self):
         return "[%u, %u)" % (self.start, self.stop)
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class LazyArrayFloatToFixConverter(object):
     """A callable which converts a lazy array of floats to fixed point
 
@@ -107,9 +107,9 @@ class LazyArrayFloatToFixConverter(object):
         vals.dtype = self.dtype
         return vals
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Functions
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 def evenly_slice(quantity, maximum_slice_size):
      # Build lists of start and end indices of slices
     slice_starts = range(0, quantity, maximum_slice_size)

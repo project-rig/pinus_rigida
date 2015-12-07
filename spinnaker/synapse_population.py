@@ -14,9 +14,9 @@ from utils import (
 
 logger = logging.getLogger("pinus_rigida")
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Regions
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
@@ -26,9 +26,9 @@ class Regions(enum.IntEnum):
     output_buffer = 4,
     profiler = 5,
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # SynapsePopulation
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class SynapsePopulation(object):
     def __init__(self, weight_fixed_point, timer_period_us,
                  sim_ticks):
@@ -44,9 +44,9 @@ class SynapsePopulation(object):
             Regions.output_buffer:    regions.OutputBuffer(),
         }
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Public methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, in_connections):
         # Partition matrices
         sub_matrices = self.regions[Regions.synaptic_matrix].partition_matrices(
@@ -88,9 +88,9 @@ class SynapsePopulation(object):
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
 
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     # Private methods
-    #--------------------------------------------------------------------------
+    # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrices, matrix_placements, out_buffers):
         region_arguments = defaultdict(Args)
 
