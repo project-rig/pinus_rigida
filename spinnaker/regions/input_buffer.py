@@ -55,7 +55,7 @@ class InputBuffer(Region):
 
         # Write each buffer entry
         for p, r, w in in_buffers:
-            data += struct.pack("IIII", p[0], p[1], r, 15 - w)
+            data += struct.pack("IIIi", p[0], p[1], r, 15 - w)
 
         # Write data to filelike
         fp.write(data)
