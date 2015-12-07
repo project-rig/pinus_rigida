@@ -99,6 +99,14 @@ class SpikeSourcePoisson(Region):
         slow_param_slice = get_param_slice(self.slow_params, vertex_slice)
         fast_param_slice = get_param_slice(self.fast_params, vertex_slice)
 
+        # **YUCK** make index field of parameter slices relative
+        # to start of  slice - copy as trashing the copy owned
+        # by the instance seems like a bad idea
+        slow_param_slice = np.copy(slow_param_slice)
+        fast_param_slice = np.copy(fast_param_slice)
+        slow_param_slice["f0"] -= vertex_slice.start
+        fast_param_slice["f0"] -= vertex_slice.start
+
         # Write seed
         seed = np.random.randint(
             0x7FFFFFFF, size=SpikeSourcePoisson.SeedWords).astype(np.uint32)
