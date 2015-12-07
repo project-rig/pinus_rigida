@@ -87,9 +87,9 @@ class Population(common.Population, ContextMixin):
     
     def partition(self):
         # Slice population evenly
-        # **TODO** pick based on timestep and neuron model
-        neurons_per_vertex = NeuralPopulation.MAX_CELLS
-        vertex_slices = evenly_slice(self.size, neurons_per_vertex)
+        # **TODO** pick based on timestep and parameters
+        vertex_slices = evenly_slice(self.size,
+                                     self.celltype.max_neurons_per_core)
 
         # Create a resource to accompany each slice
         # **TODO** estimate SDRAM usage for incoming projections

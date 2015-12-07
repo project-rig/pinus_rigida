@@ -37,8 +37,6 @@ class Regions(enum.IntEnum):
 # NeuralPopulation
 #------------------------------------------------------------------------------
 class NeuralPopulation(object):
-    MAX_CELLS = 1024
-    
     def __init__(self, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record):
