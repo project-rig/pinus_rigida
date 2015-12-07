@@ -84,7 +84,8 @@ class SynapticMatrix(Region):
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u" % (p, m.max_cols))
             
             # Seek to the absolute offset for this matrix
-            fp.seek(p, 0)
+            # **NOTE** placement is in WORDS
+            fp.seek(p * 4, 0)
             
             # Loop through matrix rows
             for r in m.matrix:
