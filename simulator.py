@@ -12,7 +12,8 @@ from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.consts import AppState
 from rig.machine_control.machine_controller import MachineController, MemoryIO
-from rig.place_and_route.constraints import SameChipConstraint
+from rig.place_and_route.constraints import (ReserveResourceConstraint,
+                                             SameChipConstraint)
 from rig.netlist import Net
 
 # Import functions
@@ -369,6 +370,16 @@ class State(common.control.BaseState):
 
         logger.debug("Found %ux%u chip machine" %
             (spinnaker_machine.width, spinnaker_machine.height))
+
+        # If we should reserve extra cores on each chip e.g. for network tester
+        if self.reserve_extra_cores_per_chip > 0:
+            logger.info("Reserving %u extra cores per-chip"
+                        % self.reserve_extra_cores_per_chip)
+
+            # Reserve these extra cores (above monitor) on each chip
+            reservation = slice(1, 1 + self.reserve_extra_cores_per_chip)
+            constraints.append(ReserveResourceConstraint(machine.Cores,
+                                                         reservation))
 
         logger.info("Placing and routing")
 
