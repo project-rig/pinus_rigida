@@ -4,6 +4,8 @@ import struct
 # Import classes
 from region import Region
 
+# Import functions
+from operator import itemgetter
 
 # ------------------------------------------------------------------------------
 # KeyLookupBinarySearch
@@ -54,7 +56,9 @@ class KeyLookupBinarySearch(Region):
         data += struct.pack("I", len(sub_matrices))
 
         # Write each lookup entry
-        for m, p in zip(sub_matrices, matrix_placements):
+        # **NOTE** default sort is fine as first element of sub-matrix
+        # tuple is key which is what we want to sort by
+        for m, p in sorted(zip(sub_matrices, matrix_placements)):
             data += struct.pack(
                 "III", m.key, m.mask,
                 (m.max_cols - 1) | (p << KeyLookupBinarySearch.NumSynapseBits)
