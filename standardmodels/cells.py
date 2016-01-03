@@ -89,6 +89,8 @@ class IF_curr_exp(cells.IF_curr_exp):
     neuron_region_class = regions.Neuron
     synapse_region_class = regions.Synapse
 
+    directly_connectable = False
+
     translations = deepcopy(if_curr_neuron_translations)
     translations.update(exp_synapse_translations)
     
@@ -121,7 +123,9 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     # a SpiNNaker neuron processor handle
     max_neurons_per_core = 256
 
+    directly_connectable = True
     neuron_region_class = regions.SpikeSourcePoisson
+    current_input_region_class = regions.SpikeSourcePoisson
 
     translations = build_translations(
         ("start",    "start_time"),

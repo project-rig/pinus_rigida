@@ -213,3 +213,14 @@ class Population(common.Population, ContextMixin):
         parameter_space.evaluate(simplify=False, mask=self._mask_local)
         for name, value in parameter_space.items():
             self._parameters[name] = value
+
+    @property
+    def entirely_directly_connectable(self):
+        # If cell type isn't directly connectable, the population can't be
+        if not self.celltype.directly_connectable:
+            return False
+
+        # If none of the outgoing projections aren't directly connectable!
+        return not any([not o.connector.directly_connectable
+                        for o in self.outgoing_projections])
+

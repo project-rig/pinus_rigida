@@ -78,3 +78,12 @@ class Projection(common.Projection):
     @property
     def spinnaker_synapse_type(self):
         return (self.synapse_type.__class__, self.receptor_type)
+
+    @property
+    def directly_connectable(self):
+        # If the pre-synaptic celltype can be directly connectable,
+        # the connector can be reduced to a direct connector and
+        # the synapse type is static
+        return (self.pre.celltype.directly_connectable and
+                self._connector.directly_connectable and
+                self.synapse_type == self._static_synapse_class)
