@@ -293,20 +293,23 @@ class State(common.control.BaseState):
 
     def _allocate_current_input_verts(self, vertex_applications, vertex_resources):
         logger.info("Allocating current input vertices")
-        pop_current_input_verts = {}
+        pre_pop_current_input_verts = defaultdict(list)
+        post_pop_current_input_verts = {}
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
 
              # Loop through newly partioned incoming projections
             for synapse_type, pre_pop_projections in iteritems(pop.incoming_projections):
                 # Chain together incoming projections from all populations
-                projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
+                projections = list(itertools.chain.from_iterable(
+                    itervalues(pre_pop_projections)))
 
                 receptor_index = pop.celltype.receptor_types.index(synapse_type[1])
                 logger.debug("\t\tReceptor index:%u" % (receptor_index))
 
                 # Loop through directly connectable projections
-                directly_connectable_projections = [p for p in projections if p.directly_connectable]
+                directly_connectable_projections = [p for p in projections
+                                                    if p.directly_connectable]
                 current_input_verts = []
                 for proj in directly_connectable_projections:
                     # Slice current inputs based on
@@ -341,10 +344,12 @@ class State(common.control.BaseState):
                 # Assign list of vertices to post-synaptic population's
                 # list of current input vertices
                 if len(current_input_verts) > 0:
-                    pop_current_input_verts[proj.post][synapse_type] =\
+                    post_pop_current_input_verts[proj.post][synapse_type] =\
                         current_input_verts
+                    pre_pop_current_input_verts[proj.pre][synapse_type].extend(
+                        current_input_verts)
 
-        return pop_synapse_verts
+        return pre_pop_current_input_verts, post_pop_current_input_verts
 
     def _build_nets(self):
         logger.info("Building nets")
@@ -391,7 +396,7 @@ class State(common.control.BaseState):
             s_verts = itertools.chain.from_iterable(
                 itervalues(self.pop_synapse_verts[pop])
             c_verts = itertools.chain.from_iterable(
-                itervalues(self.pop_current_input_verts[pop])
+                itervalues(self.post_pop_current_input_verts[pop])
             n_verts = self.pop_neuron_verts[pop]
 
             # If there are any synapse vertices
@@ -488,9 +493,9 @@ class State(common.control.BaseState):
     def _load_current_input_verts(self, placements, allocations):
         logger.info("Loading current input vertices")
 
-        # Build synapse populations
+        # Build current input populations
         spinnaker_current_input_pops = {}
-        for pop, synapse_types in iteritems(self.pop_current_input_verts):
+        for pop, synapse_types in iteritems(self.pre_pop_current_input_verts):
             # Loop through synapse types and associated vertices
             for s_type, s_verts in iteritems(synapse_types):
                 logger.debug("\tPopulation label:%s, synapse type:%s" %

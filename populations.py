@@ -13,7 +13,7 @@ from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace, simplify
 from . import simulator
 from .recording import Recorder
-from rig.utils.contexts import ContextMixin, Required
+from rig.utils.contexts import ContextMixin
 from six import iteritems
 from spinnaker.neural_population import NeuralPopulation
 from spinnaker.synapse_population import SynapsePopulation
@@ -136,7 +136,8 @@ class Population(common.Population, ContextMixin):
 
             # Build each projection, adding the matrix rows to the context
             with self.get_new_context(matrix_rows=population_matrix_rows[pre_pop],
-                                      weight_range=weight_range):
+                                      weight_range=weight_range,
+                                      directly_connect=False):
                 for projection in projections:
                     projection.build()
 

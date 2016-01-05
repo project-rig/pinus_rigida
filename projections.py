@@ -9,7 +9,13 @@ from pyNN.parameters import ParameterSpace
 from pyNN.space import Space
 from . import simulator
 
-class Projection(common.Projection):
+import numpy as np
+
+from rig.utils.contexts import ContextMixin, Required
+
+logger = logging.getLogger("pinus_rigida")
+
+class Projection(common.Projection, ContextMixin):
     __doc__ = common.Projection.__doc__
     _simulator = simulator
 
@@ -20,9 +26,12 @@ class Projection(common.Projection):
                                    connector, synapse_type, source, receptor_type,
                                    space, label)
         
+        # Initialise the context stack
+        ContextMixin.__init__(self, {})
+
         # Add projection to simulator
         self._simulator.state.projections.append(self)
-        
+
         # If pre-synaptic population in an assembly
         if isinstance(self.pre, common.Assembly):
             # Add this projection to each pre-population in
@@ -60,17 +69,48 @@ class Projection(common.Projection):
         #parameter_space = ParameterSpace
         raise NotImplementedError
 
+    @ContextMixin.use_contextual_arguments()
+    def _direct_convergent_connect(self, presynaptic_indices,
+                                   postsynaptic_index, direct_weights,
+                                   **connection_parameters):
+        # **TODO** one-to-one connections that reshuffle cells COULD be supported
+        assert len(presynaptic_indices) == 1
+        assert presynaptic_indices[0] == postsynaptic_index
+
+        # Warn if delay doesn't match simulation timestep
+        if connection_parameters["delay"] != self._simulator.state.dt:
+            logger.warn("Direct connections are treated as having delay of one timestep")
+
+        # Set weight in direct weights array
+        direct_weights[postsynaptic_index] = abs(connection_parameters["weight"])
+
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
-                            **connection_parameters):
+                            directly_connect, **connection_parameters):
         # If post-synaptic population in an assembly
         if isinstance(self.post, common.Assembly):
             assert False
-            
-            #**TODO** figure out which population within assembly post index relates to
+        #**TODO** figure out which population within assembly post index relates to
         # Otherwise add it to the post-synaptic population's list
         # **TODO** what about population-views? add to their parent?
         else:
-            self.post.convergent_connect(self, presynaptic_indices, postsynaptic_index, **connection_parameters)
+            if directly_connect:
+                self._direct_convergent_connect(self, presynaptic_indices, postsynaptic_index, **connection_parameters)
+            else:
+                self.post.convergent_connect(self, presynaptic_indices, postsynaptic_index, **connection_parameters)
+
+    def build_direct_connection(self):
+        # Assert that the connection is directly connectable
+        assert directly_connectable
+
+        # Create, initially zeroed away of direct connection weights
+        direct_weights = np.zeros(self.post.size)
+
+        # Create context specifying that connection should be directly built
+        with self.get_new_context(directly_connect=True,
+                                  direct_weights=direct_weights):
+            self.build()
+
+            print direct_weights
 
     def estimate_num_synapses(self, pre_slice, post_slice):
         return self._connector.estimate_num_synapses(pre_slice, post_slice)
