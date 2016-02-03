@@ -9,6 +9,9 @@ from pyNN.parameters import ParameterSpace
 from pyNN.space import Space
 from . import simulator
 
+from .standardmodels.synapses import StaticSynapse
+
+import logging
 import numpy as np
 
 from rig.utils.contexts import ContextMixin, Required
@@ -18,6 +21,7 @@ logger = logging.getLogger("pinus_rigida")
 class Projection(common.Projection, ContextMixin):
     __doc__ = common.Projection.__doc__
     _simulator = simulator
+    _static_synapse_class = StaticSynapse
 
     def __init__(self, presynaptic_population, postsynaptic_population,
                  connector, synapse_type, source=None, receptor_type=None,
@@ -126,4 +130,4 @@ class Projection(common.Projection, ContextMixin):
         # the synapse type is static
         return (self.pre.celltype.directly_connectable and
                 self._connector.directly_connectable and
-                self.synapse_type == self._static_synapse_class)
+                type(self.synapse_type) is self._static_synapse_class)

@@ -222,6 +222,6 @@ class Population(common.Population, ContextMixin):
             return False
 
         # If none of the outgoing projections aren't directly connectable!
-        return not any([not o.connector.directly_connectable
+        return not any([not o._connector.directly_connectable
                         for o in self.outgoing_projections])
 

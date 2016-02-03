@@ -146,15 +146,15 @@ class State(common.control.BaseState):
                     print self.machine_controller.get_iobuf(p, x, y)
             raise Exception("Unexpected core failures before reaching %s state." % desired_to_state)
 
-    def _allocate_neuron_verts(self, vertex_applications, vertex_resources):
+    def _allocate_neuron_verts(self, vertex_applications, vertex_resources, keyspace):
         logger.info("Allocating neuron vertices")
 
         # Loop through populations whose output can't be
         # entirely be replaced by direct connections
-        pop_neuron_verts = {}
+        pop_neuron_verts = defaultdict(list)
         populations = [p for p in self.populations
                        if not p.entirely_directly_connectable]
-        for pop_id, pop in enumerate(self.populations):
+        for pop_id, pop in enumerate(populations):
             logger.debug("\tPopulation:%s", pop.label)
 
             # Partition population to get slices and resources for each vertex
@@ -172,7 +172,7 @@ class State(common.control.BaseState):
             # **THINK** is there any point in doing anything cleverer than this
             neuron_app = os.path.join(
                 self.backend_dir, "model_binaries",
-                pop.celltype.__class__.__name__.lower() + ".aplx")
+                "neuron_" + pop.celltype.__class__.__name__.lower() + ".aplx")
 
             logger.debug("\t\tNeuron application:%s" % neuron_app)
 
@@ -196,13 +196,9 @@ class State(common.control.BaseState):
         # neuron processor, split more and try again
         # **TODO** post-synaptic limits should perhaps be based on
         # shifts down of 1024 to avoid overlapping weirdness
-        pop_synapse_verts = {}
+        pop_synapse_verts = defaultdict(lambda: defaultdict(list))
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
-
-            # Create a dictionary to hold synapse-type: vertex
-            # mapping for this population
-            pop_synapse_verts[pop] = {}
 
             # Loop through newly partioned incoming projections
             for synapse_type, pre_pop_projections in iteritems(pop.incoming_projections):
@@ -223,7 +219,7 @@ class State(common.control.BaseState):
                 # **THINK** is there any point in doing anything cleverer than this
                 synapse_app = os.path.join(
                     self.backend_dir, "model_binaries",
-                    synapse_type[0].__name__.lower() + ".aplx")
+                    "synapse_" + synapse_type[0].__name__.lower() + ".aplx")
                 logger.debug("\t\t\tSynapse application:%s" % synapse_app)
 
                 # Loop through the post-slices
@@ -293,12 +289,12 @@ class State(common.control.BaseState):
 
     def _allocate_current_input_verts(self, vertex_applications, vertex_resources):
         logger.info("Allocating current input vertices")
-        pre_pop_current_input_verts = defaultdict(list)
-        post_pop_current_input_verts = {}
+        pre_pop_current_input_verts = defaultdict(lambda: defaultdict(list))
+        post_pop_current_input_verts = defaultdict(dict)
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
 
-             # Loop through newly partioned incoming projections
+            # Loop through newly partioned incoming projections
             for synapse_type, pre_pop_projections in iteritems(pop.incoming_projections):
                 # Chain together incoming projections from all populations
                 projections = list(itertools.chain.from_iterable(
@@ -315,13 +311,13 @@ class State(common.control.BaseState):
                     # Slice current inputs based on
                     post_slices = evenly_slice(
                         proj.pre.size,
-                        proj.pre.celltype.max_post_neurons_per_core)
+                        proj.pre.celltype.max_neurons_per_core)
 
                     # Get current input application name
                     # **THINK** is there any point in doing anything cleverer than this
                     current_input_app = os.path.join(
                         self.backend_dir, "model_binaries",
-                        proj.pre.celltype.__class__.__name__.lower() + ".aplx")
+                        "current_input_" + proj.pre.celltype.__class__.__name__.lower() + ".aplx")
                     logger.debug("\t\t\tCurrent input application:%s"
                         % current_input_app)
 
@@ -393,10 +389,10 @@ class State(common.control.BaseState):
         for pop in self.populations:
             # Get lists of synapse and neuron vertices
             # associated with this PyNN population
-            s_verts = itertools.chain.from_iterable(
-                itervalues(self.pop_synapse_verts[pop])
-            c_verts = itertools.chain.from_iterable(
-                itervalues(self.post_pop_current_input_verts[pop])
+            s_verts = list(itertools.chain.from_iterable(
+                itervalues(self.pop_synapse_verts[pop])))
+            c_verts = list(itertools.chain.from_iterable(
+                itervalues(self.post_pop_current_input_verts[pop])))
             n_verts = self.pop_neuron_verts[pop]
 
             # If there are any synapse vertices
@@ -407,7 +403,7 @@ class State(common.control.BaseState):
                 for n in n_verts:
                     # Find synapse and current vertices with the same slice
                     # **TODO** different ratios here
-                    n.input_verts = [i for i in itertools.chain(s_vertex, c_verts)
+                    n.input_verts = [i for i in itertools.chain(s_verts, c_verts)
                                        if i.post_neuron_slice == n.neuron_slice]
 
                     logger.debug("\t\tConstraining neuron vert %s and input verts %s to same chip" % (n, n.input_verts))
@@ -428,65 +424,66 @@ class State(common.control.BaseState):
                 logger.debug("\tPopulation label:%s, synapse type:%s" %
                             (pop.label, str(s_type)))
 
-                # Expand any incoming connections
-                matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
+                if len(s_verts) > 0:
+                    # Expand any incoming connections
+                    matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
 
-                # Create a spinnaker population
-                spinnaker_pop = pop.create_spinnaker_synapse_population(
-                    weight_fixed_point, hardware_timestep_us,
-                    duration_timesteps)
+                    # Create a spinnaker population
+                    spinnaker_pop = pop.create_spinnaker_synapse_population(
+                        weight_fixed_point, hardware_timestep_us,
+                        duration_timesteps)
 
-                # Add spinnaker population to dictionary
-                spinnaker_synapse_pops[pop] = spinnaker_pop
+                    # Add spinnaker population to dictionary
+                    spinnaker_synapse_pops[pop] = spinnaker_pop
 
-                # Loop through synapse verts
-                for v in s_verts:
-                    logger.debug("\t\tVertex %s" % v)
+                    # Loop through synapse verts
+                    for v in s_verts:
+                        logger.debug("\t\tVertex %s" % v)
 
-                    # Cache weight fixed-point for this synapse point in vertex
-                    v.weight_fixed_point = weight_fixed_point
+                        # Cache weight fixed-point for this synapse point in vertex
+                        v.weight_fixed_point = weight_fixed_point
 
-                    # Get placement and allocation
-                    vertex_placement = placements[v]
-                    vertex_allocation = allocations[v]
+                        # Get placement and allocation
+                        vertex_placement = placements[v]
+                        vertex_allocation = allocations[v]
 
-                    # Get core this vertex should be run on
-                    core = vertex_allocation[machine.Cores]
-                    assert (core.stop - core.start) == 1
+                        # Get core this vertex should be run on
+                        core = vertex_allocation[machine.Cores]
+                        assert (core.stop - core.start) == 1
 
-                    # Partition the matrices
-                    sub_matrices, matrix_placements =\
-                        spinnaker_pop.partition_matrices(matrices,
-                                                        v.post_neuron_slice,
-                                                        v.incoming_connections)
+                        # Partition the matrices
+                        sub_matrices, matrix_placements =\
+                            spinnaker_pop.partition_matrices(matrices,
+                                                            v.post_neuron_slice,
+                                                            v.incoming_connections)
 
-                    # Select placed chip
-                    with self.machine_controller(x=vertex_placement[0],
-                                                y=vertex_placement[1]):
-                        # Allocate two output buffers for this synapse population
-                        out_buffer_bytes = v.post_neuron_slice.slice_length * 4
-                        v.out_buffers = [
-                            self.machine_controller.sdram_alloc(
-                                out_buffer_bytes, clear=True)
-                            for b in range(2)]
+                        # Select placed chip
+                        with self.machine_controller(x=vertex_placement[0],
+                                                    y=vertex_placement[1]):
+                            # Allocate two output buffers for this synapse population
+                            out_buffer_bytes = v.post_neuron_slice.slice_length * 4
+                            v.out_buffers = [
+                                self.machine_controller.sdram_alloc(
+                                    out_buffer_bytes, clear=True)
+                                for b in range(2)]
 
-                        # Calculate required memory size
-                        size = spinnaker_pop.get_size(
-                            v.post_neuron_slice, sub_matrices,
-                            matrix_placements, v.out_buffers)
+                            # Calculate required memory size
+                            size = spinnaker_pop.get_size(
+                                v.post_neuron_slice, sub_matrices,
+                                matrix_placements, v.out_buffers)
 
-                        # Allocate a suitable memory block
-                        # for this vertex and get memory io
-                        # **NOTE** this is tagged by core
-                        memory_io = self.machine_controller.sdram_alloc_as_filelike(
-                            size, tag=core.start)
-                        logger.debug("\t\t\tMemory with tag:%u begins at:%08x"
-                                     % (core.start, memory_io.address))
+                            # Allocate a suitable memory block
+                            # for this vertex and get memory io
+                            # **NOTE** this is tagged by core
+                            memory_io = self.machine_controller.sdram_alloc_as_filelike(
+                                size, tag=core.start)
+                            logger.debug("\t\t\tMemory with tag:%u begins at:%08x"
+                                        % (core.start, memory_io.address))
 
-                        # Write the vertex to file
-                        spinnaker_pop.write_to_file(
-                            v.post_neuron_slice, sub_matrices,
-                            matrix_placements, v.out_buffers, memory_io)
+                            # Write the vertex to file
+                            spinnaker_pop.write_to_file(
+                                v.post_neuron_slice, sub_matrices,
+                                matrix_placements, v.out_buffers, memory_io)
 
         return spinnaker_synapse_pops
 
@@ -497,9 +494,8 @@ class State(common.control.BaseState):
         spinnaker_current_input_pops = {}
         for pop, synapse_types in iteritems(self.pre_pop_current_input_verts):
             # Loop through synapse types and associated vertices
-            for s_type, s_verts in iteritems(synapse_types):
-                logger.debug("\tPopulation label:%s, synapse type:%s" %
-                            (pop.label, str(s_type)))
+            for s_type, c_verts in iteritems(synapse_types):
+                logger.debug("\tPopulation label:%s" % pop.label)
 
                 # Expand any incoming connections
                 matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
@@ -563,7 +559,8 @@ class State(common.control.BaseState):
 
         return spinnaker_current_input_pops
 
-    def _load_neuron_verts(self, placements, allocations):
+    def _load_neuron_verts(self, placements, allocations,
+                           hardware_timestep_us, duration_timesteps):
         logger.info("Loading neuron vertices")
 
         # Build neural populations
@@ -601,7 +598,7 @@ class State(common.control.BaseState):
 
                     # Calculate required memory size
                     size = spinnaker_pop.get_size(
-                        v.key, v.neuron_slice,in_buffers)
+                        v.key, v.neuron_slice, in_buffers)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
@@ -642,10 +639,10 @@ class State(common.control.BaseState):
 
         # Allocate vertices
         self.pop_neuron_verts = self._allocate_neuron_verts(
-            vertex_applications, vertex_resources)
+            vertex_applications, vertex_resources, keyspace)
         self.pop_synapse_verts = self._allocate_synapse_verts(
             vertex_applications, vertex_resources)
-        self.pop_current_input_verts = self._allocate_current_input_verts(
+        self.pre_pop_current_input_verts, self.post_pop_current_input_verts = self._allocate_current_input_verts(
             vertex_applications, vertex_resources)
 
         # Constrain clusters of vertices to same chip
@@ -689,11 +686,15 @@ class State(common.control.BaseState):
             spinnaker_machine, constraints)
         
         # Load vertices
-        self.spinnaker_synapse_pops = self._load_synapse_verts(placements,
-                                                               allocations)
+        self.spinnaker_synapse_pops = self._load_synapse_verts(
+            placements, allocations)
 
-        self.spinnaker_neuron_pops = self._load_neuron_verts(placements,
-                                                             allocations)
+        # Load vertices
+        self.spinnaker_current_input_pops = self._load_current_input_verts(
+            placements, allocations)
+
+        self.spinnaker_neuron_pops = self._load_neuron_verts(
+            placements, allocations, hardware_timestep_us, duration_timesteps)
 
 
         # Load routing tables and applications
