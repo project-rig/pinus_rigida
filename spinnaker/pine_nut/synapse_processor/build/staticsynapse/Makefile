@@ -1,4 +1,4 @@
-APP = staticsynapse
+APP = synapse_staticsynapse
 
 # Extra objects for synapse type
 EXTRA_SOURCES = 

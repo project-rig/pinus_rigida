@@ -1,4 +1,4 @@
-APP = currentinputpoisson
+APP = current_input_spikesourcepoisson
 
 # Build object list
 SOURCES = ../common/config.cpp \

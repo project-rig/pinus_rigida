@@ -1,4 +1,4 @@
-APP = if_curr_exp
+APP = neuron_if_curr_exp
 
 # Extra objects for synapse and row-lookup type
 EXTRA_SOURCES = ../../neuron_models/if_curr.cpp \

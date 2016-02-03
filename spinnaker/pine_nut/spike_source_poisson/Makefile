@@ -1,4 +1,4 @@
-APP = spikesourcepoisson
+APP = neuron_spikesourcepoisson
 
 # Build object list
 SOURCES = ../common/config.cpp \
