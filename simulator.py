@@ -242,7 +242,7 @@ class State(common.control.BaseState):
                     synapse_vertex = SynapseInputVertex(post_slice, receptor_index)
                     for projection in synaptic_projections:
                         # **TODO** nengo-style configuration system
-                        mean_pre_firing_rate = 10.0
+                        mean_pre_firing_rate = 40.0
 
                         # **TODO** check if projection and pre-population can be directly attached
                         # Loop through the vertices which the pre-synaptic
@@ -363,8 +363,8 @@ class State(common.control.BaseState):
         nets = []
         net_keys = {}
         for pop, n_verts in iteritems(self.pop_neuron_verts):
-            # If population has any outgoing connections
-            if len(pop.outgoing_projections) > 0:
+            # If population has outgoing projections and neuron vertices
+            if len(pop.outgoing_projections) > 0 and len(n_verts) > 0:
                 logger.debug("\tPopulation label:%s" % pop.label)
 
                 # Get synapse verts associated with post-synaptic population
@@ -377,11 +377,16 @@ class State(common.control.BaseState):
 
                 # Loop through each neuron vertex that makes up population
                 for n_vert in n_verts:
+                    # Get subset of the synapse vertices that need
+                    # to be connected to this neuron vertex
+                    filtered_post_s_verts = [s for s in post_s_verts
+                                             if n_vert in s.incoming_connections[pop]]
+
                     # Create a key for this source neuron vertex
                     net_key = (n_vert.key, n_vert.mask)
 
                     # Create a net connecting neuron vertex to synapse vertices
-                    net = Net(n_vert, post_s_verts)
+                    net = Net(n_vert, filtered_post_s_verts)
 
                     # Add net to list and associate with key
                     nets.append(net)
@@ -414,7 +419,7 @@ class State(common.control.BaseState):
                     n.input_verts = [i for i in itertools.chain(s_verts, c_verts)
                                        if i.post_neuron_slice == n.neuron_slice]
 
-                    logger.debug("\t\tConstraining neuron vert %s and input verts %s to same chip" % (n, n.input_verts))
+                    logger.debug("\t\tConstraining neuron vertand %u input verts to same chip" % len(n.input_verts))
 
                     # Build same chip constraint and add to list
                     constraints.append(SameChipConstraint(n.input_verts + [n]))
