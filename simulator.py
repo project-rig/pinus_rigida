@@ -647,7 +647,7 @@ class State(common.control.BaseState):
         self.proj_current_input_verts, self.post_pop_current_input_verts =\
             self._allocate_current_input_verts(vertex_applications,
                                                vertex_resources)
-        print self.proj_current_input_verts
+
         # Constrain clusters of vertices to same chip
         constraints = self._constrain_clusters()
 
@@ -687,7 +687,6 @@ class State(common.control.BaseState):
         placements, allocations, application_map, routing_tables = wrapper(
             vertex_resources, vertex_applications, nets, net_keys,
             spinnaker_machine, constraints)
-        print list(itervalues(placements))
 
         # Load vertices
         self.spinnaker_synapse_pops = self._load_synapse_verts(

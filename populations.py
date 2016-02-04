@@ -230,6 +230,10 @@ class Population(common.Population):
 
     @property
     def entirely_directly_connectable(self):
+        # If conversion of direct connections is disabled, return false
+        if not self._simulator.state.convert_direct_connections:
+            return False
+        
         # If cell type isn't directly connectable, the population can't be
         if not self.celltype.directly_connectable:
             return False

@@ -84,8 +84,8 @@ class Projection(common.Projection, ContextMixin):
         assert presynaptic_indices[0] == postsynaptic_index
 
         # Warn if delay doesn't match simulation timestep
-        if connection_parameters["delay"] != self._simulator.state.dt:
-            logger.warn("Direct connections are treated as having delay of one timestep")
+        #if connection_parameters["delay"] != self._simulator.state.dt:
+        #    logger.warn("Direct connections are treated as having delay of one timestep")
 
         # Set weight in direct weights array
         direct_weights[postsynaptic_index] = abs(connection_parameters["weight"])
@@ -138,9 +138,14 @@ class Projection(common.Projection, ContextMixin):
 
     @property
     def directly_connectable(self):
+        # If conversion of direct connections is disabled, return false
+        if not self._simulator.state.convert_direct_connections:
+            return False
+        
         # If the pre-synaptic celltype can be directly connectable,
         # the connector can be reduced to a direct connector and
         # the synapse type is static
+        #return False
         return (self.pre.celltype.directly_connectable and
                 self._connector.directly_connectable and
                 type(self.synapse_type) is self._static_synapse_class)
