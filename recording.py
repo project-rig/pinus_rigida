@@ -57,9 +57,9 @@ class Recorder(recording.Recorder, ContextMixin):
             spinnaker_pop = sim_state.spinnaker_neuron_pops[self.population]
 
             # If any vertices were actually instantiated
-            if self.population in sim_state.pop_neuron_vertices:
+            if self.population in sim_state.pop_neuron_verts:
                 # Loop through all neuron vertices
-                for i, v in enumerate(sim_state.pop_neuron_vertices[self.population]):
+                for i, v in enumerate(sim_state.pop_neuron_verts[self.population]):
                     # Loop through all variables to include
                     for variable in variables_to_include:
                         # If this variable is a spike recording, update the

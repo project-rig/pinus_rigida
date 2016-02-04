@@ -61,10 +61,12 @@ class Projection(common.Projection, ContextMixin):
         else:
             self.post.incoming_projections[self.spinnaker_synapse_type][self.pre].append(self)
     
-    def build(self):
+    def build(self, **context_kwargs):
         # connect the populations
         # **TODO** this may already have been connected by another assembled post population
-        self._connector.connect(self)
+         # Build each projection, adding the matrix rows to the context
+        with self.get_new_context(**context_kwargs):
+            self._connector.connect(self)
     
     def __len__(self):
         raise NotImplementedError
@@ -88,6 +90,15 @@ class Projection(common.Projection, ContextMixin):
         # Set weight in direct weights array
         direct_weights[postsynaptic_index] = abs(connection_parameters["weight"])
 
+    @ContextMixin.use_contextual_arguments()
+    def _synaptic_convergent_connect(self, presynaptic_indices,
+                                   postsynaptic_index, matrix_rows,
+                                   weight_range, **connection_parameters):
+        self.post.convergent_connect(presynaptic_indices, postsynaptic_index,
+                                     matrix_rows, weight_range,
+                                     **connection_parameters)
+
+    @ContextMixin.use_contextual_arguments()
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             directly_connect, **connection_parameters):
         # If post-synaptic population in an assembly
@@ -98,23 +109,25 @@ class Projection(common.Projection, ContextMixin):
         # **TODO** what about population-views? add to their parent?
         else:
             if directly_connect:
-                self._direct_convergent_connect(self, presynaptic_indices, postsynaptic_index, **connection_parameters)
+                self._direct_convergent_connect(presynaptic_indices,
+                                                postsynaptic_index,
+                                                **connection_parameters)
             else:
-                self.post.convergent_connect(self, presynaptic_indices, postsynaptic_index, **connection_parameters)
+                self._synaptic_convergent_connect(presynaptic_indices,
+                                                  postsynaptic_index,
+                                                  **connection_parameters)
 
     def build_direct_connection(self):
         # Assert that the connection is directly connectable
-        assert directly_connectable
+        assert self.directly_connectable
 
         # Create, initially zeroed away of direct connection weights
         direct_weights = np.zeros(self.post.size)
 
-        # Create context specifying that connection should be directly built
-        with self.get_new_context(directly_connect=True,
-                                  direct_weights=direct_weights):
-            self.build()
+        # Build
+        self.build(directly_connect=True, direct_weights=direct_weights)
 
-            print direct_weights
+        print direct_weights
 
     def estimate_num_synapses(self, pre_slice, post_slice):
         return self._connector.estimate_num_synapses(pre_slice, post_slice)

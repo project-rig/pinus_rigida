@@ -28,7 +28,7 @@ name = "SpiNNaker"
 #------------------------------------------------------------------------------
 # NeuronVertex
 #------------------------------------------------------------------------------
-class NeuronVertex:
+class NeuronVertex(object):
     def __init__(self, parent_keyspace, neuron_slice, population_index, vertex_index):
         self.neuron_slice = neuron_slice
         self.keyspace = parent_keyspace(population_index=population_index, 
@@ -49,19 +49,42 @@ class NeuronVertex:
 #------------------------------------------------------------------------------
 # InputVertex
 #------------------------------------------------------------------------------
-class InputVertex:
+class InputVertex(object):
     def __init__(self, post_neuron_slice, receptor_index):
         self.post_neuron_slice = post_neuron_slice
-        self.incoming_connections = defaultdict(list)
         self.weight_fixed_point = None
         self.receptor_index = receptor_index
         self.out_buffers = None
 
+    def __str__(self):
+        return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)
+
+#------------------------------------------------------------------------------
+# SynapseInputVertex
+#------------------------------------------------------------------------------
+class SynapseInputVertex(InputVertex):
+    def __init__(self, post_neuron_slice, receptor_index):
+        # Superclass
+        super(SynapseInputVertex, self).__init__(post_neuron_slice, receptor_index)
+
+        self.incoming_connections = defaultdict(list)
+
     def add_connection(self, pre_pop, pre_neuron_vertex):
         self.incoming_connections[pre_pop].append(pre_neuron_vertex)
 
+#------------------------------------------------------------------------------
+# CurrentInputVertex
+#------------------------------------------------------------------------------
+class CurrentInputVertex(InputVertex):
+    def __init__(self, post_neuron_slice, receptor_index, projection):
+        # Superclass
+        super(CurrentInputVertex, self).__init__(post_neuron_slice, receptor_index)
+
+        # Cache projection
+        self.projection = projection
+
     def __str__(self):
-        return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)
+        return "<post neuron slice:%s, receptor index:%u, projection:%s>" % (str(self.post_neuron_slice), self.receptor_index, self.projection.label)
 
 #------------------------------------------------------------------------------
 # ID
@@ -229,7 +252,7 @@ class State(common.control.BaseState):
 
                     # Loop through all non-directly connectable projections of this type
                     synapse_vertex_event_rate = 0.0
-                    synapse_vertex = InputVertex(post_slice, receptor_index)
+                    synapse_vertex = SynapseInputVertex(post_slice, receptor_index)
                     for projection in synaptic_projections:
                         # **TODO** nengo-style configuration system
                         mean_pre_firing_rate = 10.0
@@ -263,7 +286,7 @@ class State(common.control.BaseState):
                                 synapse_verts.append(synapse_vertex)
 
                                 # Create replacement and reset event rate
-                                synapse_vertex = InputVertex(post_slice, receptor_index)
+                                synapse_vertex = SynapseInputVertex(post_slice, receptor_index)
                                 synapse_vertex_event_rate = 0.0
 
                     # If the last synapse vertex created had any incoming connections
@@ -326,8 +349,7 @@ class State(common.control.BaseState):
                         logger.debug("\t\t\tPost slice:%s" % str(post_slice))
 
                         # Build input vert and add to list
-                        input_vert = InputVertex(post_slice, receptor_index)
-                        input_vert.add_connection(proj.pre, None)
+                        input_vert = CurrentInputVertex(post_slice, receptor_index, proj)
                         current_input_verts.append(input_vert)
 
                         # Add application to dictionary
@@ -413,7 +435,8 @@ class State(common.control.BaseState):
 
         return constraints
 
-    def _load_synapse_verts(self, placements, allocations):
+    def _load_synapse_verts(self, placements, allocations,
+                            hardware_timestep_us, duration_timesteps):
         logger.info("Loading synapse vertices")
 
         # Build synapse populations
@@ -424,6 +447,7 @@ class State(common.control.BaseState):
                 logger.debug("\tPopulation label:%s, synapse type:%s" %
                             (pop.label, str(s_type)))
 
+                # If this population has any synapse vertices of this type
                 if len(s_verts) > 0:
                     # Expand any incoming connections
                     matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
@@ -487,7 +511,8 @@ class State(common.control.BaseState):
 
         return spinnaker_synapse_pops
 
-    def _load_current_input_verts(self, placements, allocations):
+    def _load_current_input_verts(self, placements, allocations,
+                                  hardware_timestep_us, duration_timesteps):
         logger.info("Loading current input vertices")
 
         # Build current input populations
@@ -498,20 +523,24 @@ class State(common.control.BaseState):
                 logger.debug("\tPopulation label:%s" % pop.label)
 
                 # Expand any incoming connections
-                matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
+                #matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
 
                 # Create a spinnaker population
-                spinnaker_pop = pop.create_spinnaker_synapse_population(
-                    weight_fixed_point, hardware_timestep_us,
-                    duration_timesteps)
+                spinnaker_pop = pop.create_spinnaker_current_input_population(
+                    self.dt, hardware_timestep_us, duration_timesteps)
 
                 # Add spinnaker population to dictionary
-                spinnaker_synapse_pops[pop] = spinnaker_pop
+                spinnaker_current_input_pops[pop] = spinnaker_pop
 
                 # Loop through synapse verts
-                for v in s_verts:
+                for v in c_verts:
                     logger.debug("\t\tVertex %s" % v)
 
+                    # Build direct connection for projection
+                    # Associated with current input vertex
+                    v.projection.build_direct_connection()
+                    #print v.incoming_connections
+                    '''
                     # Cache weight fixed-point for this synapse point in vertex
                     v.weight_fixed_point = weight_fixed_point
 
@@ -556,7 +585,7 @@ class State(common.control.BaseState):
                         spinnaker_pop.write_to_file(
                             v.post_neuron_slice, sub_matrices,
                             matrix_placements, v.out_buffers, memory_io)
-
+                    '''
         return spinnaker_current_input_pops
 
     def _load_neuron_verts(self, placements, allocations,
@@ -687,11 +716,11 @@ class State(common.control.BaseState):
         
         # Load vertices
         self.spinnaker_synapse_pops = self._load_synapse_verts(
-            placements, allocations)
+            placements, allocations, hardware_timestep_us, duration_timesteps)
 
         # Load vertices
         self.spinnaker_current_input_pops = self._load_current_input_verts(
-            placements, allocations)
+            placements, allocations, hardware_timestep_us, duration_timesteps)
 
         self.spinnaker_neuron_pops = self._load_neuron_verts(
             placements, allocations, hardware_timestep_us, duration_timesteps)
@@ -705,7 +734,7 @@ class State(common.control.BaseState):
 
         # Wait for all cores to hit SYNC0
         logger.info("Waiting for synch")
-        num_vertices = len(vertex_resources)
+        num_verts = len(vertex_resources)
         self._wait_for_transition(placements, allocations,
                                   AppState.init, AppState.sync0,
                                   num_verts)
