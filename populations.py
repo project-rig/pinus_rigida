@@ -117,7 +117,9 @@ class Population(common.Population):
                                  timer_period_us, simulation_ticks)
 
     def create_spinnaker_current_input_population(self, simulation_timestep_us,
-                                                  timer_period_us, simulation_ticks):
+                                                  timer_period_us,
+                                                  simulation_ticks,
+                                                  direct_weights):
 
         if isinstance(self.celltype, StandardCellType):
             parameters = self.celltype.native_parameters
@@ -126,10 +128,10 @@ class Population(common.Population):
         parameters.shape = (self.size,)
 
         # Create current input population
-        return CurrentInputPopulation(self.celltype, parameters,
-                                      self.initial_values,
-                                      simulation_timestep_us, timer_period_us,
-                                      simulation_ticks, self.recorder.indices_to_record)
+        return CurrentInputPopulation(
+            self.celltype, parameters, self.initial_values,
+            simulation_timestep_us, timer_period_us, simulation_ticks,
+            self.recorder.indices_to_record, direct_weights)
 
     def build_incoming_connection(self, synapse_type):
         population_matrix_rows = {}

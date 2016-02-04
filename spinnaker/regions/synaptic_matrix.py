@@ -25,10 +25,13 @@ class SynapticMatrix(Region):
     IndexBits = 10
     DelayBits = 3
 
+    def __init__(self, weight_fixed_point):
+        self.weight_fixed_point = weight_fixed_point
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, sub_matrices, matrix_placements, weight_fixed_point):
+    def sizeof(self, sub_matrices, matrix_placements):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -38,9 +41,6 @@ class SynapticMatrix(Region):
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
-        weight_fixed_point: int
-            where should the fixed-point be located in the 16-bit fixed point
-            format used by this synaptic processor
 
         Returns
         -------
@@ -55,8 +55,7 @@ class SynapticMatrix(Region):
         else:
             return 4 * (matrix_placements[-1] + sub_matrices[-1].size_words)
 
-    def write_subregion_to_file(self, fp, sub_matrices, matrix_placements,
-                                weight_fixed_point):
+    def write_subregion_to_file(self, fp, sub_matrices, matrix_placements):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -66,9 +65,6 @@ class SynapticMatrix(Region):
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
-        weight_fixed_point: int
-            where should the fixed-point be located in the 16-bit fixed point
-            format used by this synaptic processor
         """
         # Define record array type for rows
         row_dtype = [("w", np.float32), ("d", np.float32), ("i", np.uint32)]
@@ -77,7 +73,7 @@ class SynapticMatrix(Region):
         # Floating point weights to this format
         # **NOTE** weights are only 16-bit, but final words need to be 32-bit
         float_to_weight = NumpyFloatToFixConverter(False, 32,
-                                                   weight_fixed_point)
+                                                   self.weight_fixed_point)
 
         # How much should we shift weights to be above index and delay
         weight_shift = SynapticMatrix.IndexBits + SynapticMatrix.DelayBits

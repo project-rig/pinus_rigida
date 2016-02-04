@@ -13,57 +13,41 @@ from utils import (
 
 logger = logging.getLogger("pinus_rigida")
 
-
 # ------------------------------------------------------------------------------
 # Regions
 # ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
-    key_lookup = 1,
-    synaptic_matrix = 2,
-    plasticity = 3,
-    output_buffer = 4,
-    profiler = 5,
+    neuron = 1,
+    output_buffer = 2,
+    output_weight = 3
+    spike_recording = 4,
 
 
 # ------------------------------------------------------------------------------
-# SynapsePopulation
+# CurrentInputPopulation
 # ------------------------------------------------------------------------------
-class SynapsePopulation(object):
-    def __init__(self, weight_fixed_point, timer_period_us,
-                 sim_ticks):
-        # Cache position of weight format fixed-point
-        self.weight_fixed_point = weight_fixed_point
-
-        # Dictionary of regions
+class CurrentInputPopulation(object):
+    def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms,
+                 timer_period_us, sim_ticks, indices_to_record, weights):
+        # Create standard regions
         self.regions = {}
-        self.regions[Regions.system] = regions.System(timer_period_us,
-                                                      sim_ticks)
-        self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
-        self.regions[Regions.synaptic_matrix] = regions.SynapticMatrix(
-            self.weight_fixed_point)
+        self.regions[Regions.system] = regions.System(
+            timer_period_us, sim_ticks)
+        self.regions[Regions.neuron] = cell_type.neuron_region_class(
+            cell_type, parameters, initial_values, sim_timestep_ms)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
+        self.regions[Regions.output_weight] = regions.OutputWeight(weights)
+        self.regions[Regions.spike_recording] = regions.SpikeRecording(
+            indices_to_record, sim_timestep_ms, sim_ticks)
 
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def partition_matrices(self, matrices, vertex_slice, in_connections):
-        # Partition matrices
-        sub_matrices = self.regions[Regions.synaptic_matrix].partition_matrices(
-            matrices, vertex_slice, in_connections)
-
-        # Place them in memory
-        matrix_placements = self.regions[Regions.key_lookup].place_matrices(
-            sub_matrices)
-
-        # Return both
-        return sub_matrices, matrix_placements
-
-    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements,
-                 out_buffers):
+    def get_size(self, post_vertex_slice, out_buffers):
         region_arguments = self._get_region_arguments(
-            post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
+            post_vertex_slice, out_buffers)
 
         # Calculate region size
         vertex_size_bytes = sizeof_regions_named(self.regions,
@@ -72,10 +56,9 @@ class SynapsePopulation(object):
         logger.debug("\t\t\tRegion size = %u bytes" % vertex_size_bytes)
         return vertex_size_bytes
 
-    def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
-                      out_buffers, fp):
+    def write_to_file(self, post_vertex_slice, out_buffers, fp):
         region_arguments = self._get_region_arguments(
-            post_vertex_slice, sub_matrices, matrix_placements, out_buffers)
+            post_vertex_slice, out_buffers)
 
         # Layout the slice of SDRAM we have been given
         region_memory = create_app_ptr_and_region_files_named(
@@ -91,28 +74,24 @@ class SynapsePopulation(object):
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
+
         return region_memory
     
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_region_arguments(self, post_vertex_slice, sub_matrices,
-                              matrix_placements, out_buffers):
+    def _get_region_arguments(self, post_vertex_slice, out_buffers):
         region_arguments = defaultdict(Args)
+
+        # Add vertex slice to regions that require it
+        for r in (Regions.neuron,
+                  Regions.output_weight,
+                  Regions.spike_recording):
+            region_arguments[Regions(r)] = Args(post_vertex_slice)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
-            [self.weight_fixed_point, post_vertex_slice.slice_length]
-
-        region_arguments[Regions.key_lookup].kwargs["sub_matrices"] =\
-            sub_matrices
-        region_arguments[Regions.key_lookup].kwargs["matrix_placements"] =\
-            matrix_placements
-
-        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrices"] =\
-            sub_matrices
-        region_arguments[Regions.synaptic_matrix].kwargs["matrix_placements"] =\
-            matrix_placements
+            [post_vertex_slice.slice_length]
 
         region_arguments[Regions.output_buffer].kwargs["out_buffers"] =\
             out_buffers

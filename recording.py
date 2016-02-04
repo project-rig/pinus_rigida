@@ -40,6 +40,25 @@ class Recorder(recording.Recorder, ContextMixin):
             # Set this bit in indices
             indices[new_index] = True
 
+    def _read_vertex(self, spinnaker_pop, vertex, variables_to_include,
+                     spike_times, signals):
+        # Loop through all variables to include
+        for variable in variables_to_include:
+            # If this variable is a spike recording, update the
+            # spike times dictionary with spikes from this vertex
+            if variable == "spikes":
+                spike_times.update(spinnaker_pop.read_spike_times(
+                    vertex.region_memory, vertex.neuron_slice))
+            # Otherwise
+            else:
+                # Convert variable name to channel number
+                # **HACK** subtract one assuming first entry is spikes
+                channel = self.population.celltype.recordable.index(variable) - 1
+
+                # Update this variables dictionary with values from this vertex
+                signals[variable].update(spinnaker_pop.read_signal(
+                    channel, vertex.region_memory, vertex.neuron_slice))
+
     def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
         logger.info("Downloading recorded data for population %s" %
                     self.population.label)
@@ -58,24 +77,11 @@ class Recorder(recording.Recorder, ContextMixin):
 
             # If any vertices were actually instantiated
             if self.population in sim_state.pop_neuron_verts:
-                # Loop through all neuron vertices
-                for i, v in enumerate(sim_state.pop_neuron_verts[self.population]):
-                    # Loop through all variables to include
-                    for variable in variables_to_include:
-                        # If this variable is a spike recording, update the
-                        # spike times dictionary with spikes from this vertex
-                        if variable == "spikes":
-                            spike_times.update(spinnaker_pop.read_spike_times(
-                                v.region_memory, v.neuron_slice))
-                        # Otherwise
-                        else:
-                            # Convert variable name to channel number
-                            # **HACK** subtract one assuming first entry is spikes
-                            channel = self.population.celltype.recordable.index(variable) - 1
-
-                            # Update this variables dictionary with values from this vertex
-                            signals[variable].update(spinnaker_pop.read_signal(
-                                channel, v.region_memory, v.neuron_slice))
+                # Loop through all neuron vertices and read
+                for vertex in sim_state.pop_neuron_verts[self.population]:
+                    self._read_vertex(spinnaker_pop, vertex,
+                                      variables_to_include,
+                                      spike_times, signals)
 
         # Create context containing data read from spinnaker and call superclass
         with self.get_new_context(spike_times=spike_times, signals=signals):

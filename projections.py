@@ -127,7 +127,7 @@ class Projection(common.Projection, ContextMixin):
         # Build
         self.build(directly_connect=True, direct_weights=direct_weights)
 
-        print direct_weights
+        return direct_weights
 
     def estimate_num_synapses(self, pre_slice, post_slice):
         return self._connector.estimate_num_synapses(pre_slice, post_slice)

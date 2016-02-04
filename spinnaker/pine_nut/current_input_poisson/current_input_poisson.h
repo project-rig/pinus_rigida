@@ -12,7 +12,7 @@ enum Region
   RegionPoissonSource,
   RegionOutputBuffer,
   RegionOutputWeight,
-  RegionSpikeRecording = 4,
+  RegionSpikeRecording,
 };
 
 // Indexes of application words
