@@ -21,6 +21,8 @@ public:
     spin1_mode_restore(m_StatusRegister);
   }
 
+  DisableIRQ(DisableIRQ const &) = delete;
+
 private:
   //-----------------------------------------------------------------------------
   // Members
@@ -43,6 +45,8 @@ public:
   {
     spin1_mode_restore(m_StatusRegister);
   }
+
+  DisableFIQ(DisableFIQ const &) = delete;
 
 private:
   //-----------------------------------------------------------------------------

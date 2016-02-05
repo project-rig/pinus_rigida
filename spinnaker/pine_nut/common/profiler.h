@@ -29,65 +29,6 @@ public:
   // Finalises profiling - potentially slow process of writing profiler_count to SDRAM
   static void Finalise();
 
-  //-----------------------------------------------------------------------------
-  // Tag
-  //-----------------------------------------------------------------------------
-  template<uint32_t T>
-  class Tag
-  {
-  public:
-    Tag()
-    {
-      Profiler::WriteEntry(Enter | T);
-    }
-
-    ~Tag()
-    {
-      Profiler::WriteEntry(Exit | T);
-    }
-  };
-
-  //-----------------------------------------------------------------------------
-  // TagDisableFIQ
-  //-----------------------------------------------------------------------------
-  template<uint32_t T>
-  class TagDisableFIQ
-  {
-  public:
-    TagDisableFIQ()
-    {
-      Profiler::WriteEntryDisableFIQ(Enter | T);
-    }
-
-    ~TagDisableFIQ()
-    {
-      Profiler::WriteEntryDisableFIQ(Exit | T);
-    }
-  };
-
-  //-----------------------------------------------------------------------------
-  // TagDisableIRQFIQ
-  //-----------------------------------------------------------------------------
-  template<uint32_t T>
-  class TagDisableIRQFIQ
-  {
-  public:
-    TagDisableIRQFIQ()
-    {
-      Profiler::WriteEntryDisableIRQFIQ(Enter | T);
-    }
-
-    ~TagDisableIRQFIQ()
-    {
-      Profiler::WriteEntryDisableIRQFIQ(Exit | T);
-    }
-  };
-
-
-private:
-  //-----------------------------------------------------------------------------
-  // Private API
-  //-----------------------------------------------------------------------------
   static void WriteEntry(uint32_t tag)
   {
 #ifdef PROFILER_ENABLED
@@ -117,6 +58,68 @@ private:
 #endif  // PROFILER_ENABLED
   }
 
+  //-----------------------------------------------------------------------------
+  // Tag
+  //-----------------------------------------------------------------------------
+  template<uint32_t T>
+  class Tag
+  {
+  public:
+    Tag()
+    {
+      Profiler::WriteEntry(Enter | T);
+    }
+
+    ~Tag()
+    {
+      Profiler::WriteEntry(Exit | T);
+    }
+
+    Tag(Tag const &) = delete;
+  };
+
+  //-----------------------------------------------------------------------------
+  // TagDisableFIQ
+  //-----------------------------------------------------------------------------
+  template<uint32_t T>
+  class TagDisableFIQ
+  {
+  public:
+    TagDisableFIQ()
+    {
+      Profiler::WriteEntryDisableFIQ(Enter | T);
+    }
+
+    ~TagDisableFIQ()
+    {
+      Profiler::WriteEntryDisableFIQ(Exit | T);
+    }
+
+    TagDisableFIQ(TagDisableFIQ const &) = delete;
+  };
+
+  //-----------------------------------------------------------------------------
+  // TagDisableIRQFIQ
+  //-----------------------------------------------------------------------------
+  template<uint32_t T>
+  class TagDisableIRQFIQ
+  {
+  public:
+    TagDisableIRQFIQ()
+    {
+      Profiler::WriteEntryDisableIRQFIQ(Enter | T);
+    }
+
+    ~TagDisableIRQFIQ()
+    {
+      Profiler::WriteEntryDisableIRQFIQ(Exit | T);
+    }
+
+    TagDisableIRQFIQ(TagDisableIRQFIQ const &) = delete;
+  };
+
+
+private:
   //---------------------------------------
   // Members
   //---------------------------------------
