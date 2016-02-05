@@ -20,6 +20,7 @@
 #include "config.h"
 
 // Namespaces
+using namespace Common;
 using namespace Common::FixedPointNumber;
 using namespace Common::Utils;
 using namespace NeuronProcessor;
@@ -134,7 +135,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read system region
   if(!g_Config.ReadSystemRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionSystem),
+    Config::GetRegionStart(baseAddress, RegionSystem),
     flags, AppWordMax, g_AppWords))
   {
     return false;
@@ -147,21 +148,21 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   
   // Read neuron region
   if(!ReadNeuronRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionNeuron), flags))
+    Config::GetRegionStart(baseAddress, RegionNeuron), flags))
   {
     return false;
   }
 
   // Read neuron region
   if(!ReadSynapseRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionSynapse), flags))
+    Config::GetRegionStart(baseAddress, RegionSynapse), flags))
   {
     return false;
   }
 
   // Read input buffer region
   if(!g_InputBuffer.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionInputBuffer), flags,
+    Config::GetRegionStart(baseAddress, RegionInputBuffer), flags,
     g_AppWords[AppWordNumNeurons]))
   {
     return false;
@@ -169,7 +170,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read spike recording region
   if(!g_SpikeRecording.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
+    Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
     g_AppWords[AppWordNumNeurons]))
   {
     return false;
@@ -186,7 +187,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
     // Read analogue recording region
     if(!g_AnalogueRecording[r].ReadSDRAMData(
-      Common::Config::GetRegionStart(baseAddress, RegionAnalogueRecordingStart + r), flags,
+      Config::GetRegionStart(baseAddress, RegionAnalogueRecordingStart + r), flags,
       g_AppWords[AppWordNumNeurons]))
     {
       return false;
@@ -194,8 +195,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   }
 
   // Read profiler region
-  if(!Common::Profiler::ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionProfiler),
+  if(!Profiler::ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionProfiler),
     flags))
   {
     return false;
@@ -206,6 +207,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 void UpdateNeurons()
 {
+  Profiler::Tag<ProfilerTagUpdateNeurons> p;
+
   // Loop through neurons
   auto *neuronMutableState = g_NeuronMutableState;
   const auto *neuronImmutableState = g_NeuronImmutableState;
@@ -280,9 +283,11 @@ static void DMATransferDone(uint, uint tag)
       };
 
     // Apply input in DMA buffer
+    Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
     g_InputBuffer.ApplyDMABuffer(g_InputBufferBeingProcessed,
                                  g_AppWords[AppWordNumNeurons],
                                  applyInputLambda);
+    Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
 
     // Advance to next input buffer
     g_InputBufferBeingProcessed++;
@@ -313,7 +318,7 @@ static void TimerTick(uint tick, uint)
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise profiling
-    Common::Profiler::Finalise();
+    Profiler::Finalise();
     // Finalise any recordings that are in progress, writing
     // back the final amounts of samples recorded to SDRAM
     //recording_finalise();
@@ -325,12 +330,14 @@ static void TimerTick(uint tick, uint)
     LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u", g_Tick);
 
     // Loop through neurons and shape synaptic inputs
+    Profiler::WriteEntry(Profiler::Enter | ProfilerTagSynapseShape);
     auto *synapseMutableState = g_SynapseMutableState;
     const auto *synapseImmutableState = g_SynapseImmutableState;
     for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
     {
       Synapse::Shape(*synapseMutableState++, *synapseImmutableState++);
     }
+    Profiler::WriteEntry(Profiler::Exit | ProfilerTagSynapseShape);
 
     // Start at first input buffer
     g_InputBufferBeingProcessed = 0;
@@ -352,7 +359,7 @@ static void TimerTick(uint tick, uint)
 extern "C" void c_main()
 {
   // Get this core's base address using alloc tag
-  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
   
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))

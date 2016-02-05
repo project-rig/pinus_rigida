@@ -26,4 +26,11 @@ enum AppWord
   AppWordMax,
 };
 
+enum ProfilerTag
+{
+  ProfilerTagSynapseShape,
+  ProfilerTagUpdateNeurons,
+  ProfilerTagApplyBuffer,
+};
+
 };  // namespace NeuronProcessor
