@@ -2,3 +2,4 @@
 *.elf
 *.txt
 /build/
+/build_profiled/

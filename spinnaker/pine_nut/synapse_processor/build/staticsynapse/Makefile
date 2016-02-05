@@ -1,12 +1,9 @@
-APP = synapse_staticsynapse
-
-# Extra objects for synapse type
-EXTRA_SOURCES = 
+PINUS_APP = synapse_staticsynapse
 
 # Build object list
 SOURCES = ../../../common/config.cpp \
-	../../synapse_processor.cpp \
-	$(EXTRA_SOURCES)
+	../../../common/profiler.cpp \
+	../../synapse_processor.cpp
 
 CFLAGS += -I $(CURDIR)
 

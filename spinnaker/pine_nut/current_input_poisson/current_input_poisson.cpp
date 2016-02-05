@@ -5,6 +5,7 @@
 #include "../common/random/mars_kiss64.h"
 #include "../common/log.h"
 #include "../common/poisson_source.h"
+#include "../common/profiler.h"
 #include "../common/spike_recording.h"
 #include "../common/spinnaker.h"
 
@@ -137,6 +138,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read profiler region
+  if(!Common::Profiler::ReadSDRAMData(
+    Common::Config::GetRegionStart(baseAddress, RegionProfiler),
+    flags))
+  {
+    return false;
+  }
+
   return true;
 }
 
@@ -154,6 +163,9 @@ void TimerTick(uint tick, uint)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
+    // Finalise profiling
+    Common::Profiler::Finalise();
+    
     // Finalise any recordings that are in progress, writing
     // back the final amounts of samples recorded to SDRAM
     //recording_finalise();

@@ -1,3 +1,12 @@
+ifdef PROFILER_ENABLED
+	BUILDDIR = build_profiled
+	CFLAGS += -DPROFILER_ENABLED
+	APP = $(PINUS_APP)_profiled
+else
+	BUILDDIR = build
+	APP = $(PINUS_APP)
+endif
+
 # Get absolute path of THIS make file i.e. the pine_nut directory
 PINE_NUT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
@@ -5,6 +14,5 @@ LIBRARIES = -lspin1_api
 CFLAGS += -Wall -Wextra -Ofast -fno-rtti -fno-exceptions
 LFLAGS += -nodefaultlibs
 APP_DIR = $(PINE_NUT)/../../model_binaries
-BUILDDIR = build
 
 include $(PINE_NUT)/Makefile.common

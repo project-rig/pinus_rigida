@@ -3,6 +3,7 @@
 // Common includes
 #include "../common/config.h"
 #include "../common/log.h"
+#include "../common/profiler.h"
 #include "../common/spinnaker.h"
 
 // Configuration include
@@ -144,6 +145,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read profiler region
+  if(!Common::Profiler::ReadSDRAMData(
+    Common::Config::GetRegionStart(baseAddress, RegionProfiler),
+    flags))
+  {
+    return false;
+  }
+
   return true;
 }
 //-----------------------------------------------------------------------------
@@ -267,30 +276,33 @@ void TimerTick(uint tick, uint)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
-    // Finalise any recordings that are in progress, writing  
-    // back the final amounts of samples recorded to SDRAM
-    //recording_finalise();
+    // Finalise profiling
+    Common::Profiler::Finalise();
+
+    // Exit
     spin1_exit(0);
   }
+  else
+  {
+    LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%08x)",
+              g_Tick, (g_Tick % 2), g_OutputBuffers[g_Tick % 2]);
 
-  LOG_PRINT(LOG_LEVEL_TRACE, "Timer tick %u, writing 'back' of ring-buffer to output buffer %u (%08x)",
-            g_Tick, (g_Tick % 2), g_OutputBuffers[g_Tick % 2]);
-
-  // Get output buffer from 'back' of ring-buffer
-  const RingBuffer::Type *outputBuffer = g_RingBuffer.GetOutputBuffer(g_Tick);
+    // Get output buffer from 'back' of ring-buffer
+    const RingBuffer::Type *outputBuffer = g_RingBuffer.GetOutputBuffer(g_Tick);
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
-  for(unsigned int i = 0; i < g_AppWords[AppWordNumPostNeurons]; i++)
-  {
-    io_printf(IO_BUF, "%u,", outputBuffer[i]);
-  }
-  io_printf(IO_BUF, "\n");
+    for(unsigned int i = 0; i < g_AppWords[AppWordNumPostNeurons]; i++)
+    {
+      io_printf(IO_BUF, "%u,", outputBuffer[i]);
+    }
+    io_printf(IO_BUF, "\n");
 #endif
 
-  // DMA output buffer into correct output buffer for this timer tick
-  spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[g_Tick % 2],
-                     const_cast<RingBuffer::Type*>(outputBuffer), DMA_WRITE,
-                     g_AppWords[AppWordNumPostNeurons] * sizeof(uint32_t));
+    // DMA output buffer into correct output buffer for this timer tick
+    spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[g_Tick % 2],
+                      const_cast<RingBuffer::Type*>(outputBuffer), DMA_WRITE,
+                      g_AppWords[AppWordNumPostNeurons] * sizeof(uint32_t));
+  }
 }
 } // anonymous namespace
 

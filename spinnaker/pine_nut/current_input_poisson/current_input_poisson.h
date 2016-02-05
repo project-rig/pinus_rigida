@@ -13,6 +13,7 @@ enum Region
   RegionOutputBuffer,
   RegionOutputWeight,
   RegionSpikeRecording,
+  RegionProfiler,
 };
 
 // Indexes of application words

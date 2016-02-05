@@ -2,3 +2,4 @@
 *.txt
 *.aplx
 *.elf
+/build_profiled/
