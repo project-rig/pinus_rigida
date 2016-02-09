@@ -10,6 +10,7 @@
 #include "config.h"
 
 // Namespaces
+using namespace Common;
 using namespace SynapseProcessor;
 
 //-----------------------------------------------------------------------------
@@ -32,7 +33,7 @@ typedef uint32_t DMABuffer[SynapseType::MaxRowWords];
 //----------------------------------------------------------------------------
 // Module level variables
 //----------------------------------------------------------------------------
-Common::Config g_Config;
+Config g_Config;
 RingBuffer g_RingBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
@@ -110,7 +111,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read system region
   if(!g_Config.ReadSystemRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionSystem),
+    Config::GetRegionStart(baseAddress, RegionSystem),
     flags, AppWordMax, g_AppWords))
   {
     return false;
@@ -123,7 +124,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read key lookup region
   if(!g_KeyLookup.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionKeyLookup),
+    Config::GetRegionStart(baseAddress, RegionKeyLookup),
     flags))
   {
     return false;
@@ -131,7 +132,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read synaptic matrix region
   if(!ReadSynapticMatrixRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionSynapticMatrix),
+    Config::GetRegionStart(baseAddress, RegionSynapticMatrix),
     flags))
   {
     return false;
@@ -139,15 +140,15 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read output buffer region
   if(!ReadOutputBufferRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionOutputBuffer),
+    Config::GetRegionStart(baseAddress, RegionOutputBuffer),
     flags))
   {
     return false;
   }
 
   // Read profiler region
-  if(!Common::Profiler::ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionProfiler),
+  if(!Profiler::ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionProfiler),
     flags))
   {
     return false;
@@ -158,6 +159,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 void SetupNextDMARowRead()
 {
+  Profiler::TagDisableFIQ<ProfilerTagSetupNextDMARowRead> p;
+
   // If there's more incoming spikes
   uint32_t key;
   if(g_SpikeInputBuffer.GetNextSpike(key))
@@ -198,6 +201,8 @@ void SetupNextDMARowRead()
 //-----------------------------------------------------------------------------
 void MCPacketReceived(uint key, uint)
 {
+  Profiler::Tag<ProfilerTagMCPacketReceived> p;
+
   LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at tick %u, DMA Busy = %u",
             key, g_Tick, g_DMABusy);
 
@@ -241,8 +246,10 @@ void DMATransferDone(uint, uint tag)
       };
     
     // Process the next row in the DMA buffer, using this function to apply
+    Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerProcessRow);
     SynapseType::ProcessRow(g_Tick, DMANextRowBuffer(), addWeightLambda);
-    
+    Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerProcessRow);
+
     // Setup next row read
     SetupNextDMARowRead();
   }
@@ -277,7 +284,7 @@ void TimerTick(uint tick, uint)
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise profiling
-    Common::Profiler::Finalise();
+    Profiler::Finalise();
 
     // Exit
     spin1_exit(0);
@@ -313,7 +320,7 @@ extern "C" void c_main()
 {
   //static_init();
   // Get this core's base address using alloc tag
-  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
 
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))

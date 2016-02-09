@@ -24,4 +24,12 @@ enum AppWord
   AppWordMax,
 };
 
+enum ProfilerTag
+{
+  ProfilerTagMCPacketReceived,
+  ProfilerTagSetupNextDMARowRead,
+  ProfilerProcessRow,
+
+};
+
 } // SynapseProcessor
