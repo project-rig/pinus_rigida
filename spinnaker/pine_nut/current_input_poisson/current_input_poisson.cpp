@@ -38,10 +38,6 @@ uint32_t *g_OutputWeights = NULL;
 
 uint32_t *g_OutputBuffer = NULL;
 
-const uint32_t *g_SynapticMatrixBaseAddress = NULL;
-
-uint g_Tick = 0;
-
 uint32_t g_AppWords[AppWordMax];
 
 SpikeRecording g_SpikeRecording;
