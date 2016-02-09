@@ -15,7 +15,7 @@ enum Region
   RegionSpikeRecording,
   RegionAnalogueRecordingStart,
   RegionAnalogueRecordingEnd    = RegionAnalogueRecordingStart + 4,
-  RegionProfiler,
+  RegionProfiler = RegionAnalogueRecordingEnd,
 };
 
 // Indexes of application words
