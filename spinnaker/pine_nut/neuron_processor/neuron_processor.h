@@ -14,7 +14,7 @@ enum Region
   RegionInputBuffer,
   RegionSpikeRecording,
   RegionAnalogueRecordingStart,
-  RegionAnalogueRecordingEnd    = RegionAnalogueRecordingStart + 4,
+  RegionAnalogueRecordingEnd = RegionAnalogueRecordingStart + 4,
   RegionProfiler = RegionAnalogueRecordingEnd,
 };
 

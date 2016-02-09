@@ -131,7 +131,18 @@ class State(common.control.BaseState):
         if self.machine_controller is not None:
             logger.info("Stopping SpiNNaker application")
             self.machine_controller.send_signal("stop")
-    
+
+    def _get_executable(self, prefix, pop, name):
+        # Assemble executable filename
+        filename = prefix + "_" + name.lower()
+        if pop.spinnaker_config.get("profile_samples", None) is not None:
+            filename += "_profiled"
+        filename += ".aplx"
+
+        # Join filename with model binaries
+        # path to get full path to executable
+        return os.path.join(self.backend_dir, "model_binaries", filename)
+
     def _wait_for_transition(self, placements, allocations,
                              from_state, desired_to_state,
                              num_verts):
@@ -178,10 +189,8 @@ class State(common.control.BaseState):
             pop_neuron_verts[pop] = neuron_verts
 
             # Get neuron application name
-            # **THINK** is there any point in doing anything cleverer than this
-            neuron_app = os.path.join(
-                self.backend_dir, "model_binaries",
-                "neuron_" + pop.celltype.__class__.__name__.lower() + ".aplx")
+            neuron_app = self._get_executable("neuron", pop,
+                                              pop.celltype.__class__.__name__)
 
             logger.debug("\t\tNeuron application:%s" % neuron_app)
             logger.debug("\t\t%u neuron vertices" % len(neuron_verts))
@@ -227,9 +236,8 @@ class State(common.control.BaseState):
 
                 # Get synapse application name
                 # **THINK** is there any point in doing anything cleverer than this
-                synapse_app = os.path.join(
-                    self.backend_dir, "model_binaries",
-                    "synapse_" + synapse_type[0].__name__.lower() + ".aplx")
+                synapse_app = self._get_executable("synapse", pop,
+                                                   synapse_type[0].__name__)
                 logger.debug("\t\t\tSynapse application:%s" % synapse_app)
 
                 # Loop through the post-slices
@@ -325,9 +333,10 @@ class State(common.control.BaseState):
 
                 # Get current input application name
                 # **THINK** is there any point in doing anything cleverer than this
-                current_input_app = os.path.join(
-                    self.backend_dir, "model_binaries",
-                    "current_input_" + proj.pre.celltype.__class__.__name__.lower() + ".aplx")
+                current_input_app = self._get_executable(
+                    "current_input", proj.pre,
+                    proj.pre.celltype.__class__.__name__)
+
                 logger.debug("\t\t\tCurrent input application:%s"
                     % current_input_app)
 
@@ -419,7 +428,7 @@ class State(common.control.BaseState):
                     n.input_verts = [i for i in itertools.chain(s_verts, c_verts)
                                        if i.post_neuron_slice == n.neuron_slice]
 
-                    logger.debug("\t\tConstraining neuron vertand %u input verts to same chip" % len(n.input_verts))
+                    logger.debug("\t\tConstraining neuron vert and %u input verts to same chip" % len(n.input_verts))
 
                     # Build same chip constraint and add to list
                     constraints.append(SameChipConstraint(n.input_verts + [n]))
@@ -431,7 +440,7 @@ class State(common.control.BaseState):
         logger.info("Loading synapse vertices")
 
         # Build synapse populations
-        spinnaker_synapse_pops = {}
+        spinnaker_synapse_pops = defaultdict(list)
         for pop, synapse_types in iteritems(self.pop_synapse_verts):
             # Loop through synapse types and associated vertices
             for s_type, s_verts in iteritems(synapse_types):
@@ -449,7 +458,7 @@ class State(common.control.BaseState):
                         duration_timesteps)
 
                     # Add spinnaker population to dictionary
-                    spinnaker_synapse_pops[pop] = spinnaker_pop
+                    spinnaker_synapse_pops[pop].append(spinnaker_pop)
 
                     # Loop through synapse verts
                     for v in s_verts:
@@ -692,7 +701,8 @@ class State(common.control.BaseState):
         placements, allocations, application_map, routing_tables = wrapper(
             vertex_resources, vertex_applications, nets, net_keys,
             spinnaker_machine, constraints)
-
+        logger.debug("Placing on %u cores", len(placements))
+        logger.debug(list(itervalues(placements)))
         # Load vertices
         self.spinnaker_synapse_pops = self._load_synapse_verts(
             placements, allocations, hardware_timestep_us, duration_timesteps)

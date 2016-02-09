@@ -32,7 +32,7 @@ class Regions(enum.IntEnum):
 # ------------------------------------------------------------------------------
 class SynapsePopulation(object):
     def __init__(self, weight_fixed_point, timer_period_us,
-                 sim_ticks):
+                 sim_ticks, config):
         # Cache position of weight format fixed-point
         self.weight_fixed_point = weight_fixed_point
 
@@ -44,6 +44,10 @@ class SynapsePopulation(object):
         self.regions[Regions.synaptic_matrix] = regions.SynapticMatrix(
             self.weight_fixed_point)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
+
+        # Add profiler region if required
+        if config.get("profile_samples", None) is not None:
+            self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -93,7 +97,7 @@ class SynapsePopulation(object):
             region.write_subregion_to_file(mem, *args, **kwargs)
         return region_memory
     
-    # --------------------------------------------------------------------------
+    # ------------------------------------------------profile--------------------------
     # Private methods
     # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrices,

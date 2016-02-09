@@ -94,7 +94,7 @@ class Population(common.Population):
         resources = { machine.Cores: 1 }
         vertex_resources = [resources] * len(vertex_slices)
         return vertex_slices, vertex_resources
-
+    
     def create_spinnaker_neural_population(self, simulation_timestep_us,
                                            timer_period_us, simulation_ticks):
         if isinstance(self.celltype, StandardCellType):
@@ -107,14 +107,16 @@ class Population(common.Population):
         return NeuralPopulation(self.celltype, parameters,
                                 self.initial_values, simulation_timestep_us,
                                 timer_period_us, simulation_ticks,
-                                self.recorder.indices_to_record)
+                                self.recorder.indices_to_record,
+                                self.spinnaker_config)
 
     def create_spinnaker_synapse_population(self, weight_fixed_point,
                                             timer_period_us, 
                                             simulation_ticks):
         # Create synapse population
         return SynapsePopulation(weight_fixed_point,
-                                 timer_period_us, simulation_ticks)
+                                 timer_period_us, simulation_ticks,
+                                 self.spinnaker_config)
 
     def create_spinnaker_current_input_population(self, simulation_timestep_us,
                                                   timer_period_us,
@@ -131,7 +133,8 @@ class Population(common.Population):
         return CurrentInputPopulation(
             self.celltype, parameters, self.initial_values,
             simulation_timestep_us, timer_period_us, simulation_ticks,
-            self.recorder.indices_to_record, direct_weights)
+            self.recorder.indices_to_record, self.spinnaker_config,
+            direct_weights)
 
     def build_incoming_connection(self, synapse_type):
         population_matrix_rows = {}
@@ -190,6 +193,30 @@ class Population(common.Population):
         for p in matrix_rows[presynaptic_indices]:
             p.append(Synapse(weight, delay, postsynaptic_index))
 
+    def get_neural_profile_data(self):
+        # Assert that profiling is enabled
+        assert self.spinnaker_config.get("profile_samples", None) is not None
+
+        # Get neuron population
+        spinnaker_pop = self._simulator.state.spinnaker_neuron_pops[self]
+
+        # Return profile data for each vertex that makes up population
+        return [(v.neuron_slice.python_slice, spinnaker_pop.read_profile(v.region_memory))
+                for v in self._simulator.state.pop_neuron_verts[self]]
+
+    '''
+    def get_synapse_profile_data(self):
+        # Assert that profiling is enabled
+        assert self.spinnaker_config.get("profile_samples", None) is not None
+
+        # Get neuron population
+        spinnaker_pop = self._simulator.state.spinnaker_neuron_pops[self]
+
+        # Return profile data for each vertex that makes up population
+        return [(v.neuron_slice.python_slice, spinnaker_pop.read_profile(v.region_memory))
+                for v in self._simulator.state.pop_neuron_verts[self]]
+    '''
+
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,
                                 simulator.state.id_counter + self.size)
@@ -227,6 +254,11 @@ class Population(common.Population):
         parameter_space.evaluate(simplify=False, mask=self._mask_local)
         for name, value in parameter_space.items():
             self._parameters[name] = value
+
+    @property
+    def spinnaker_config(self):
+        # **TODO** merge in celltype config
+        return self._simulator.state.config[self]
 
     @property
     def entirely_directly_connectable(self):

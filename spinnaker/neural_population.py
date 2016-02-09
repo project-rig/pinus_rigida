@@ -38,9 +38,16 @@ class Regions(enum.IntEnum):
 # NeuralPopulation
 # -----------------------------------------------------------------------------
 class NeuralPopulation(object):
+    # Tag names, corresponding to those defined in neuron_processor.h
+    profiler_tag_names = {
+        0:  "Synapse shape",
+        1:  "Update neurons",
+        2:  "Apply buffer",
+    }
+
     def __init__(self, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
-                 indices_to_record):
+                 indices_to_record, config):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -71,6 +78,10 @@ class NeuralPopulation(object):
             self.regions[Regions(Regions.analogue_recording_start + i)] =\
                 regions.AnalogueRecording(indices_to_record, v,
                                           sim_timestep_ms, sim_ticks)
+
+        # Add profiler region if required
+        if config.get("profile_samples", None) is not None:
+            self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -116,7 +127,7 @@ class NeuralPopulation(object):
                                        region_memory[Regions.spike_recording])
 
     def read_signal(self, channel, region_memory, vertex_slice):
-        # Get index of channel
+        # Get index of channelread_profile
         r = Regions(Regions.analogue_recording_start + channel)
 
         # Get the analogue recording region and
@@ -124,6 +135,14 @@ class NeuralPopulation(object):
         # Use analogue recording region to get signal
         return self.regions[r].read_signal(vertex_slice, region_memory[r])
 
+    def read_profile(self, region_memory):
+        # Get the profile recording region and
+        # the memory block associated with it
+        region = self.regions[Regions.profiler]
+
+        # Use spike recording region to get spike times
+        return region.read_profile(region_memory[Regions.profiler],
+                                   self.profiler_tag_names)
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------

@@ -29,34 +29,34 @@ public:
   // Finalises profiling - potentially slow process of writing profiler_count to SDRAM
   static void Finalise();
 
+#ifdef PROFILER_ENABLED
   static void WriteEntry(uint32_t tag)
   {
-#ifdef PROFILER_ENABLED
-    if(s_ProfilerSamplesRemaining > 0)
+    if(s_SamplesRemaining > 0)
     {
-      *s_ProfilerOutput++ = tc[T2_COUNT];
-      *s_ProfilerOutput++ = tag;
-      s_ProfilerSamplesRemaining--;
+      *s_Output++ = tc[T2_COUNT];
+      *s_Output++ = tag;
+      s_SamplesRemaining--;
     }
-#endif  // PROFILER_ENABLED
   }
 
   static void WriteEntryDisableFIQ(uint32_t tag)
   {
-#ifdef PROFILER_ENABLED
     DisableFIQ f;
     WriteEntry(tag);
-#endif  // PROFILER_ENABLED
   }
 
   static void WriteEntryDisableIRQFIQ(uint32_t tag)
   {
-#ifdef PROFILER_ENABLED
     DisableIRQ i;
     DisableFIQ f;
     WriteEntry(tag);
-#endif  // PROFILER_ENABLED
   }
+#else
+  static void WriteEntry(uint32_t){}
+  static void WriteEntryDisableFIQ(uint32_t){}
+  static void WriteEntryDisableIRQFIQ(uint32_t){}
+#endif  // PROFILER_ENABLED
 
   //-----------------------------------------------------------------------------
   // Tag
@@ -124,9 +124,9 @@ private:
   // Members
   //---------------------------------------
 #ifdef PROFILER_ENABLED
-  static uint32_t *s_ProfilerCount;
-  static uint32_t s_ProfilerSamplesRemaining;
-  static uint32_t *s_ProfilerOutput;
+  static uint32_t *s_Count;
+  static uint32_t s_SamplesRemaining;
+  static uint32_t *s_Output;
 #endif  // PROFILER_ENABLED
 };
 }

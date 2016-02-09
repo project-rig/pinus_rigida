@@ -23,6 +23,7 @@ class Regions(enum.IntEnum):
     output_buffer = 2,
     output_weight = 3
     spike_recording = 4,
+    profiler = 5,
 
 
 # ------------------------------------------------------------------------------
@@ -30,7 +31,8 @@ class Regions(enum.IntEnum):
 # ------------------------------------------------------------------------------
 class CurrentInputPopulation(object):
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms,
-                 timer_period_us, sim_ticks, indices_to_record, weights):
+                 timer_period_us, sim_ticks, indices_to_record, config,
+                 weights):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -41,6 +43,11 @@ class CurrentInputPopulation(object):
         self.regions[Regions.output_weight] = regions.OutputWeight(weights)
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
+
+        # Add profiler region if required
+        if config.get("profile_samples", None) is not None:
+            self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
+
 
     # --------------------------------------------------------------------------
     # Public methods

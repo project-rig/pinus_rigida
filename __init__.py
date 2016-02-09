@@ -13,7 +13,8 @@ from pyNN import common
 from pyNN.common.control import DEFAULT_MAX_DELAY, DEFAULT_TIMESTEP, DEFAULT_MIN_DELAY
 
 from pyNN.recording import *
-##from . import simulator
+
+import profiling
 import simulator
 from .standardmodels.cells import *
 from .standardmodels.synapses import *
@@ -41,6 +42,7 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
     simulator.state.realtime_proportion = extra_params.get("realtime_proportion", 1.0)
     simulator.state.reserve_extra_cores_per_chip = extra_params.get("reserve_extra_cores_per_chip", 0)
     simulator.state.convert_direct_connections = extra_params.get("convert_direct_connections", True)
+    simulator.state.config = extra_params.get("config", {})
     return rank()
 
 def end(compatible_output=True):
