@@ -3,6 +3,7 @@ import lazyarray as la
 import math
 import numpy as np
 import struct
+from os import path
 
 # Import classes
 from collections import namedtuple
@@ -13,6 +14,9 @@ from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
 
+# Determine model binaries path for models in this module
+model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
+
 # ------------------------------------------------------------------------------
 # Args
 # ------------------------------------------------------------------------------
@@ -21,6 +25,19 @@ class Args(namedtuple("Args", "args, kwargs")):
         return super(Args, cls).__new__(cls, args, kwargs)
 
 
+#------------------------------------------------------------------------------
+# InputVertex
+#------------------------------------------------------------------------------
+class InputVertex(object):
+    def __init__(self, post_neuron_slice, receptor_index):
+        self.post_neuron_slice = post_neuron_slice
+        self.weight_fixed_point = None
+        self.receptor_index = receptor_index
+        self.out_buffers = None
+
+    def __str__(self):
+        return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)
+    
 # ------------------------------------------------------------------------------
 # UnitStrideSlice
 # ------------------------------------------------------------------------------
@@ -35,7 +52,6 @@ class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
 
     def __str__(self):
         return "[%u, %u)" % (self.start, self.stop)
-
 
 # ------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter

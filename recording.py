@@ -40,14 +40,14 @@ class Recorder(recording.Recorder, ContextMixin):
             # Set this bit in indices
             indices[new_index] = True
 
-    def _read_vertex(self, spinnaker_pop, vertex, variables_to_include,
+    def _read_vertex(self, n_cluster, vertex, variables_to_include,
                      spike_times, signals):
         # Loop through all variables to include
         for variable in variables_to_include:
             # If this variable is a spike recording, update the
             # spike times dictionary with spikes from this vertex
             if variable == "spikes":
-                spike_times.update(spinnaker_pop.read_spike_times(
+                spike_times.update(n_cluster.read_spike_times(
                     vertex.region_memory, vertex.neuron_slice))
             # Otherwise
             else:
@@ -56,7 +56,7 @@ class Recorder(recording.Recorder, ContextMixin):
                 channel = self.population.celltype.recordable.index(variable) - 1
 
                 # Update this variables dictionary with values from this vertex
-                signals[variable].update(spinnaker_pop.read_signal(
+                signals[variable].update(n_cluster.read_signal(
                     channel, vertex.region_memory, vertex.neuron_slice))
 
     def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
@@ -71,17 +71,14 @@ class Recorder(recording.Recorder, ContextMixin):
         sim_state = self._simulator.state
         spike_times = {}
         signals = defaultdict(dict)
-        if self.population in sim_state.spinnaker_neuron_pops:
-            # Get SpiNNaker neuron population
-            spinnaker_pop = sim_state.spinnaker_neuron_pops[self.population]
+        if self.population in sim_state.pop_neuron_clusters:
+            # Get neuron cluster
+            n_cluster = sim_state.pop_neuron_clusters[self.population]
 
-            # If any vertices were actually instantiated
-            if self.population in sim_state.pop_neuron_verts:
-                # Loop through all neuron vertices and read
-                for vertex in sim_state.pop_neuron_verts[self.population]:
-                    self._read_vertex(spinnaker_pop, vertex,
-                                      variables_to_include,
-                                      spike_times, signals)
+            # Loop through all neuron vertices and read
+            for vertex in n_cluster.verts:
+                self._read_vertex(n_cluster, vertex, variables_to_include,
+                                  spike_times, signals)
 
         # Create context containing data read from spinnaker and call superclass
         with self.get_new_context(spike_times=spike_times, signals=signals):

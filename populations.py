@@ -1,4 +1,5 @@
 # Import modules
+import itertools
 import logging
 import math
 import numpy
@@ -14,13 +15,10 @@ from pyNN.parameters import ParameterSpace, simplify
 from . import simulator
 from .recording import Recorder
 from rig.utils.contexts import ContextMixin
-from six import iteritems
+from six import (iteritems, itervalues)
 from spinnaker.current_input_population import CurrentInputPopulation
-from spinnaker.neural_population import NeuralPopulation
-from spinnaker.synapse_population import SynapsePopulation
-
-# Import functions
-from spinnaker.utils import evenly_slice
+from spinnaker.neural_cluster import NeuralCluster
+from spinnaker.synapse_cluster import SynapseCluster
 
 logger = logging.getLogger("pinus_rigida")
 
@@ -83,20 +81,10 @@ class Population(common.Population):
         # Add population to simulator
         self._simulator.state.populations.append(self)
     
-    def partition(self):
-        # Slice population evenly
-        # **TODO** pick based on timestep and parameters
-        vertex_slices = evenly_slice(self.size,
-                                     self.celltype.max_neurons_per_core)
-
-        # Create a resource to accompany each slice
-        # **TODO** estimate SDRAM usage for incoming projections
-        resources = { machine.Cores: 1 }
-        vertex_resources = [resources] * len(vertex_slices)
-        return vertex_slices, vertex_resources
-    
-    def create_spinnaker_neural_population(self, simulation_timestep_us,
-                                           timer_period_us, simulation_ticks):
+    def create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
+                              simulation_ticks, vertex_applications,
+                              vertex_resources, keyspace):
+        # Extract parameter lazy array
         if isinstance(self.celltype, StandardCellType):
             parameters = self.celltype.native_parameters
         else:
@@ -104,30 +92,59 @@ class Population(common.Population):
         parameters.shape = (self.size,)
         
         # Create neural population
-        return NeuralPopulation(self.celltype, parameters,
-                                self.initial_values, simulation_timestep_us,
-                                timer_period_us, simulation_ticks,
-                                self.recorder.indices_to_record,
-                                self.spinnaker_config)
+        return NeuralCluster(pop_id, self.celltype, parameters,
+                             self.initial_values, simulation_timestep_us,
+                             timer_period_us, simulation_ticks,
+                             self.recorder.indices_to_record,
+                             self.spinnaker_config, vertex_applications,
+                             vertex_resources, keyspace)
 
-    def create_spinnaker_synapse_population(self, weight_fixed_point,
-                                            timer_period_us, 
-                                            simulation_ticks):
-        # Create synapse population
-        return SynapsePopulation(weight_fixed_point,
-                                 timer_period_us, simulation_ticks,
-                                 self.spinnaker_config)
+    def create_synapse_clusters(self, timer_period_us, simulation_ticks,
+                                vertex_applications, vertex_resources):
+        # Get neuron clusters dictionary from simulator
+        # **THINK** is it better to get this as ANOTHER parameter
+        pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
 
-    def create_spinnaker_current_input_population(self, simulation_timestep_us,
-                                                  timer_period_us,
-                                                  simulation_ticks,
-                                                  direct_weights):
+        # Loop through newly partioned incoming projections
+        synapse_clusters = {}
+        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+            # Chain together incoming projections from all populations
+            projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
+            synaptic_projections = [p for p in projections
+                                    if not p.directly_connectable]
 
+            # Find index of receptor type
+            receptor_index = self.celltype.receptor_types.index(synapse_type[1])
+
+            # Create synapse population
+            c = SynapseCluster(timer_period_us, simulation_ticks,
+                               self.spinnaker_config, self.size,
+                               synapse_type[0], receptor_index,
+                               synaptic_projections, pop_neuron_clusters,
+                               vertex_applications, vertex_resources)
+
+            # Add cluster to dictionary
+            synapse_clusters[synapse_type] = c
+
+        # Return synapse clusters
+        return synapse_clusters
+
+    def create_current_input_clusters(self, simulation_timestep_us,
+                                      timer_period_us, simulation_ticks,
+                                      direct_weights, vertex_applications,
+                                      vertex_resources, keyspace):
+        # Extract parameter lazy array
         if isinstance(self.celltype, StandardCellType):
             parameters = self.celltype.native_parameters
         else:
             parameters = self.celltype.parameter_space
         parameters.shape = (self.size,)
+
+        # Chain together the lists of incoming projections
+        # From all synapse types and pre-synaptic populations
+        direct_projections = itertools.chain.from_iterable(
+            itertools.chain.from_iterable(itervalues(p))
+            for p in itervalues(self.incoming_projections))
 
         # Create current input population
         return CurrentInputPopulation(
@@ -197,25 +214,15 @@ class Population(common.Population):
         # Assert that profiling is enabled
         assert self.spinnaker_config.get("profile_samples", None) is not None
 
-        # Get neuron population
-        spinnaker_pop = self._simulator.state.spinnaker_neuron_pops[self]
+        # Read profile from neuron cluster
+        return self._simulator.state.pop_neuron_clusters[self].read_profile()
 
-        # Return profile data for each vertex that makes up population
-        return [(v.neuron_slice.python_slice, spinnaker_pop.read_profile(v.region_memory))
-                for v in self._simulator.state.pop_neuron_verts[self]]
-
-    '''
     def get_synapse_profile_data(self):
         # Assert that profiling is enabled
         assert self.spinnaker_config.get("profile_samples", None) is not None
 
-        # Get neuron population
-        spinnaker_pop = self._simulator.state.spinnaker_neuron_pops[self]
-
-        # Return profile data for each vertex that makes up population
-        return [(v.neuron_slice.python_slice, spinnaker_pop.read_profile(v.region_memory))
-                for v in self._simulator.state.pop_neuron_verts[self]]
-    '''
+        # Read profile from synapse cluster
+        return self._simulator.state.pop_synapse_clusters[self].read_profile()
 
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,

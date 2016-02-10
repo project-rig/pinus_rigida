@@ -48,18 +48,17 @@ class Projection(common.Projection, ContextMixin):
             self.pre.outgoing_projections.append(self)
 
         # If post-synaptic population in an assembly
-
         if isinstance(self.post, common.Assembly):
             assert self.post._homogeneous_synapses, "Inhomogeneous assemblies not yet supported"
             
             # Add this projection to each post-population in 
             # assembly's list of incoming connections
             for p in self.post.populations:
-                p.incoming_projections[self.spinnaker_synapse_type][self.pre].append(self)
+                p.incoming_projections[self.synapse_cluster_type][self.pre].append(self)
         # Otherwise add it to the post-synaptic population's list
         # **THINK** what about population-views? add to their parent?
         else:
-            self.post.incoming_projections[self.spinnaker_synapse_type][self.pre].append(self)
+            self.post.incoming_projections[self.synapse_cluster_type][self.pre].append(self)
     
     def build(self, **context_kwargs):
         # connect the populations
@@ -133,7 +132,7 @@ class Projection(common.Projection, ContextMixin):
         return self._connector.estimate_num_synapses(pre_slice, post_slice)
 
     @property
-    def spinnaker_synapse_type(self):
+    def synapse_cluster_type(self):
         return (self.synapse_type.__class__, self.receptor_type)
 
     @property

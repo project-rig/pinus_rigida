@@ -3,14 +3,17 @@ import enum
 import itertools
 import logging
 import regions
+from os import path
 
 # Import classes
 from collections import defaultdict
+from rig import machine
 
 # Import functions
 from six import iteritems
 from utils import (
-    Args, create_app_ptr_and_region_files_named, sizeof_regions_named)
+    Args, create_app_ptr_and_region_files_named,
+    evenly_slice, model_binaries, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
 
@@ -33,11 +36,32 @@ class Regions(enum.IntEnum):
     analogue_recording_end = 9,
     profiler = 9,
 
+#------------------------------------------------------------------------------
+# Vertex
+#------------------------------------------------------------------------------
+class Vertex(object):
+    def __init__(self, parent_keyspace, neuron_slice, population_index, vertex_index):
+        self.neuron_slice = neuron_slice
+        self.keyspace = parent_keyspace(population_index=population_index,
+            vertex_index=vertex_index)
+        self.input_verts = list()
+        self.region_memory = None
+
+    @property
+    def key(self):
+        return self.keyspace.get_value(tag="routing")
+
+    @property
+    def mask(self):
+        return self.keyspace.get_mask(tag="routing")
+
+    def __str__(self):
+        return "<neuron slice:%s>" % (str(self.neuron_slice))
 
 # -----------------------------------------------------------------------------
-# NeuralPopulation
+# NeuralCluster
 # -----------------------------------------------------------------------------
-class NeuralPopulation(object):
+class NeuralCluster(object):
     # Tag names, corresponding to those defined in neuron_processor.h
     profiler_tag_names = {
         0:  "Synapse shape",
@@ -45,9 +69,10 @@ class NeuralPopulation(object):
         2:  "Apply buffer",
     }
 
-    def __init__(self, cell_type, parameters, initial_values,
+    def __init__(self, pop_id, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
-                 indices_to_record, config):
+                 indices_to_record, config, vertex_applications,
+                 vertex_resources, keyspace):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -79,9 +104,38 @@ class NeuralPopulation(object):
                 regions.AnalogueRecording(indices_to_record, v,
                                           sim_timestep_ms, sim_ticks)
 
+        # Create start of filename for the executable to use for this cluster
+        filename = "neuron_" + cell_type.__class__.__name__.lower()
+
         # Add profiler region if required
         if config.get("profile_samples", None) is not None:
-            self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
+            self.regions[Regions.profiler] =\
+                regions.Profiler(config["profile_samples"])
+            filename += "_profiled"
+
+        # Slice population evenly
+        # **TODO** pick based on timestep and parameters
+        neuron_slices = evenly_slice(parameters.shape[0],
+                                     cell_type.max_neurons_per_core)
+
+        # Build neuron vertices for each slice allocating a keyspace for each vertex
+        self.verts = [Vertex(keyspace, neuron_slice, pop_id, vert_id)
+                      for vert_id, neuron_slice in enumerate(neuron_slices)]
+
+        # Get neuron application name
+        neuron_app = path.join(model_binaries, filename + ".aplx")
+
+        logger.debug("\t\tNeuron application:%s" % neuron_app)
+        logger.debug("\t\t%u neuron vertices" % len(self.verts))
+
+        # Loop through neuron vertices and their corresponding resources
+        for v in self.verts:
+            # Add application to dictionary
+            vertex_applications[v] = neuron_app
+
+            # Add resources to dictionary
+            # **TODO** add SDRAM
+            vertex_resources[v] = { machine.Cores: 1 }
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -115,6 +169,7 @@ class NeuralPopulation(object):
 
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
+
         return region_memory
 
     def read_spike_times(self, region_memory, vertex_slice):
@@ -135,14 +190,16 @@ class NeuralPopulation(object):
         # Use analogue recording region to get signal
         return self.regions[r].read_signal(vertex_slice, region_memory[r])
 
-    def read_profile(self, region_memory):
+    def read_profile(self):
         # Get the profile recording region and
-        # the memory block associated with it
         region = self.regions[Regions.profiler]
 
-        # Use spike recording region to get spike times
-        return region.read_profile(region_memory[Regions.profiler],
-                                   self.profiler_tag_names)
+        # Return profile data for each vertex that makes up population
+        return [(v.neuron_slice.python_slice,
+                 region.read_profile(v.region_memory[Regions.profiler],
+                                     self.profiler_tag_names))
+                 for v in self.verts]
+
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
