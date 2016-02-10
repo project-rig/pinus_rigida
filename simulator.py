@@ -146,66 +146,29 @@ class State(common.control.BaseState):
 
         return pop_synapse_clusters
 
-    def _allocate_current_input_clusters(self, vertex_applications, vertex_resources):
+    def _allocate_current_input_clusters(self, vertex_applications,
+                                         vertex_resources, hardware_timestep_us,
+                                         duration_timesteps):
         logger.info("Allocating current input clusters")
-        return None, None
-        proj_current_input_clusters = defaultdict(list)
+
+        proj_current_input_clusters = {}
         post_pop_current_input_clusters = defaultdict(list)
-        for pop in self.populations:
-            logger.debug("\tPopulation:%s" % pop.label)
+        for proj in self.projections:
+            if not proj.directly_connectable:
+                continue
 
-            # Chain together the lists of incoming projections
-            # From all synapse types and pre-synaptic populations
-            projections = itertools.chain.from_iterable(
-                itertools.chain.from_iterable(itervalues(p))
-                for p in itervalues(pop.incoming_projections))
+            logger.debug("\t\tProjection:%s" % proj.label)
 
-            # Loop through those that are directly connectable
-            current_input_verts = []
-            for proj in (p for p in projections if p.directly_connectable):
-                logger.debug("\t\tProjection:%s" % proj.label)
+            # Create cluster
+            c = proj.create_current_input_cluster(
+                self.dt, hardware_timestep_us, duration_timesteps,
+                vertex_applications, vertex_resources)
 
-                # Slice current input
-                post_slices = evenly_slice(
-                    proj.pre.size,
-                    proj.pre.celltype.max_current_inputs_per_core)
+            # Add cluster to data structures
+            post_pop_current_input_clusters[proj.post].append(c)
+            proj_current_input_clusters[proj] = c
 
-                # Get receptor index this projection should connect to
-                receptor_index = proj.post.celltype.receptor_types.index(proj.receptor_type)
-
-                # Get current input application name
-                # **THINK** is there any point in doing anything cleverer than this
-                current_input_app = self._get_executable(
-                    "current_input", proj.pre,
-                    proj.pre.celltype.__class__.__name__)
-
-                logger.debug("\t\t\tCurrent input application:%s"
-                    % current_input_app)
-
-                # Loop through slices
-                for post_slice in post_slices:
-                    logger.debug("\t\t\tPost slice:%s" % str(post_slice))
-
-                    # Build input vert and add to list
-                    input_vert = InputVertex(post_slice, receptor_index)
-                    current_input_verts.append(input_vert)
-
-                    # Add application to dictionary
-                    vertex_applications[input_vert] = current_input_app
-
-                    # Add resources to dictionary
-                    # **TODO** add SDRAM
-                    vertex_resources[input_vert] = { machine.Cores: 1 }
-
-                logger.debug("\t\t\t%u current input vertices" % len(current_input_verts))
-
-                # Assign list of vertices to post-synaptic population's
-                # list of current input vertices and to projection
-                if len(current_input_verts) > 0:
-                    post_pop_current_input_verts[proj.post].extend(current_input_verts)
-                    proj_current_input_verts[proj].extend(current_input_verts)
-
-        return proj_current_input_verts, post_pop_current_input_verts
+        return proj_current_input_clusters, post_pop_current_input_clusters
 
     def _build_nets(self):
         logger.info("Building nets")
@@ -252,11 +215,16 @@ class State(common.control.BaseState):
         # together synapse and neuron vertices
         constraints = []
         for pop in self.populations:
+            # If population has no neuron cluster, skip
+            if pop not in self.pop_neuron_clusters:
+                continue
+
             # Get lists of synapse and neuron vertices
             # associated with this PyNN population
             s_verts = list(itertools.chain.from_iterable(
-                [s.verts for s in itervalues(self.pop_synapse_clusters[pop])]))
-            c_verts = []#self.post_pop_current_input_verts[pop]
+                [c.verts for c in itervalues(self.pop_synapse_clusters[pop])]))
+            c_verts = list(itertools.chain.from_iterable(
+                [c.verts for c in self.post_pop_current_input_clusters[pop]]))
             n_verts = self.pop_neuron_clusters[pop].verts
 
             # If there are any synapse vertices
@@ -349,23 +317,15 @@ class State(common.control.BaseState):
         logger.info("Loading current input vertices")
 
         # Build current input populations
-        spinnaker_current_input_pops = defaultdict(list)
-        for proj, c_verts in iteritems(self.proj_current_input_verts):
+        for proj, c_cluster in iteritems(self.proj_current_input_clusters):
             logger.debug("\tProjection label:%s from population label:%s" %
                          (proj.label, proj.pre.label))
 
             # Build direct connection for projection
             direct_weights = proj.build_direct_connection()
 
-            # Create a spinnaker population
-            spinnaker_pop = proj.pre.create_spinnaker_current_input_population(
-                self.dt, hardware_timestep_us, duration_timesteps, direct_weights)
-
-            # Add spinnaker population to dictionary
-            spinnaker_current_input_pops[proj.pre].append(spinnaker_pop)
-
             # Loop through synapse verts
-            for v in c_verts:
+            for v in c_cluster.verts:
                 logger.debug("\t\tVertex %s" % v)
 
                 # Use native S15.16 format
@@ -390,8 +350,8 @@ class State(common.control.BaseState):
                         for b in range(2)]
 
                     # Calculate required memory size
-                    size = spinnaker_pop.get_size(
-                        v.post_neuron_slice, v.out_buffers)
+                    size = c_cluster.get_size(v.post_neuron_slice,
+                                              direct_weights, v.out_buffers)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
@@ -402,10 +362,9 @@ class State(common.control.BaseState):
                                     % (core.start, memory_io.address))
 
                     # Write the vertex to file
-                    spinnaker_pop.write_to_file(
-                        v.post_neuron_slice, v.out_buffers, memory_io)
-
-        return spinnaker_current_input_pops
+                    c_cluster.write_to_file(v.post_neuron_slice,
+                                            direct_weights, v.out_buffers,
+                                            memory_io)
 
     def _load_neuron_verts(self, placements, allocations,
                            hardware_timestep_us, duration_timesteps):
@@ -484,8 +443,9 @@ class State(common.control.BaseState):
             hardware_timestep_us, duration_timesteps)
 
         self.proj_current_input_clusters, self.post_pop_current_input_clusters =\
-            self._allocate_current_input_clusters(vertex_applications,
-                                                  vertex_resources)
+            self._allocate_current_input_clusters(
+                vertex_applications, vertex_resources, hardware_timestep_us,
+                duration_timesteps)
 
         # Constrain all vertices in clusters to same chip
         constraints = self._constrain_clusters()
@@ -529,13 +489,13 @@ class State(common.control.BaseState):
             spinnaker_machine, constraints)
         logger.debug("Placing on %u cores", len(placements))
         logger.debug(list(itervalues(placements)))
+
         # Load vertices
         self._load_synapse_verts(placements, allocations,
                                  hardware_timestep_us, duration_timesteps)
 
-        # Load vertices
-        #self._load_current_input_verts(placements, allocations,
-        #                               hardware_timestep_us, duration_timesteps)
+        self._load_current_input_verts(placements, allocations,
+                                       hardware_timestep_us, duration_timesteps)
 
         self._load_neuron_verts(placements, allocations, hardware_timestep_us,
                                 duration_timesteps)

@@ -7,13 +7,12 @@ from rig import machine
 
 # Import classes
 from collections import defaultdict
-from utils import InputVertex
+from utils import Args, InputVertex
 
 # Import functions
 from six import iteritems
-from utils import (
-    Args, create_app_ptr_and_region_files_named,
-    evenly_slice, model_binaries, sizeof_regions_named)
+from utils import (create_app_ptr_and_region_files_named, evenly_slice,
+                   model_binaries, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
 

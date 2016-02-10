@@ -16,7 +16,6 @@ from . import simulator
 from .recording import Recorder
 from rig.utils.contexts import ContextMixin
 from six import (iteritems, itervalues)
-from spinnaker.current_input_population import CurrentInputPopulation
 from spinnaker.neural_cluster import NeuralCluster
 from spinnaker.synapse_cluster import SynapseCluster
 
@@ -91,7 +90,7 @@ class Population(common.Population):
             parameters = self.celltype.parameter_space
         parameters.shape = (self.size,)
         
-        # Create neural population
+        # Create neural cluster
         return NeuralCluster(pop_id, self.celltype, parameters,
                              self.initial_values, simulation_timestep_us,
                              timer_period_us, simulation_ticks,
@@ -116,7 +115,7 @@ class Population(common.Population):
             # Find index of receptor type
             receptor_index = self.celltype.receptor_types.index(synapse_type[1])
 
-            # Create synapse population
+            # Create synapse cluster
             c = SynapseCluster(timer_period_us, simulation_ticks,
                                self.spinnaker_config, self.size,
                                synapse_type[0], receptor_index,
@@ -128,30 +127,6 @@ class Population(common.Population):
 
         # Return synapse clusters
         return synapse_clusters
-
-    def create_current_input_clusters(self, simulation_timestep_us,
-                                      timer_period_us, simulation_ticks,
-                                      direct_weights, vertex_applications,
-                                      vertex_resources, keyspace):
-        # Extract parameter lazy array
-        if isinstance(self.celltype, StandardCellType):
-            parameters = self.celltype.native_parameters
-        else:
-            parameters = self.celltype.parameter_space
-        parameters.shape = (self.size,)
-
-        # Chain together the lists of incoming projections
-        # From all synapse types and pre-synaptic populations
-        direct_projections = itertools.chain.from_iterable(
-            itertools.chain.from_iterable(itervalues(p))
-            for p in itervalues(self.incoming_projections))
-
-        # Create current input population
-        return CurrentInputPopulation(
-            self.celltype, parameters, self.initial_values,
-            simulation_timestep_us, timer_period_us, simulation_ticks,
-            self.recorder.indices_to_record, self.spinnaker_config,
-            direct_weights)
 
     def build_incoming_connection(self, synapse_type):
         population_matrix_rows = {}

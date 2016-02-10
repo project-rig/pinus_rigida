@@ -6,13 +6,10 @@ from rig.type_casts import NumpyFloatToFixConverter
 # OutputWeight
 # ------------------------------------------------------------------------------
 class OutputWeight(Region):
-    def __init__(self, weights):
-        self.weights = weights
-
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, vertex_slice):
+    def sizeof(self, vertex_slice, weights):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -31,7 +28,7 @@ class OutputWeight(Region):
         # A word for each weight
         return vertex_slice.slice_length * 4
 
-    def write_subregion_to_file(self, fp, vertex_slice):
+    def write_subregion_to_file(self, fp, vertex_slice, weights):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -45,4 +42,4 @@ class OutputWeight(Region):
         """
         # Convert slice of weights to fixed-point and write
         fp.write(NumpyFloatToFixConverter(signed=True, n_bits=32, n_frac=16)(
-            self.weights[vertex_slice.python_slice]).tostring())
+            weights[vertex_slice.python_slice]).tostring())

@@ -7,6 +7,7 @@ from pyNN import common
 from pyNN.core import ezip
 from pyNN.parameters import ParameterSpace
 from pyNN.space import Space
+from pyNN.standardmodels import StandardCellType
 from . import simulator
 
 from .standardmodels.synapses import StaticSynapse
@@ -15,6 +16,8 @@ import logging
 import numpy as np
 
 from rig.utils.contexts import ContextMixin, Required
+
+from spinnaker.current_input_cluster import CurrentInputCluster
 
 logger = logging.getLogger("pinus_rigida")
 
@@ -73,6 +76,29 @@ class Projection(common.Projection, ContextMixin):
     def set(self, **attributes):
         #parameter_space = ParameterSpace
         raise NotImplementedError
+
+    def create_current_input_cluster(self, simulation_timestep_us,
+                                      timer_period_us, simulation_ticks,
+                                      vertex_applications, vertex_resources):
+        # Assert that this projection can be directly connected
+        assert self.directly_connectable
+
+        # Extract parameter lazy array for pre-synaptic population
+        if isinstance(self.pre.celltype, StandardCellType):
+            pre_parameters = self.pre.celltype.native_parameters
+        else:
+            pre_parameters = self.pre.celltype.parameter_space
+        pre_parameters.shape = (self.pre.size,)
+
+        # Find index of receptor type
+        receptor_index = self.post.celltype.receptor_types.index(self.receptor_type)
+
+        # Create current input cluster
+        return CurrentInputCluster(
+            self.pre.celltype, pre_parameters, self.pre.initial_values,
+            simulation_timestep_us, timer_period_us, simulation_ticks,
+            self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
+            receptor_index, vertex_applications, vertex_resources)
 
     @ContextMixin.use_contextual_arguments()
     def _direct_convergent_connect(self, presynaptic_indices,
