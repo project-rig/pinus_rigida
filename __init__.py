@@ -8,6 +8,7 @@ really running simulations.
 :license: CeCILL, see LICENSE for details.
 """
 
+import atexit
 import logging
 from pyNN import common
 from pyNN.common.control import DEFAULT_MAX_DELAY, DEFAULT_TIMESTEP, DEFAULT_MIN_DELAY
@@ -24,6 +25,11 @@ from .projections import Projection
 
 
 logger = logging.getLogger("PyNN")
+
+@atexit.register
+def _stop_on_spinnaker():
+    # Stop SpiNNaker simulation
+    simulator.state.stop()
 
 def list_standard_models():
     """Return a list of all the StandardCellType classes available for this simulator."""
@@ -52,9 +58,8 @@ def end(compatible_output=True):
         population.write_data(io, variables)
     simulator.state.write_on_end = []
 
-    # End SpiNNaker simulation
-    simulator.state.end()
-    # should have common implementation of end()
+    # Stop SpiNNaker simulation
+    _stop_on_spinnaker()
 
 run, run_until = common.build_run(simulator)
 run_for = run

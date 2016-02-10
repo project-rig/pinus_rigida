@@ -45,6 +45,13 @@ class Vertex(InputVertex):
 # SynapseCluster
 # ------------------------------------------------------------------------------
 class SynapseCluster(object):
+    # Tag names, corresponding to those defined in synapse_processor.h
+    profiler_tag_names = {
+        0:  "Multicast packet received",
+        1:  "Setup next DMA row read",
+        2:  "Process row",
+    }
+
     def __init__(self, timer_period_us, sim_ticks, config, post_pop_size,
                  synapse_model, receptor_index, synaptic_projections,
                  pop_neuron_clusters, vertex_applications, vertex_resources):
@@ -191,7 +198,7 @@ class SynapseCluster(object):
         region = self.regions[Regions.profiler]
 
         # Return profile data for each vertex that makes up population
-        return [(v.neuron_slice.python_slice,
+        return [(v.post_neuron_slice.python_slice,
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
                  for v in self.verts]

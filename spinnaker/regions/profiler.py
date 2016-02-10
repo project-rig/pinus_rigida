@@ -75,13 +75,13 @@ class Profiler(Region):
 
         # Convert count-down times to count up times from 1st sample
         sample_times = np.subtract(sample_times[0], sample_times)
-        sample_times_ms = np.multiply(sample_times, MS_SCALE, dtype=np.float)
+        sample_times = np.multiply(sample_times, MS_SCALE, dtype=np.float)
 
         # Slice tags and times into entry and exits
         entry_tags = sample_tags[sample_entry_indices]
-        entry_times_ms = sample_times_ms[sample_entry_indices]
+        entry_times = sample_times[sample_entry_indices]
         exit_tags = sample_tags[sample_exit_indices]
-        exit_times_ms = sample_times_ms[sample_exit_indices]
+        exit_times = sample_times[sample_exit_indices]
 
         # Loop through unique tags
         tag_dictionary = dict()
@@ -95,31 +95,31 @@ class Profiler(Region):
             tag_exit_indices = np.where(exit_tags == tag)
 
             # Use these to get subset for this tag
-            tag_entry_times_ms = entry_times_ms[tag_entry_indices]
-            tag_exit_times_ms = exit_times_ms[tag_exit_indices]
+            tag_entry_times = entry_times[tag_entry_indices]
+            tag_exit_times = exit_times[tag_exit_indices]
 
             # If both these subsets aren't empty
-            num_entry_times = len(tag_entry_times_ms)
-            num_exit_times = len(tag_exit_times_ms)
-            if num_entry_times > 0 and num_exit_times > 0:
-                # If the first exit is before the first
-                # Entry, add a dummy entry at beginning
-                if tag_exit_times_ms[0] < tag_entry_times_ms[0]:
-                    logger.warn("Profile starts mid-tag")
-                    tag_entry_times_ms = np.append(0.0, tag_entry_times_ms)
+            if len(tag_entry_times) > 0 and len(tag_exit_times) > 0:
+                # If there is one more entry tags than exit tag
+                # (we assume they aren't ever nested)
+                if len(tag_entry_times) == (len(tag_exit_times) + 1):
+                    num_trim_tags = len(tag_entry_times) - len(tag_exit_times)
+                    logger.warn("Profile finishes with tag %s open - trimming %u tags"
+                        % (tag_names[tag], num_trim_tags))
+                    tag_entry_times = tag_entry_times[:-num_trim_tags]
 
-                if len(tag_entry_times_ms) > len(tag_exit_times_ms):
-                    logger.warn("Profile finishes mid-tag")
-                    tag_entry_times_ms =\
-                        tag_entry_times_ms[:num_exit_times - num_entry_times]
+                # If number of entry and exit tags still don't match something
+                # Has probably crashed early so the profiling data is useless
+                if len(tag_entry_times) != len(tag_exit_times):
+                    logger.error("Tag %s broken:" % tag_names[tag])
+                # Otherwise
+                else:
+                    # Subtract entry times from exit times
+                    # to get durations of each call
+                    tag_durations = np.subtract(tag_exit_times, tag_entry_times)
 
-                # Subtract entry times from exit times
-                # to get durations of each call
-                tag_durations_ms = np.subtract(
-                    tag_exit_times_ms, tag_entry_times_ms)
-
-                # Add entry times and durations to dictionary
-                tag_dictionary[tag_names[tag]] = (
-                    tag_entry_times_ms, tag_durations_ms)
+                    # Add entry times and durations to dictionary
+                    tag_dictionary[tag_names[tag]] = (
+                        tag_entry_times, tag_durations)
 
         return tag_dictionary

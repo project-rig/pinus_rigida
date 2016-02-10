@@ -34,6 +34,7 @@ class InputVertex(object):
         self.weight_fixed_point = None
         self.receptor_index = receptor_index
         self.out_buffers = None
+        self.region_memory = None
 
     def __str__(self):
         return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)

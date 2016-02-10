@@ -196,8 +196,9 @@ class Population(common.Population):
         # Assert that profiling is enabled
         assert self.spinnaker_config.get("profile_samples", None) is not None
 
-        # Read profile from synapse cluster
-        return self._simulator.state.pop_synapse_clusters[self].read_profile()
+        # Read profile from each synapse cluster
+        s_clusters = self._simulator.state.pop_synapse_clusters[self]
+        return {t: c.read_profile() for t, c in iteritems(s_clusters)}
 
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,

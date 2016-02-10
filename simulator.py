@@ -76,7 +76,7 @@ class State(common.control.BaseState):
         self.t_start = 0
         self.segment_counter += 1
 
-    def end(self):
+    def stop(self):
         if self.machine_controller is not None:
             logger.info("Stopping SpiNNaker application")
             self.machine_controller.send_signal("stop")
@@ -211,16 +211,15 @@ class State(common.control.BaseState):
     def _constrain_clusters(self):
         logger.info("Constraining vertex clusters to same chip")
 
-        # Loop through population again to constrain
-        # together synapse and neuron vertices
+        # Loop through populations
         constraints = []
         for pop in self.populations:
             # If population has no neuron cluster, skip
             if pop not in self.pop_neuron_clusters:
                 continue
 
-            # Get lists of synapse and neuron vertices
-            # associated with this PyNN population
+            # Get lists of synapse, neuron and current input
+            # vertices associated with this PyNN population
             s_verts = list(itertools.chain.from_iterable(
                 [c.verts for c in itervalues(self.pop_synapse_clusters[pop])]))
             c_verts = list(itertools.chain.from_iterable(
@@ -307,7 +306,7 @@ class State(common.control.BaseState):
                                         % (core.start, memory_io.address))
 
                             # Write the vertex to file
-                            s_cluster.write_to_file(
+                            v.region_memory = s_cluster.write_to_file(
                                 v.post_neuron_slice, sub_matrices,
                                 matrix_placements, weight_fixed_point,
                                 v.out_buffers, memory_io)
@@ -362,9 +361,9 @@ class State(common.control.BaseState):
                                     % (core.start, memory_io.address))
 
                     # Write the vertex to file
-                    c_cluster.write_to_file(v.post_neuron_slice,
-                                            direct_weights, v.out_buffers,
-                                            memory_io)
+                    v.region_memory = c_cluster.write_to_file(
+                        v.post_neuron_slice, direct_weights, v.out_buffers,
+                        memory_io)
 
     def _load_neuron_verts(self, placements, allocations,
                            hardware_timestep_us, duration_timesteps):
