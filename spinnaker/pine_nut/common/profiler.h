@@ -48,8 +48,7 @@ public:
 
   static void WriteEntryDisableIRQFIQ(uint32_t tag)
   {
-    DisableIRQ i;
-    DisableFIQ f;
+    DisableIRQFIQ f;
     WriteEntry(tag);
   }
 #else

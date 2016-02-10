@@ -4,24 +4,25 @@
 #include "spinnaker.h"
 
 //-----------------------------------------------------------------------------
-// Common::DisableIRQ
+// Common::DisableIRQFIQ
 //-----------------------------------------------------------------------------
 namespace Common
 {
-class DisableIRQ
+class DisableIRQFIQ
 {
 public:
-  DisableIRQ()
+  DisableIRQFIQ()
   {
     m_StatusRegister = spin1_irq_disable();
+    spin1_fiq_disable();
   }
 
-  ~DisableIRQ()
+  ~DisableIRQFIQ()
   {
     spin1_mode_restore(m_StatusRegister);
   }
 
-  DisableIRQ(DisableIRQ const &) = delete;
+  DisableIRQFIQ(DisableIRQFIQ const &) = delete;
 
 private:
   //-----------------------------------------------------------------------------
@@ -38,7 +39,7 @@ class DisableFIQ
 public:
   DisableFIQ()
   {
-    m_StatusRegister = spin1_irq_disable();
+    m_StatusRegister = spin1_fiq_disable();
   }
 
   ~DisableFIQ()
