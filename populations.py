@@ -239,6 +239,11 @@ class Population(common.Population):
             self._parameters[name] = value
 
     @property
+    def mean_firing_rate(self):
+        # **TODO** allow this to be overriden for e.g. poisson source
+        return self.spinnaker_config.get("mean_firing_rate", 10.0)
+
+    @property
     def spinnaker_config(self):
         # **TODO** merge in celltype config
         return self._simulator.state.config[self]

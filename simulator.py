@@ -200,7 +200,8 @@ class State(common.control.BaseState):
                     net_key = (n_vert.key, n_vert.mask)
 
                     # Create a net connecting neuron vertex to synapse vertices
-                    net = Net(n_vert, filtered_post_s_verts)
+                    net = Net(n_vert, filtered_post_s_verts,
+                              pop.mean_firing_rate * n_vert.neuron_slice.slice_length)
 
                     # Add net to list and associate with key
                     nets.append(net)

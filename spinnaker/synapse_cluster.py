@@ -93,9 +93,6 @@ class SynapseCluster(object):
             vertex_event_rate = 0.0
             vertex = Vertex(post_slice, receptor_index)
             for proj in synaptic_projections:
-                # **TODO** nengo-style configuration system
-                mean_pre_firing_rate = 40.0
-
                 # **TODO** check if projection and pre-population can be directly attached
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
@@ -108,7 +105,7 @@ class SynapseCluster(object):
                         pre_vertex.neuron_slice, post_slice)
 
                     # Use this to calculate event rate
-                    synaptic_event_rate = total_synapses * mean_pre_firing_rate
+                    synaptic_event_rate = total_synapses * proj.pre.mean_firing_rate
 
                     # **TODO** SDRAM estimation
                     logger.debug("\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f" % (total_synapses, synaptic_event_rate))
