@@ -332,8 +332,7 @@ class State(common.control.BaseState):
                 logger.debug("\t\tVertex %s", v)
 
                 # Use native S15.16 format
-                # AM: IS THIS ACTUALLY WRONG?
-                v.weight_fixed_point = 16
+                v.weight_fixed_point = 15
 
                 # Get placement and allocation
                 vertex_placement = placements[v]
