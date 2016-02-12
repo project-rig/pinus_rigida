@@ -209,7 +209,7 @@ class SynapseCluster(object):
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
-            [weight_fixed_point, post_vertex_slice.slice_length]
+            [weight_fixed_point, len(post_vertex_slice)]
 
         region_arguments[Regions.key_lookup].kwargs["sub_matrices"] =\
             sub_matrices

@@ -26,7 +26,7 @@ class AllToAllConnector(AllToAllConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice):
-        return pre_slice.slice_length * post_slice.slice_length
+        return len(pre_slice) * len(post_slice)
 
 #------------------------------------------------------------------------------
 # FixedProbabilityConnector
@@ -35,8 +35,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice):
-        return int(round(self.p_connect * float(pre_slice.slice_length) *
-                         float(post_slice.slice_length)))
+        return int(round(self.p_connect * float(len(pre_slice)) *
+                         float(len(post_slice))))
 
 #------------------------------------------------------------------------------
 # OneToOneConnector
@@ -45,7 +45,7 @@ class OneToOneConnector(OneToOneConnector):
     directly_connectable = True
 
     def estimate_num_synapses(self, pre_slice, post_slice):
-        return min(pre_slice.slice_length, post_slice.slice_length)
+        return min(len(pre_slice), len(post_slice))
 
 #------------------------------------------------------------------------------
 # FromListConnector

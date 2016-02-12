@@ -128,7 +128,7 @@ class CurrentInputCluster(object):
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
-            [post_vertex_slice.slice_length]
+            [len(post_vertex_slice)]
 
         region_arguments[Regions.output_buffer].kwargs["out_buffers"] =\
             out_buffers

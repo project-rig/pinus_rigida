@@ -217,7 +217,7 @@ class NeuralCluster(object):
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
-            [key, vertex_slice.slice_length]
+            [key, len(vertex_slice)]
         region_arguments[Regions.input_buffer].kwargs["in_buffers"] =\
             in_buffers
 

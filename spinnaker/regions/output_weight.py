@@ -26,7 +26,7 @@ class OutputWeight(Region):
         """
 
         # A word for each weight
-        return vertex_slice.slice_length * 4
+        return len(vertex_slice) * 4
 
     def write_subregion_to_file(self, fp, vertex_slice, weights):
         """Write a portion of the region to a file applying the formatter.

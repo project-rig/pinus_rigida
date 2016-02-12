@@ -201,7 +201,7 @@ class State(common.control.BaseState):
 
                     # Create a net connecting neuron vertex to synapse vertices
                     net = Net(n_vert, filtered_post_s_verts,
-                              pop.mean_firing_rate * n_vert.neuron_slice.slice_length)
+                              pop.mean_firing_rate * len(n_vert.neuron_slice))
 
                     # Add net to list and associate with key
                     nets.append(net)
@@ -286,7 +286,7 @@ class State(common.control.BaseState):
                         with self.machine_controller(x=vertex_placement[0],
                                                     y=vertex_placement[1]):
                             # Allocate two output buffers for this synapse population
-                            out_buffer_bytes = v.post_neuron_slice.slice_length * 4
+                            out_buffer_bytes = len(v.post_neuron_slice) * 4
                             v.out_buffers = [
                                 self.machine_controller.sdram_alloc(
                                     out_buffer_bytes, clear=True)
@@ -343,7 +343,7 @@ class State(common.control.BaseState):
                 with self.machine_controller(x=vertex_placement[0],
                                              y=vertex_placement[1]):
                     # Allocate two output buffers for this synapse population
-                    out_buffer_bytes = v.post_neuron_slice.slice_length * 4
+                    out_buffer_bytes = len(v.post_neuron_slice) * 4
                     v.out_buffers = [
                         self.machine_controller.sdram_alloc(
                             out_buffer_bytes, clear=True)
@@ -487,7 +487,7 @@ class State(common.control.BaseState):
         placements, allocations, application_map, routing_tables = wrapper(
             vertex_resources, vertex_applications, nets, net_keys,
             spinnaker_machine, constraints)
-        logger.debug("Placing on %u cores", len(placements))
+        logger.info("Placed on %u cores", len(placements))
         logger.debug(list(itervalues(placements)))
 
         # Load vertices

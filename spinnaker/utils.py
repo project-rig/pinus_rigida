@@ -44,12 +44,11 @@ class InputVertex(object):
 # ------------------------------------------------------------------------------
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     @property
-    def slice_length(self):
-        return self.stop - self.start
-
-    @property
     def python_slice(self):
         return slice(self.start, self.stop)
+
+    def __len__(self):
+        return self.stop - self.start
 
     def __str__(self):
         return "[%u, %u)" % (self.start, self.stop)
@@ -145,7 +144,7 @@ def calc_bitfield_words(bits):
 
 
 def calc_slice_bitfield_words(vertex_slice):
-    return calc_bitfield_words(vertex_slice.slice_length)
+    return calc_bitfield_words(len(vertex_slice))
 
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
