@@ -31,6 +31,9 @@ class PopulationView(common.PopulationView):
     _assembly_class = Assembly
     _simulator = simulator
 
+    # --------------------------------------------------------------------------
+    # Internal PyNN methods
+    # --------------------------------------------------------------------------
     def _get_parameters(self, *names):
         """
         return a ParameterSpace containing native parameters
@@ -81,113 +84,9 @@ class Population(common.Population):
         # Add population to simulator
         self._simulator.state.populations.append(self)
     
-    # JH: Support for my view that this should be _scored
-    def create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
-                              simulation_ticks, vertex_applications,
-                              vertex_resources, keyspace):
-        # Extract parameter lazy array
-        if isinstance(self.celltype, StandardCellType):
-            parameters = self.celltype.native_parameters
-        else:
-            parameters = self.celltype.parameter_space
-        parameters.shape = (self.size,)
-        
-        # Create neural cluster
-        return NeuralCluster(pop_id, self.celltype, parameters,
-                             self.initial_values, simulation_timestep_us,
-                             timer_period_us, simulation_ticks,
-                             self.recorder.indices_to_record,
-                             self.spinnaker_config, vertex_applications,
-                             vertex_resources, keyspace)
-
-    def create_synapse_clusters(self, timer_period_us, simulation_ticks,
-                                vertex_applications, vertex_resources):
-        # Get neuron clusters dictionary from simulator
-        # **THINK** is it better to get this as ANOTHER parameter
-        pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
-
-        # Loop through newly partioned incoming projections
-        synapse_clusters = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
-            # Chain together incoming projections from all populations
-            projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
-            synaptic_projections = [p for p in projections
-                                    if not p.directly_connectable]
-
-            # Find index of receptor type
-            receptor_index = self.celltype.receptor_types.index(synapse_type[1])
-
-            # Create synapse cluster
-            c = SynapseCluster(timer_period_us, simulation_ticks,
-                               self.spinnaker_config, self.size,
-                               synapse_type[0], receptor_index,
-                               synaptic_projections, pop_neuron_clusters,
-                               vertex_applications, vertex_resources)
-
-            # Add cluster to dictionary
-            synapse_clusters[synapse_type] = c
-
-        # Return synapse clusters
-        return synapse_clusters
-
-    def build_incoming_connection(self, synapse_type):
-        population_matrix_rows = {}
-        
-        # Create list to hold min and max weight
-        # **NOTE** needs to be a list rather than a tuple so it's mutable
-        weight_range = [sys.float_info.max, sys.float_info.min]
-        
-        # Build incoming projections
-        # **NOTE** this will result to multiple calls to convergent_connect
-        for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
-            # Create an array to hold matrix rows and initialize each one with an empty list
-            population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size, dtype=object)
-            
-            for r in range(pre_pop.size):
-                population_matrix_rows[pre_pop][r] = []
-
-            # Loop through projections and build
-            # JH and AM: weight range list passing by ref is unpleasant
-            for projection in projections:
-                projection.build(matrix_rows=population_matrix_rows[pre_pop],
-                                    weight_range=weight_range,
-                                    directly_connect=False)
-
-            # Sort each row in matrix by post-synaptic neuron
-            # **THINK** is this necessary or does
-            # PyNN always move left to right
-            for r in population_matrix_rows[pre_pop]:
-                r.sort(key=itemgetter(2))
-
-        # Get MSB of minimum and maximum weight and get magnitude of range
-        weight_msb = [math.floor(math.log(r, 2)) + 1
-                    for r in weight_range]
-        weight_range = weight_msb[1] - weight_msb[0]
-
-        # Check there's enough bits to represent this is any form
-        assert weight_range < 16
-
-        # Calculate where the weight format fixed-point lies
-        weight_fixed_point = 16 - int(weight_msb[1])
-        logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
-
-        return population_matrix_rows, weight_fixed_point
-
-    def convergent_connect(self, presynaptic_indices,
-                           postsynaptic_index, matrix_rows,
-                           weight_range, **connection_parameters):
-        # Extract connection parameters
-        weight = abs(connection_parameters["weight"])
-        delay = connection_parameters["delay"]
-
-        # Update incoming weight range
-        weight_range[0] = min(weight_range[0], weight)
-        weight_range[1] = max(weight_range[1], weight)
-        
-        # Add synapse to each row
-        for p in matrix_rows[presynaptic_indices]:
-            p.append(Synapse(weight, delay, postsynaptic_index))
-
+    # --------------------------------------------------------------------------
+    # Public SpiNNaker methods
+    # --------------------------------------------------------------------------
     def get_neural_profile_data(self):
         # Assert that profiling is enabled
         assert self.spinnaker_config.get("profile_samples", None) is not None
@@ -203,15 +102,18 @@ class Population(common.Population):
         s_clusters = self._simulator.state.pop_synapse_clusters[self]
         return {t: c.read_profile() for t, c in iteritems(s_clusters)}
 
+    # --------------------------------------------------------------------------
+    # Internal PyNN methods
+    # --------------------------------------------------------------------------
     def _create_cells(self):
         id_range = numpy.arange(simulator.state.id_counter,
                                 simulator.state.id_counter + self.size)
         self.all_cells = numpy.array([simulator.ID(id) for id in id_range],
                                      dtype=simulator.ID)
-        
+
         # In terms of MPI, all SpiNNaker neurons are local
         self._mask_local = numpy.ones((self.size,), bool)
-        
+
         for id in self.all_cells:
             id.parent = self
         simulator.state.id_counter += self.size
@@ -241,8 +143,120 @@ class Population(common.Population):
         for name, value in parameter_space.items():
             self._parameters[name] = value
 
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
+                              simulation_ticks, vertex_applications,
+                              vertex_resources, keyspace):
+        # Extract parameter lazy array
+        if isinstance(self.celltype, StandardCellType):
+            parameters = self.celltype.native_parameters
+        else:
+            parameters = self.celltype.parameter_space
+        parameters.shape = (self.size,)
+        
+        # Create neural cluster
+        return NeuralCluster(pop_id, self.celltype, parameters,
+                             self.initial_values, simulation_timestep_us,
+                             timer_period_us, simulation_ticks,
+                             self.recorder.indices_to_record,
+                             self.spinnaker_config, vertex_applications,
+                             vertex_resources, keyspace)
+
+    def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
+                                vertex_applications, vertex_resources):
+        # Get neuron clusters dictionary from simulator
+        # **THINK** is it better to get this as ANOTHER parameter
+        pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
+
+        # Loop through newly partioned incoming projections
+        synapse_clusters = {}
+        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+            # Chain together incoming projections from all populations
+            projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
+            synaptic_projections = [p for p in projections
+                                    if not p._directly_connectable]
+
+            # Find index of receptor type
+            receptor_index = self.celltype.receptor_types.index(synapse_type[1])
+
+            # Create synapse cluster
+            c = SynapseCluster(timer_period_us, simulation_ticks,
+                               self.spinnaker_config, self.size,
+                               synapse_type[0], receptor_index,
+                               synaptic_projections, pop_neuron_clusters,
+                               vertex_applications, vertex_resources)
+
+            # Add cluster to dictionary
+            synapse_clusters[synapse_type] = c
+
+        # Return synapse clusters
+        return synapse_clusters
+
+    def _build_incoming_connection(self, synapse_type):
+        population_matrix_rows = {}
+        
+        # Create list to hold min and max weight
+        # **NOTE** needs to be a list rather than a tuple so it's mutable
+        weight_range = [sys.float_info.max, sys.float_info.min]
+        
+        # Build incoming projections
+        # **NOTE** this will result to multiple calls to convergent_connect
+        for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
+            # Create an array to hold matrix rows and initialize each one with an empty list
+            population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size, dtype=object)
+            
+            for r in range(pre_pop.size):
+                population_matrix_rows[pre_pop][r] = []
+
+            # Loop through projections and build
+            # JH and AM: weight range list passing by ref is unpleasant
+            for projection in projections:
+                projection._build(matrix_rows=population_matrix_rows[pre_pop],
+                                  weight_range=weight_range,
+                                  directly_connect=False)
+
+            # Sort each row in matrix by post-synaptic neuron
+            # **THINK** is this necessary or does
+            # PyNN always move left to right
+            for r in population_matrix_rows[pre_pop]:
+                r.sort(key=itemgetter(2))
+
+        # Get MSB of minimum and maximum weight and get magnitude of range
+        weight_msb = [math.floor(math.log(r, 2)) + 1
+                    for r in weight_range]
+        weight_range = weight_msb[1] - weight_msb[0]
+
+        # Check there's enough bits to represent this is any form
+        assert weight_range < 16
+
+        # Calculate where the weight format fixed-point lies
+        weight_fixed_point = 16 - int(weight_msb[1])
+        logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
+
+        return population_matrix_rows, weight_fixed_point
+
+    def _convergent_connect(self, presynaptic_indices,
+                           postsynaptic_index, matrix_rows,
+                           weight_range, **connection_parameters):
+        # Extract connection parameters
+        weight = abs(connection_parameters["weight"])
+        delay = connection_parameters["delay"]
+
+        # Update incoming weight range
+        weight_range[0] = min(weight_range[0], weight)
+        weight_range[1] = max(weight_range[1], weight)
+        
+        # Add synapse to each row
+        for p in matrix_rows[presynaptic_indices]:
+            p.append(Synapse(weight, delay, postsynaptic_index))
+
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
     @property
-    def mean_firing_rate(self):
+    def _mean_firing_rate(self):
         # **TODO** allow this to be overriden for e.g. poisson source
         return self.spinnaker_config.get("mean_firing_rate", 10.0)
 
@@ -253,7 +267,7 @@ class Population(common.Population):
         return self._simulator.state.config[self]
 
     @property
-    def entirely_directly_connectable(self):
+    def _entirely_directly_connectable(self):
         # If conversion of direct connections is disabled, return false
         if not self._simulator.state.convert_direct_connections:
             return False

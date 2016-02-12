@@ -114,12 +114,12 @@ class State(common.control.BaseState):
         # entirely be replaced by direct connections
         pop_neuron_clusters = {}
         populations = [p for p in self.populations
-                       if not p.entirely_directly_connectable]
+                       if not p._entirely_directly_connectable]
         for pop_id, pop in enumerate(populations):
             logger.debug("\tPopulation:%s", pop.label)
 
             # Create spinnaker neural cluster
-            pop_neuron_clusters[pop] = pop.create_neural_cluster(
+            pop_neuron_clusters[pop] = pop._create_neural_cluster(
                 pop_id, self.dt, hardware_timestep_us, duration_timesteps,
                 vertex_applications, vertex_resources, keyspace)
 
@@ -141,7 +141,7 @@ class State(common.control.BaseState):
             logger.debug("\tPopulation:%s", pop.label)
 
             # Create neural clusters for this population
-            pop_synapse_clusters[pop] = pop.create_synapse_clusters(
+            pop_synapse_clusters[pop] = pop._create_synapse_clusters(
                 hardware_timestep_us, duration_timesteps,
                 vertex_applications, vertex_resources)
 
@@ -155,13 +155,13 @@ class State(common.control.BaseState):
         proj_current_input_clusters = {}
         post_pop_current_input_clusters = defaultdict(list)
         for proj in self.projections:
-            if not proj.directly_connectable:
+            if not proj._directly_connectable:
                 continue
 
             logger.debug("\t\tProjection:%s", proj.label)
 
             # Create cluster
-            c = proj.create_current_input_cluster(
+            c = proj._create_current_input_cluster(
                 self.dt, hardware_timestep_us, duration_timesteps,
                 vertex_applications, vertex_resources)
 
@@ -184,7 +184,7 @@ class State(common.control.BaseState):
 
                 # Get synapse vertices associated with post-synaptic population
                 post_s_verts = list(itertools.chain.from_iterable(
-                    [self.pop_synapse_clusters[o.post][o.synapse_cluster_type].verts
+                    [self.pop_synapse_clusters[o.post][o._synapse_cluster_type].verts
                     for o in pop.outgoing_projections]))
 
                 logger.debug("\t\t%u post-synaptic vertices",
@@ -202,7 +202,7 @@ class State(common.control.BaseState):
 
                     # Create a net connecting neuron vertex to synapse vertices
                     net = Net(n_vert, filtered_post_s_verts,
-                              pop.mean_firing_rate * len(n_vert.neuron_slice))
+                              pop._mean_firing_rate * len(n_vert.neuron_slice))
 
                     # Add net to list and associate with key
                     nets.append(net)
@@ -222,7 +222,6 @@ class State(common.control.BaseState):
 
             # Get lists of synapse, neuron and current input
             # vertices associated with this PyNN population
-            # JH: Remove square brackets in single argument function makes generator
             s_verts = list(itertools.chain.from_iterable(
                 c.verts for c in itervalues(self.pop_synapse_clusters[pop])))
             c_verts = list(itertools.chain.from_iterable(
@@ -263,7 +262,7 @@ class State(common.control.BaseState):
                 # JK: Why wouldn't it?
                 if len(s_cluster.verts) > 0:
                     # Expand any incoming connections
-                    matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
+                    matrices, weight_fixed_point = pop._build_incoming_connection(s_type)
 
                     # Loop through synapse verts
                     for v in s_cluster.verts:
@@ -326,7 +325,7 @@ class State(common.control.BaseState):
                          proj.label, proj.pre.label)
 
             # Build direct connection for projection
-            direct_weights = proj.build_direct_connection()
+            direct_weights = proj._build_direct_connection()
 
             # Loop through synapse verts
             for v in c_cluster.verts:

@@ -128,8 +128,8 @@ class NeuralCluster(object):
         # Get neuron application name
         neuron_app = path.join(model_binaries, filename + ".aplx")
 
-        logger.debug("\t\tNeuron application:%s" % neuron_app)
-        logger.debug("\t\t%u neuron vertices" % len(self.verts))
+        logger.debug("\t\tNeuron application:%s", neuron_app)
+        logger.debug("\t\t%u neuron vertices", len(self.verts))
 
         # Loop through neuron vertices and their corresponding resources
         for v in self.verts:
@@ -151,7 +151,7 @@ class NeuralCluster(object):
         vertex_size_bytes = sizeof_regions_named(self.regions,
                                                  region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, key, vertex_slice, in_buffers, fp):

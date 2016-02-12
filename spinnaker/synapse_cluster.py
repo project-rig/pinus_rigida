@@ -101,11 +101,11 @@ class SynapseCluster(object):
 
                     # Estimate number of synapses the connection between
                     # The pre and the post-slice of neurons will contain
-                    total_synapses = proj.estimate_num_synapses(
+                    total_synapses = proj._estimate_num_synapses(
                         pre_vertex.neuron_slice, post_slice)
 
                     # Use this to calculate event rate
-                    synaptic_event_rate = total_synapses * proj.pre.mean_firing_rate
+                    synaptic_event_rate = total_synapses * proj.pre._mean_firing_rate
 
                     # **TODO** SDRAM estimation
                     # JH: remove % and pass arguments - Logger doesn't evaluate - YEY
