@@ -113,6 +113,7 @@ class LazyArrayFloatToFixConverter(object):
         vals = deepcopy(values) if self.copy else copy(values)
 
         # Saturate the values
+        # JK: Think more here
         # **TODO** this needs implementing in terms of less and more
         #vals = np.clip(values, self.min_value, self.max_value)
         #vals = vals.apply(partial(np.clip, a_min=self.min_value,
@@ -129,6 +130,7 @@ class LazyArrayFloatToFixConverter(object):
 # ------------------------------------------------------------------------------
 # Functions
 # ------------------------------------------------------------------------------
+# AM, JH: This a)doesn't evenly slice and b)Nengo SpiNNaker has an implementation called divide_slice
 def evenly_slice(quantity, maximum_slice_size):
     # Build lists of start and end indices of slices
     slice_starts = range(0, quantity, maximum_slice_size)

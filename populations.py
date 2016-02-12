@@ -72,6 +72,7 @@ class Population(common.Population):
         super(Population, self).__init__(size, cellclass, cellparams, structure, initial_values, label)
 
         # Create dictionary of pre-synaptic populations to incoming projections
+        # JK: WTF is this data structure
         self.incoming_projections = defaultdict(lambda: defaultdict(list))
 
         # Create list of outgoing projections
@@ -80,6 +81,7 @@ class Population(common.Population):
         # Add population to simulator
         self._simulator.state.populations.append(self)
     
+    # JH: Support for my view that this should be _scored
     def create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
                               simulation_ticks, vertex_applications,
                               vertex_resources, keyspace):
@@ -145,6 +147,7 @@ class Population(common.Population):
                 population_matrix_rows[pre_pop][r] = []
 
             # Loop through projections and build
+            # JH and AM: weight range list passing by ref is unpleasant
             for projection in projections:
                 projection.build(matrix_rows=population_matrix_rows[pre_pop],
                                     weight_range=weight_range,
@@ -246,6 +249,7 @@ class Population(common.Population):
     @property
     def spinnaker_config(self):
         # **TODO** merge in celltype config
+        # AM, JK: Don't use default dict  use get with {} instead (OR SOMETHING)
         return self._simulator.state.config[self]
 
     @property

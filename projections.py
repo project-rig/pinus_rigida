@@ -77,6 +77,7 @@ class Projection(common.Projection, ContextMixin):
         #parameter_space = ParameterSpace
         raise NotImplementedError
 
+    # JH: Also _score
     def create_current_input_cluster(self, simulation_timestep_us,
                                       timer_period_us, simulation_ticks,
                                       vertex_applications, vertex_resources):

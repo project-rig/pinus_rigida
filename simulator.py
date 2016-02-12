@@ -39,6 +39,7 @@ class ID(int, common.IDMixin):
 class State(common.control.BaseState):
     def __init__(self):
         common.control.BaseState.__init__(self)
+        # JK: Can these be removed
         self.mpi_rank = 0
         self.num_processes = 1
         self.clear()
@@ -221,10 +222,11 @@ class State(common.control.BaseState):
 
             # Get lists of synapse, neuron and current input
             # vertices associated with this PyNN population
+            # JH: Remove square brackets in single argument function makes generator
             s_verts = list(itertools.chain.from_iterable(
-                [c.verts for c in itervalues(self.pop_synapse_clusters[pop])]))
+                c.verts for c in itervalues(self.pop_synapse_clusters[pop])))
             c_verts = list(itertools.chain.from_iterable(
-                [c.verts for c in self.post_pop_current_input_clusters[pop]]))
+                c.verts for c in self.post_pop_current_input_clusters[pop]))
             n_verts = self.pop_neuron_clusters[pop].verts
 
             # If there are any synapse vertices
@@ -236,7 +238,7 @@ class State(common.control.BaseState):
                     # Find synapse and current vertices with the same slice
                     # **TODO** different ratios here
                     n.input_verts = [i for i in itertools.chain(s_verts, c_verts)
-                                       if i.post_neuron_slice == n.neuron_slice]
+                                     if i.post_neuron_slice == n.neuron_slice]
 
                     logger.debug("\t\tConstraining neuron vert and %u input verts to same chip" % len(n.input_verts))
 
@@ -257,6 +259,7 @@ class State(common.control.BaseState):
                             (pop.label, str(s_type)))
 
                 # If this cluster has any vertices
+                # JK: Why wouldn't it?
                 if len(s_cluster.verts) > 0:
                     # Expand any incoming connections
                     matrices, weight_fixed_point = pop.build_incoming_connection(s_type)
@@ -284,13 +287,13 @@ class State(common.control.BaseState):
 
                         # Select placed chip
                         with self.machine_controller(x=vertex_placement[0],
-                                                    y=vertex_placement[1]):
+                                                     y=vertex_placement[1]):
                             # Allocate two output buffers for this synapse population
                             out_buffer_bytes = len(v.post_neuron_slice) * 4
                             v.out_buffers = [
                                 self.machine_controller.sdram_alloc(
                                     out_buffer_bytes, clear=True)
-                                for b in range(2)]
+                                for _ in range(2)]
 
                             # Calculate required memory size
                             size = s_cluster.get_size(
@@ -329,6 +332,7 @@ class State(common.control.BaseState):
                 logger.debug("\t\tVertex %s" % v)
 
                 # Use native S15.16 format
+                # AM: IS THIS ACTUALLY WRONG?
                 v.weight_fixed_point = 16
 
                 # Get placement and allocation
@@ -347,7 +351,7 @@ class State(common.control.BaseState):
                     v.out_buffers = [
                         self.machine_controller.sdram_alloc(
                             out_buffer_bytes, clear=True)
-                        for b in range(2)]
+                        for _ in range(2)]
 
                     # Calculate required memory size
                     size = c_cluster.get_size(v.post_neuron_slice,
@@ -465,6 +469,7 @@ class State(common.control.BaseState):
         self.machine_controller.boot(self.spinnaker_width, self.spinnaker_height)
 
         # Retrieve a machine object
+        # JH: replace with get_system_info
         spinnaker_machine = self.machine_controller.get_machine()
 
         logger.debug("Found %ux%u chip machine" %

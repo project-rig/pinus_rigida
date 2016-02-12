@@ -108,6 +108,7 @@ class SynapseCluster(object):
                     synaptic_event_rate = total_synapses * proj.pre.mean_firing_rate
 
                     # **TODO** SDRAM estimation
+                    # JH: remove % and pass arguments - Logger doesn't evaluate - YEY
                     logger.debug("\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f" % (total_synapses, synaptic_event_rate))
 
                     # Add this connection to the synapse vertex

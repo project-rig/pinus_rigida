@@ -14,6 +14,7 @@ class Neuron(Region):
         num_neurons = parameters.shape[0]
 
         # Use neurons mutable parameter map to
+        # JK: Move to write
         # transform lazy array of mutable parameters
         self.mutable_params = lazy_param_map.apply(
             initial_values, cell_type.neuron_mutable_param_map,

@@ -81,6 +81,7 @@ connect = common.build_connect(Projection, FixedProbabilityConnector, StaticSyna
 
 record = common.build_record(simulator)
 
+# AM: Make real function not Lamda
 record_v = lambda source, filename: record(['v'], source, filename)
 
 record_gsyn = lambda source, filename: record(['gsyn_exc', 'gsyn_inh'], source, filename)

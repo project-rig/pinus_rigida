@@ -77,6 +77,7 @@ class SynapticMatrix(Region):
         weight_shift = SynapticMatrix.IndexBits + SynapticMatrix.DelayBits
 
         # Loop through sub matrices
+        # AM: less terse m and p
         assert fp.tell() == 0
         for m, p in zip(sub_matrices, matrix_placements):
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u"
@@ -106,6 +107,7 @@ class SynapticMatrix(Region):
                              | (d_quantised << SynapticMatrix.IndexBits)
                              | (w_fixed << weight_shift))
                 # Write words
+                # JH: concatenate all rows and padding into numpy array - will make things fast
                 fp.write(words.tostring())
 
                 # Seek forward by padding
@@ -147,7 +149,7 @@ class SynapticMatrix(Region):
                                        for (w, d, j) in row[row_start:row_end]]
 
                     # Determine maximum number of columns in sub-matrix
-                    max_cols = max([len(row) for row in rows])
+                    max_cols = max(len(row) for row in rows)
 
                     # If there any columns in sub-matrix
                     if max_cols > 0:

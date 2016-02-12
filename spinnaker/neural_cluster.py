@@ -22,6 +22,7 @@ logger = logging.getLogger("pinus_rigida")
 # Regions
 # -----------------------------------------------------------------------------
 class Regions(enum.IntEnum):
+    # JK: probably update this and try and use relative enum numbering
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0,
     neuron = 1,
@@ -83,6 +84,7 @@ class NeuralCluster(object):
             indices_to_record, sim_timestep_ms, sim_ticks)
 
         # If cell type has a synapse region class
+        # AM, JH: receptor types empty?
         if hasattr(cell_type, "synapse_region_class"):
             # Add a synapse region and an input buffer
             self.regions[Regions.synapse] = cell_type.synapse_region_class(
@@ -108,6 +110,7 @@ class NeuralCluster(object):
         filename = "neuron_" + cell_type.__class__.__name__.lower()
 
         # Add profiler region if required
+        # JH, AM, JK: Agreed this system doesn't make sense in PyNN as we have objects
         if config.get("profile_samples", None) is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config["profile_samples"])

@@ -54,5 +54,6 @@ class FromListConnector(FromListConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice):
+        # AM: this is what's known as a not implemented error exception
         assert False, "The bloody list's already in memory - apply slices"
         return len(self.conn_list)

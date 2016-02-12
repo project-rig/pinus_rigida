@@ -26,6 +26,7 @@ def apply(lazy_params, param_map, size, sim_timestep_us, indices=None):
     params = np.empty(size, dtype=(record_datatype))
 
     # Loop through parameters
+    # JH, AM: unpack tuples, don't index, kwargs not sim_timestep_us
     for f, n in zip(params.dtype.names, param_map):
         # If this map entry has a constant value,
         # Write it into field for all neurons
