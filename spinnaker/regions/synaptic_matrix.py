@@ -25,6 +25,9 @@ class SynapticMatrix(Region):
     IndexBits = 10
     DelayBits = 3
 
+    row_dtype = [("weight", np.float32), ("delay", np.float32),
+                 ("index", np.uint32)]
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
@@ -64,10 +67,6 @@ class SynapticMatrix(Region):
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
         """
-        # Define record array type for rows
-        row_dtype = [("weight", np.float32), ("delay", np.float32),
-                     ("index", np.uint32)]
-
         # Create a numpy fixed point convert to convert
         # Floating point weights to this format
         # **NOTE** weights are only 16-bit, but final words need to be 32-bit
@@ -75,7 +74,7 @@ class SynapticMatrix(Region):
                                                    weight_fixed_point)
 
         # How much should we shift weights to be above index and delay
-        weight_shift = SynapticMatrix.IndexBits + SynapticMatrix.DelayBits
+        weight_shift = self.IndexBits + self.DelayBits
 
         # Loop through sub matrices
         assert fp.tell() == 0
@@ -87,10 +86,14 @@ class SynapticMatrix(Region):
             # **NOTE** placement is in WORDS
             fp.seek(placement * 4, 0)
 
+            # Build matrix large enough for entire ragged matrix
+            matrix_words = np.empty((len(matrix.rows), matrix.max_cols + 1),
+                                    dtype=np.uint32)
+
             # Loop through matrix rows
-            for row in matrix.rows:
+            for i, row in enumerate(matrix.rows):
                 # Convert row to numpy record array
-                row = np.asarray(row, dtype=row_dtype)
+                row = np.asarray(row, dtype=self.row_dtype)
 
                 # Quantise delays
                 # **TODO** take timestep into account
@@ -101,18 +104,14 @@ class SynapticMatrix(Region):
                 weight_fixed = float_to_weight(row["weight"])
 
                 # Combine together into synaptic words
-                words = np.empty(len(row) + 1, dtype=np.uint32)
-                words[0] = len(row)
-                words[1:] = (row["index"]
-                             | (delay_quantised << SynapticMatrix.IndexBits)
-                             | (weight_fixed << weight_shift))
-                # Write words
-                # JH: concatenate all rows and padding into numpy array - will make things fast
-                fp.write(words.tostring())
+                matrix_words[i,0] = len(row)
+                matrix_words[i,1:1 + len(row)] = (
+                    row["index"]
+                    | (delay_quantised << self.IndexBits)
+                    | (weight_fixed << weight_shift))
 
-                # Seek forward by padding
-                pad_words = matrix.max_cols - len(row)
-                fp.seek(pad_words * 4, 1)
+            # Write matrix
+            fp.write(matrix_words.tostring())
 
     # --------------------------------------------------------------------------
     # Public methods
