@@ -26,18 +26,16 @@ def apply(lazy_params, param_map, size, **kwargs):
     params = np.empty(size, dtype=(record_datatype))
 
     # Loop through parameters
-    # JH, AM: unpack tuples, don't index, kwargs not sim_timestep_us
-    for f, n in zip(params.dtype.names, param_map):
+    for field_name, param in zip(params.dtype.names, param_map):
         # If this map entry has a constant value,
         # Write it into field for all neurons
-        if len(n) == 2:
-            params[f][:] = n[0]
-        # Otherwise
+        if len(param) == 2:
+            param_value, _ = param
+            params[field_name][:] = param_value
+        # Otherwise, apply lazy transformation and evaluate
         else:
-            assert len(n) == 3
-
-            # Apply lazy transformation and evaluate
-            params[f] = n[2](lazy_params[n[0]], **kwargs).evaluate()
+            param_name, _, param_mapping = param
+            params[field_name] = param_mapping(lazy_params[param_name], **kwargs).evaluate()
 
     return params
 
@@ -52,20 +50,20 @@ def apply_indices(lazy_params, param_map, indices, **kwargs):
     params = np.empty(len(indices), dtype=(record_datatype))
 
     # Loop through parameters
-    for f, n in zip(params.dtype.names, param_map):
+    for field_name, param in zip(params.dtype.names, param_map):
         # If this map entry has a constant value,
         # Write it into field for all neurons
-        if len(n) == 2:
-            if n[0] is None:
-                params[f] = indices
+        if len(param) == 2:
+            param_value, _ = param
+            if param_value is None:
+                params[field_name] = indices
             else:
-                params[f][:] = n[0]
-        # Otherwise
+                params[field_name][:] = param_value
+        # Otherwise, apply lazy transformation and evaluate slice
         elif len(indices) > 0:
-            assert len(n) == 3
-
-            # Apply lazy transformation and evaluate slice
-            params[f] = n[2](lazy_params[n[0]], **kwargs)[indices]
+            param_name, _, param_mapping = param
+            params[field_name] = param_mapping(lazy_params[param_name],
+                                               **kwargs)[indices]
 
     return params
 
