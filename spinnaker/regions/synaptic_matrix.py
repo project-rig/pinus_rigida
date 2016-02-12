@@ -12,7 +12,7 @@ from bisect import bisect_left
 from six import iteritems
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
-                                     "max_cols", "matrix"])
+                                     "max_cols", "rows"])
 
 logger = logging.getLogger("pinus_rigida")
 
@@ -65,7 +65,8 @@ class SynapticMatrix(Region):
             written into synaptic matrix region
         """
         # Define record array type for rows
-        row_dtype = [("w", np.float32), ("d", np.float32), ("i", np.uint32)]
+        row_dtype = [("weight", np.float32), ("delay", np.float32),
+                     ("index", np.uint32)]
 
         # Create a numpy fixed point convert to convert
         # Floating point weights to this format
@@ -77,41 +78,40 @@ class SynapticMatrix(Region):
         weight_shift = SynapticMatrix.IndexBits + SynapticMatrix.DelayBits
 
         # Loop through sub matrices
-        # AM: less terse m and p
         assert fp.tell() == 0
-        for m, p in zip(sub_matrices, matrix_placements):
+        for matrix, placement in zip(sub_matrices, matrix_placements):
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u",
-                         p, m.max_cols)
+                         placement, matrix.max_cols)
 
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
-            fp.seek(p * 4, 0)
+            fp.seek(placement * 4, 0)
 
             # Loop through matrix rows
-            for r in m.matrix:
+            for row in matrix.rows:
                 # Convert row to numpy record array
-                r_np = np.asarray(r, dtype=row_dtype)
+                row = np.asarray(row, dtype=row_dtype)
 
                 # Quantise delays
                 # **TODO** take timestep into account
-                d_quantised = np.empty(len(r_np), dtype=np.uint32)
-                np.round(r_np["d"], out=d_quantised)
+                delay_quantised = np.empty(len(row), dtype=np.uint32)
+                np.round(row["delay"], out=delay_quantised)
 
                 # Convert weight to fixed point
-                w_fixed = float_to_weight(r_np["w"])
+                weight_fixed = float_to_weight(row["weight"])
 
                 # Combine together into synaptic words
-                words = np.empty(len(r_np) + 1, dtype=np.uint32)
-                words[0] = len(r_np)
-                words[1:] = (r_np["i"]
-                             | (d_quantised << SynapticMatrix.IndexBits)
-                             | (w_fixed << weight_shift))
+                words = np.empty(len(row) + 1, dtype=np.uint32)
+                words[0] = len(row)
+                words[1:] = (row["index"]
+                             | (delay_quantised << SynapticMatrix.IndexBits)
+                             | (weight_fixed << weight_shift))
                 # Write words
                 # JH: concatenate all rows and padding into numpy array - will make things fast
                 fp.write(words.tostring())
 
                 # Seek forward by padding
-                pad_words = m.max_cols - len(r_np)
+                pad_words = matrix.max_cols - len(row)
                 fp.seek(pad_words * 4, 1)
 
     # --------------------------------------------------------------------------
