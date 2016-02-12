@@ -76,18 +76,18 @@ class SynapseCluster(object):
         post_slices = evenly_slice(
             post_pop_size, synapse_model.max_post_neurons_per_core)
 
-        logger.debug("\t\tSynapse model:%s, Receptor index:%u"
-            % (synapse_model, receptor_index))
+        logger.debug("\t\tSynapse model:%s, Receptor index:%u",
+            synapse_model, receptor_index)
 
         # Get synapse application name
         # **THINK** is there any point in doing anything cleverer than this
         synapse_app = path.join(model_binaries, filename + ".aplx")
-        logger.debug("\t\t\tSynapse application:%s" % synapse_app)
+        logger.debug("\t\t\tSynapse application:%s", synapse_app)
 
         # Loop through the post-slices
         self.verts = []
         for post_slice in post_slices:
-            logger.debug("\t\t\tPost slice:%s" % str(post_slice))
+            logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
             # Loop through all non-directly connectable projections of this type
             vertex_event_rate = 0.0
@@ -109,7 +109,8 @@ class SynapseCluster(object):
 
                     # **TODO** SDRAM estimation
                     # JH: remove % and pass arguments - Logger doesn't evaluate - YEY
-                    logger.debug("\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f" % (total_synapses, synaptic_event_rate))
+                    logger.debug("\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f",
+                                 total_synapses, synaptic_event_rate)
 
                     # Add this connection to the synapse vertex
                     vertex.add_connection(proj.pre, pre_vertex)
@@ -130,7 +131,7 @@ class SynapseCluster(object):
             if len(vertex.incoming_connections) > 0:
                 self.verts.append(vertex)
 
-        logger.debug("\t\t\t%u synapse vertices" % len(self.verts))
+        logger.debug("\t\t\t%u synapse vertices", len(self.verts))
 
         # Loop through synapse vertices
         for v in self.verts:
@@ -166,7 +167,7 @@ class SynapseCluster(object):
         vertex_size_bytes = sizeof_regions_named(self.regions,
                                                  region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,

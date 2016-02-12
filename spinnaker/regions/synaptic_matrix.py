@@ -80,8 +80,8 @@ class SynapticMatrix(Region):
         # AM: less terse m and p
         assert fp.tell() == 0
         for m, p in zip(sub_matrices, matrix_placements):
-            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u"
-                         % (p, m.max_cols))
+            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u",
+                         p, m.max_cols)
 
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS

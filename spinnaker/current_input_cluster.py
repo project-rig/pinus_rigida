@@ -60,13 +60,13 @@ class CurrentInputCluster(object):
             cell_type.max_current_inputs_per_core)
 
         current_input_app = path.join(model_binaries, filename + ".aplx")
-        logger.debug("\t\t\tCurrent input application:%s"
-                    % current_input_app)
+        logger.debug("\t\t\tCurrent input application:%s",
+                    current_input_app)
 
         # Loop through slice
         self.verts = []
         for post_slice in post_slices:
-            logger.debug("\t\t\tPost slice:%s" % str(post_slice))
+            logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
             # Build input vert and add to list
             input_vert = InputVertex(post_slice, receptor_index)
@@ -90,7 +90,7 @@ class CurrentInputCluster(object):
         vertex_size_bytes = sizeof_regions_named(self.regions,
                                                  region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, weights, out_buffers, fp):

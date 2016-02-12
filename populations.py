@@ -169,7 +169,7 @@ class Population(common.Population):
 
         # Calculate where the weight format fixed-point lies
         weight_fixed_point = 16 - int(weight_msb[1])
-        logger.debug("\t\tWeight fixed point:%u" % weight_fixed_point)
+        logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
 
         return population_matrix_rows, weight_fixed_point
 

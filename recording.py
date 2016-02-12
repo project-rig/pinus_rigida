@@ -60,7 +60,7 @@ class Recorder(recording.Recorder, ContextMixin):
                     channel, vertex.region_memory, vertex.neuron_slice))
 
     def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
-        logger.info("Downloading recorded data for population %s" %
+        logger.info("Downloading recorded data for population %s",
                     self.population.label)
 
         variables_to_include = set(self.recorded.keys())
