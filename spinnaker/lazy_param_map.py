@@ -16,7 +16,7 @@ float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
 # -----------------------------------------------------------------------------
 # Functions
 # -----------------------------------------------------------------------------
-def apply(lazy_params, param_map, size, sim_timestep_us, indices=None):
+def apply(lazy_params, param_map, size, **kwargs):
     # Build numpy record datatype for neuron region
     # **TODO** this probably doesn't need to be a string:
     # could use np.uint8 style things throughout
@@ -37,12 +37,12 @@ def apply(lazy_params, param_map, size, sim_timestep_us, indices=None):
             assert len(n) == 3
 
             # Apply lazy transformation and evaluate
-            params[f] = n[2](lazy_params[n[0]], sim_timestep_us).evaluate()
+            params[f] = n[2](lazy_params[n[0]], **kwargs).evaluate()
 
     return params
 
 
-def apply_indices(lazy_params, param_map, indices, sim_timestep_us):
+def apply_indices(lazy_params, param_map, indices, **kwargs):
     # Build numpy record datatype for neuron region
     # **TODO** this probably doesn't need to be a string:
     # could use np.uint8 style things throughout
@@ -65,17 +65,17 @@ def apply_indices(lazy_params, param_map, indices, sim_timestep_us):
             assert len(n) == 3
 
             # Apply lazy transformation and evaluate slice
-            params[f] = n[2](lazy_params[n[0]], sim_timestep_us)[indices]
+            params[f] = n[2](lazy_params[n[0]], **kwargs)[indices]
 
     return params
 
 
-def integer(values, sim_timestep_ms):
+def integer(values, **kwargs):
     vals = deepcopy(values)
     return la.rint(vals)
 
 
-def integer_time_divide(values, sim_timestep_ms):
+def integer_time_divide(values, sim_timestep_ms, **kwargs):
     # Copy values and divide by timestep
     scaled_vals = deepcopy(values)
     scaled_vals /= sim_timestep_ms
@@ -84,12 +84,12 @@ def integer_time_divide(values, sim_timestep_ms):
     return la.rint(scaled_vals)
 
 
-def s1615(values, sim_timestep_ms):
+def s1615(values, **kwargs):
     vals = deepcopy(values)
     return float_to_s1615_no_copy(vals)
 
 
-def s1615_time_multiply(values, sim_timestep_ms):
+def s1615_time_multiply(values, **kwargs):
     # Copy values and divide by timestep
     scaled_vals = deepcopy(values)
     scaled_vals /= sim_timestep_ms
@@ -98,7 +98,7 @@ def s1615_time_multiply(values, sim_timestep_ms):
     return float_to_s1615_no_copy(scaled_vals)
 
 
-def s1615_exp_decay(values, sim_timestep_ms):
+def s1615_exp_decay(values, sim_timestep_ms, **kwargs):
     # Copy values and calculate exponential decay
     exp_decay_vals = deepcopy(values)
     exp_decay_vals = la.exp(-sim_timestep_ms / exp_decay_vals)
@@ -107,7 +107,7 @@ def s1615_exp_decay(values, sim_timestep_ms):
     return float_to_s1615_no_copy(exp_decay_vals)
 
 
-def s1615_exp_init(values, sim_timestep_ms):
+def s1615_exp_init(values, sim_timestep_ms, **kwargs):
     # Copy values and calculate exponential init
     exp_init_vals = deepcopy(values)
     exp_init_vals = 1.0 - la.exp(-sim_timestep_ms / exp_init_vals)
@@ -117,7 +117,7 @@ def s1615_exp_init(values, sim_timestep_ms):
     return float_to_s1615_no_copy(exp_init_vals)
 
 
-def s1615_rate_isi(values, sim_timestep_ms):
+def s1615_rate_isi(values, sim_timestep_ms, **kwargs):
     # Copy values and convert rates to isis
     isi_vals = deepcopy(values)
     isi_vals = 1000.0 / (isi_vals * sim_timestep_ms)
@@ -126,7 +126,7 @@ def s1615_rate_isi(values, sim_timestep_ms):
     return float_to_s1615_no_copy(isi_vals)
 
 
-def u032_rate_exp_minus_lambda(values, sim_timestep_ms):
+def u032_rate_exp_minus_lambda(values, sim_timestep_ms, **kwargs):
     # Copy values and convert to spikes per-tick
     lambda_vals = deepcopy(values)
     lambda_vals = (lambda_vals * sim_timestep_ms) / 1000.0

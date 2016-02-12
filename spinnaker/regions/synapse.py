@@ -16,13 +16,13 @@ class Synapse(Region):
         # transform lazy array of mutable parameters
         self.mutable_params = lazy_param_map.apply(
             initial_values, cell_type.synapse_mutable_param_map,
-            num_neurons, sim_timestep_ms)
+            num_neurons, sim_timestep_ms=sim_timestep_ms)
 
         # Use neurons immutable parameter map to transform
         # lazy array of immutable parameters
         self.immutable_params = lazy_param_map.apply(
             parameters, cell_type.synapse_immutable_param_map,
-            num_neurons, sim_timestep_ms)
+            num_neurons, sim_timestep_ms=sim_timestep_ms)
 
     # --------------------------------------------------------------------------
     # Region methods
