@@ -110,9 +110,12 @@ class State(common.control.BaseState):
                                   duration_timesteps):
         logger.info("Allocating neuron clusters")
 
+        # Mapping from PyNN populations to neuron clusters
+        # {pynn_population: neuron_cluster}
+        pop_neuron_clusters = {}
+
         # Loop through populations whose output can't be
         # entirely be replaced by direct connections
-        pop_neuron_clusters = {}
         populations = [p for p in self.populations
                        if not p._entirely_directly_connectable]
         for pop_id, pop in enumerate(populations):
@@ -129,6 +132,10 @@ class State(common.control.BaseState):
                                    hardware_timestep_us, duration_timesteps):
         logger.info("Allocating synapse clusters")
 
+        # Mapping from PyNN populations to list of synapse clusters
+        # {pynn_population: [synapse_cluster]}
+        pop_synapse_clusters = {}
+
         # Now all neuron vertices are partioned,
         # loop through populations again
         # **TODO** make this process iterative so if result of
@@ -136,7 +143,6 @@ class State(common.control.BaseState):
         # neuron processor, split more and try again
         # **TODO** post-synaptic limits should perhaps be based on
         # shifts down of 1024 to avoid overlapping weirdness
-        pop_synapse_clusters = {}
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
 
@@ -152,9 +158,19 @@ class State(common.control.BaseState):
                                          duration_timesteps):
         logger.info("Allocating current input clusters")
 
+        # Mapping from PyNN projection to current input cluster
+        # {pynn_projection: current_input_cluster}
         proj_current_input_clusters = {}
+
+        # Mapping from post-synaptic PyNN population (i.e. the
+        # one the current input cluster is injecting current INTO)
+        # to list of current input clusters
+        # {pynn_population: [current_input_cluster]}
         post_pop_current_input_clusters = defaultdict(list)
+
+        # Loop through projections
         for proj in self.projections:
+            # If this projection isn't directory connectable
             if not proj._directly_connectable:
                 continue
 
@@ -178,8 +194,8 @@ class State(common.control.BaseState):
         nets = []
         net_keys = {}
         for pop, n_cluster in iteritems(self.pop_neuron_clusters):
-            # If population has outgoing projections and neuron vertices
-            if len(pop.outgoing_projections) > 0 and len(n_cluster.verts) > 0:
+            # If population has outgoing projections
+            if len(pop.outgoing_projections) > 0:
                 logger.debug("\tPopulation label:%s", pop.label)
 
                 # Get synapse vertices associated with post-synaptic population

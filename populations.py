@@ -106,11 +106,13 @@ class Population(common.Population):
         __doc__ = common.Population.__doc__
         super(Population, self).__init__(size, cellclass, cellparams, structure, initial_values, label)
 
-        # Create dictionary of pre-synaptic populations to incoming projections
-        # JK: WTF is this data structure
+        # Dictionary mapping pre-synaptic populations to
+        # incoming projections, subdivided by synapse type
+        # {synapse_cluster_type: {pynn_population: [pynn_projection]}}
         self.incoming_projections = defaultdict(lambda: defaultdict(list))
 
-        # Create list of outgoing projections
+        # List of outgoing projections from this population
+        # [pynn_projection]
         self.outgoing_projections = list()
         
         # Add population to simulator
