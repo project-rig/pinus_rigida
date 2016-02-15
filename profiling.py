@@ -1,6 +1,11 @@
+# Import modules
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
+# Import functions
 from scipy.stats import binned_statistic
-from six import iterkeys, itervalues
+from six import iteritems, iterkeys, itervalues
 
 def print_summary(profiling_data, duration, dt=1.0):
     """
@@ -34,6 +39,36 @@ def print_summary(profiling_data, duration, dt=1.0):
 
         print("\tMean time per timestep:%fms" %
               (np.average(total_sample_duration_per_timestep)))
+
+
+def plot_profile(profiling_data, axis):
+    # Get a suitable colour array from current palette
+    colours = cm.get_cmap()(np.linspace(0.0, 1.0, len(profiling_data)))
+
+    # Plot profile
+    for i, (t, c) in enumerate(zip(itervalues(profiling_data), colours)):
+        for entry_time, duration in zip(t[0], t[1]):
+            axis.bar(i, duration, bottom=entry_time,
+                     width=1.0, linewidth=0, color=c)
+
+    # Draw ticks
+    axis.set_xticks([0.5 + float(i) for i in range(len(profiling_data))])
+    axis.set_xticklabels(list(iterkeys(profiling_data)))
+
+
+def filter_time(profile_data, min_time, max_time):
+    filtered_profile_data = {}
+    for tag_name, times in iteritems(profile_data):
+        # Get indices of entry times which fall within time range
+        filtered_indices = np.where(
+            (times[0] >= float(min_time)) & (times[0] < float(max_time)))
+
+        # Add entry times and durations, filtered by
+        # new indices to filtered tag dictionary
+        filtered_profile_data[tag_name] = (times[0][filtered_indices],
+                                           times[1][filtered_indices])
+
+    return filtered_profile_data
 
 
 def write_csv_header(profiling_data, csv_writer, extra_column_headers):
