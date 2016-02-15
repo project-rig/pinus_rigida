@@ -16,7 +16,7 @@ from rig.place_and_route.constraints import (ReserveResourceConstraint,
 from rig.netlist import Net
 
 # Import functions
-from rig.place_and_route import wrapper
+from rig.place_and_route import place_and_route_wrapper
 from six import iteritems, itervalues
 from spinnaker.utils import evenly_slice
 
@@ -464,30 +464,16 @@ class State(common.control.BaseState):
         self.machine_controller = MachineController(self.spinnaker_hostname)
         self.machine_controller.boot(self.spinnaker_width, self.spinnaker_height)
 
-        # Retrieve a machine object
-        # JH: replace with get_system_info
-        spinnaker_machine = self.machine_controller.get_machine()
-
+        # Get system info
+        system_info = self.machine_controller.get_system_info()
         logger.debug("Found %ux%u chip machine",
-            spinnaker_machine.width, spinnaker_machine.height)
-
-        # If we should reserve extra cores on each chip e.g. for network tester
-        # **TODO** integrate new Rig API to make this unnecessary
-        if self.reserve_extra_cores_per_chip > 0:
-            logger.info("Reserving %u extra cores per-chip",
-                        self.reserve_extra_cores_per_chip)
-
-            # Reserve these extra cores (above monitor) on each chip
-            reservation = slice(1, 1 + self.reserve_extra_cores_per_chip)
-            constraints.append(ReserveResourceConstraint(machine.Cores,
-                                                         reservation))
-
-        logger.info("Placing and routing")
+            system_info.width, system_info.height)
 
         # Place-and-route
-        placements, allocations, application_map, routing_tables = wrapper(
-            vertex_resources, vertex_applications, nets, net_keys,
-            spinnaker_machine, constraints)
+        logger.info("Placing and routing")
+        placements, allocations, application_map, routing_tables =\
+            place_and_route_wrapper(vertex_resources, vertex_applications,
+                                    nets, net_keys, system_info, constraints)
         logger.info("Placed on %u cores", len(placements))
         logger.debug(list(itervalues(placements)))
 

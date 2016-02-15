@@ -46,7 +46,6 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
     simulator.state.spinnaker_width = extra_params.get("spinnaker_width", 2)
     simulator.state.spinnaker_height = extra_params.get("spinnaker_height", 2)
     simulator.state.realtime_proportion = extra_params.get("realtime_proportion", 1.0)
-    simulator.state.reserve_extra_cores_per_chip = extra_params.get("reserve_extra_cores_per_chip", 0)
     simulator.state.convert_direct_connections = extra_params.get("convert_direct_connections", True)
     simulator.state.config = extra_params.get("config", {})
     return rank()
