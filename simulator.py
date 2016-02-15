@@ -258,62 +258,59 @@ class State(common.control.BaseState):
                 logger.debug("\tPopulation label:%s, synapse type:%s" %
                             (pop.label, str(s_type)))
 
-                # If this cluster has any vertices
-                # JK: Why wouldn't it?
-                if len(s_cluster.verts) > 0:
-                    # Expand any incoming connections
-                    matrices, weight_fixed_point = pop._build_incoming_connection(s_type)
+                # Expand any incoming connections
+                matrices, weight_fixed_point = pop._build_incoming_connection(s_type)
 
-                    # Loop through synapse verts
-                    for v in s_cluster.verts:
-                        logger.debug("\t\tVertex %s", v)
+                # Loop through synapse verts
+                for v in s_cluster.verts:
+                    logger.debug("\t\tVertex %s", v)
 
-                        # Cache weight fixed-point for this synapse point in vertex
-                        v.weight_fixed_point = weight_fixed_point
+                    # Cache weight fixed-point for this synapse point in vertex
+                    v.weight_fixed_point = weight_fixed_point
 
-                        # Get placement and allocation
-                        vertex_placement = placements[v]
-                        vertex_allocation = allocations[v]
+                    # Get placement and allocation
+                    vertex_placement = placements[v]
+                    vertex_allocation = allocations[v]
 
-                        # Get core this vertex should be run on
-                        core = vertex_allocation[machine.Cores]
-                        assert (core.stop - core.start) == 1
+                    # Get core this vertex should be run on
+                    core = vertex_allocation[machine.Cores]
+                    assert (core.stop - core.start) == 1
 
-                        # Partition the matrices
-                        sub_matrices, matrix_placements =\
-                            s_cluster.partition_matrices(matrices,
-                                                         v.post_neuron_slice,
-                                                         v.incoming_connections)
+                    # Partition the matrices
+                    sub_matrices, matrix_placements =\
+                        s_cluster.partition_matrices(matrices,
+                                                        v.post_neuron_slice,
+                                                        v.incoming_connections)
 
-                        # Select placed chip
-                        with self.machine_controller(x=vertex_placement[0],
-                                                     y=vertex_placement[1]):
-                            # Allocate two output buffers for this synapse population
-                            out_buffer_bytes = len(v.post_neuron_slice) * 4
-                            v.out_buffers = [
-                                self.machine_controller.sdram_alloc(
-                                    out_buffer_bytes, clear=True)
-                                for _ in range(2)]
+                    # Select placed chip
+                    with self.machine_controller(x=vertex_placement[0],
+                                                    y=vertex_placement[1]):
+                        # Allocate two output buffers for this synapse population
+                        out_buffer_bytes = len(v.post_neuron_slice) * 4
+                        v.out_buffers = [
+                            self.machine_controller.sdram_alloc(
+                                out_buffer_bytes, clear=True)
+                            for _ in range(2)]
 
-                            # Calculate required memory size
-                            size = s_cluster.get_size(
-                                v.post_neuron_slice, sub_matrices,
-                                matrix_placements, weight_fixed_point,
-                                v.out_buffers)
+                        # Calculate required memory size
+                        size = s_cluster.get_size(
+                            v.post_neuron_slice, sub_matrices,
+                            matrix_placements, weight_fixed_point,
+                            v.out_buffers)
 
-                            # Allocate a suitable memory block
-                            # for this vertex and get memory io
-                            # **NOTE** this is tagged by core
-                            memory_io = self.machine_controller.sdram_alloc_as_filelike(
-                                size, tag=core.start)
-                            logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                         core.start, memory_io.address)
+                        # Allocate a suitable memory block
+                        # for this vertex and get memory io
+                        # **NOTE** this is tagged by core
+                        memory_io = self.machine_controller.sdram_alloc_as_filelike(
+                            size, tag=core.start)
+                        logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                                        core.start, memory_io.address)
 
-                            # Write the vertex to file
-                            v.region_memory = s_cluster.write_to_file(
-                                v.post_neuron_slice, sub_matrices,
-                                matrix_placements, weight_fixed_point,
-                                v.out_buffers, memory_io)
+                        # Write the vertex to file
+                        v.region_memory = s_cluster.write_to_file(
+                            v.post_neuron_slice, sub_matrices,
+                            matrix_placements, weight_fixed_point,
+                            v.out_buffers, memory_io)
 
     def _load_current_input_verts(self, placements, allocations,
                                   hardware_timestep_us, duration_timesteps):
