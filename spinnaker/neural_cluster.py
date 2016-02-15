@@ -79,9 +79,8 @@ class NeuralCluster(object):
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
 
-        # If cell type has a synapse region class
-        # AM, JH: receptor types empty?
-        if hasattr(cell_type, "synapse_region_class"):
+        # If cell type has any receptors i.e. any need for synaptic input
+        if len(cell_type.receptor_types) > 0:
             # Add a synapse region and an input buffer
             self.regions[Regions.synapse] = cell_type.synapse_region_class(
                 cell_type, parameters, initial_values, sim_timestep_ms)
