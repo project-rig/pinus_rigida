@@ -23,10 +23,40 @@ logger = logging.getLogger("pinus_rigida")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
+# --------------------------------------------------------------------------
+# WeightRange
+# --------------------------------------------------------------------------
+class WeightRange(object):
+    def __init__(self):
+        self.min = sys.float_info.max
+        self.max = sys.float_info.min
+
+    def update(self, weight):
+        self.min = min(self.min, weight)
+        self.max = max(self.max, weight)
+
+    @property
+    def fixed_point(self):
+        # Get MSB of minimum and maximum weight and
+        min_msb = math.floor(math.log(self.min, 2)) + 1
+        max_msb = math.floor(math.log(self.max, 2)) + 1
+
+        # Check there's enough bits to represent this range in 16 bits
+        assert (max_msb - min_msb) < 16
+
+        # Calculate where the weight format fixed-point lies
+        return (16 - int(max_msb))
+
+# --------------------------------------------------------------------------
+# Assembly
+# --------------------------------------------------------------------------
 class Assembly(common.Assembly):
     _simulator = simulator
 
 
+# --------------------------------------------------------------------------
+# PopulationView
+# --------------------------------------------------------------------------
 class PopulationView(common.PopulationView):
     _assembly_class = Assembly
     _simulator = simulator
@@ -62,7 +92,9 @@ class PopulationView(common.PopulationView):
         return PopulationView(self, selector, label)
 
 
-
+# --------------------------------------------------------------------------
+# Population
+# --------------------------------------------------------------------------
 class Population(common.Population):
     __doc__ = common.Population.__doc__
     _simulator = simulator
@@ -170,7 +202,7 @@ class Population(common.Population):
         # **THINK** is it better to get this as ANOTHER parameter
         pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
 
-        # Loop through newly partioned incoming projections
+        # Loop through newly partioned incoming projections_load_synapse_verts
         synapse_clusters = {}
         for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
@@ -197,21 +229,19 @@ class Population(common.Population):
     def _build_incoming_connection(self, synapse_type):
         population_matrix_rows = {}
         
-        # Create list to hold min and max weight
-        # **NOTE** needs to be a list rather than a tuple so it's mutable
-        weight_range = [sys.float_info.max, sys.float_info.min]
+        # Create weight range object to track range of
+        # weights present in incoming connections
+        weight_range = WeightRange()
         
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
         for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
             # Create an array to hold matrix rows and initialize each one with an empty list
             population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size, dtype=object)
-            
             for r in range(pre_pop.size):
                 population_matrix_rows[pre_pop][r] = []
 
             # Loop through projections and build
-            # JH and AM: weight range list passing by ref is unpleasant
             for projection in projections:
                 projection._build(matrix_rows=population_matrix_rows[pre_pop],
                                   weight_range=weight_range,
@@ -223,16 +253,8 @@ class Population(common.Population):
             for r in population_matrix_rows[pre_pop]:
                 r.sort(key=itemgetter(2))
 
-        # Get MSB of minimum and maximum weight and get magnitude of range
-        weight_msb = [math.floor(math.log(r, 2)) + 1
-                    for r in weight_range]
-        weight_range = weight_msb[1] - weight_msb[0]
-
-        # Check there's enough bits to represent this is any form
-        assert weight_range < 16
-
         # Calculate where the weight format fixed-point lies
-        weight_fixed_point = 16 - int(weight_msb[1])
+        weight_fixed_point = weight_range.fixed_point
         logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
 
         return population_matrix_rows, weight_fixed_point
@@ -245,8 +267,7 @@ class Population(common.Population):
         delay = connection_parameters["delay"]
 
         # Update incoming weight range
-        weight_range[0] = min(weight_range[0], weight)
-        weight_range[1] = max(weight_range[1], weight)
+        weight_range.update(weight)
         
         # Add synapse to each row
         for p in matrix_rows[presynaptic_indices]:
