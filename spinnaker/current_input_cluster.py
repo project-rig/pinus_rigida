@@ -21,12 +21,12 @@ logger = logging.getLogger("pinus_rigida")
 # ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
-    system = 0,
-    neuron = 1,
-    output_buffer = 2,
+    system = 0
+    neuron = 1
+    output_buffer = 2
     output_weight = 3
-    spike_recording = 4,
-    profiler = 5,
+    spike_recording = 4
+    profiler = 5
 
 # ------------------------------------------------------------------------------
 # CurrentInputCluster
@@ -124,7 +124,7 @@ class CurrentInputCluster(object):
         for r in (Regions.neuron,
                   Regions.output_weight,
                   Regions.spike_recording):
-            region_arguments[Regions(r)] = Args(post_vertex_slice)
+            region_arguments[r] = Args(post_vertex_slice)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\

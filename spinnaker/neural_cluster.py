@@ -24,18 +24,14 @@ logger = logging.getLogger("pinus_rigida")
 class Regions(enum.IntEnum):
     # JK: probably update this and try and use relative enum numbering
     """Region names, corresponding to those defined in `ensemble.h`"""
-    system = 0,
-    neuron = 1,
-    synapse = 2,
-    input_buffer = 3,
-    spike_recording = 4,
-    analogue_recording_start = 5,
-    analogue_recording_0 = 5,
-    analogue_recording_1 = 6,
-    analogue_recording_2 = 7,
-    analogue_recording_3 = 8,
-    analogue_recording_end = 9,
-    profiler = 9,
+    system = 0
+    neuron = 1
+    synapse = 2
+    input_buffer = 3
+    spike_recording = 4
+    analogue_recording_start = 5
+    analogue_recording_end = analogue_recording_start + 4
+    profiler = analogue_recording_end
 
 #------------------------------------------------------------------------------
 # Vertex
@@ -216,7 +212,7 @@ class NeuralCluster(object):
                                   Regions.synapse,
                                   Regions.spike_recording),
                                  analogue_recording_regions):
-            region_arguments[Regions(r)] = Args(vertex_slice)
+            region_arguments[r] = Args(vertex_slice)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\

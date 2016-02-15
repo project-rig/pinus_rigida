@@ -21,12 +21,12 @@ logger = logging.getLogger("pinus_rigida")
 # ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `ensemble.h`"""
-    system = 0,
-    key_lookup = 1,
-    synaptic_matrix = 2,
-    plasticity = 3,
-    output_buffer = 4,
-    profiler = 5,
+    system = 0
+    key_lookup = 1
+    synaptic_matrix = 2
+    plasticity = 3
+    output_buffer = 4
+    profiler = 5
 
 #------------------------------------------------------------------------------
 # Vertex
