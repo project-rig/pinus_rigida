@@ -246,9 +246,9 @@ void DMATransferDone(uint, uint tag)
       };
     
     // Process the next row in the DMA buffer, using this function to apply
-    Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerProcessRow);
+    Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessRow);
     SynapseType::ProcessRow(g_Tick, DMANextRowBuffer(), addWeightLambda);
-    Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerProcessRow);
+    Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
 
     // Setup next row read
     SetupNextDMARowRead();
@@ -273,6 +273,8 @@ void UserEvent(uint, uint)
 //-----------------------------------------------------------------------------
 void TimerTick(uint tick, uint)
 {
+  Profiler::Tag<ProfilerTagTimerTick> p;
+  
   // Cache tick
   // **NOTE** ticks start at 1
   g_Tick = (tick - 1);
