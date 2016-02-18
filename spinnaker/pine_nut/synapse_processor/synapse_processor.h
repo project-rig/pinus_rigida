@@ -26,9 +26,10 @@ enum AppWord
 
 enum ProfilerTag
 {
+  ProfilerTagTimerTick,
   ProfilerTagMCPacketReceived,
   ProfilerTagSetupNextDMARowRead,
-  ProfilerProcessRow,
+  ProfilerTagProcessRow,
 
 };
 
