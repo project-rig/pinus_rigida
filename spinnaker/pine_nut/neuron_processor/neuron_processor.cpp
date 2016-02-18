@@ -258,6 +258,12 @@ void UpdateNeurons()
                               neuronMutable, neuronImmutable)
       );
     }
+
+    // **HACK** sleep for 1us after every other neuron to better space spiking
+    if((n % 2) != 0)
+    {
+      spin1_delay_us(1);
+    }
   }
 
   // Transfer spike recording buffer to SDRAM
