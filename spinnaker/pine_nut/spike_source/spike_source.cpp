@@ -59,7 +59,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read source region
   if(!g_SpikeSource.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionSpikeSource), flags))
+    Common::Config::GetRegionStart(baseAddress, RegionSpikeSource), flags,
+    g_AppWords[AppWordNumSpikeSources]))
   {
     return false;
   }
@@ -86,6 +87,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
 //-----------------------------------------------------------------------------
 // Event handler functions
+//-----------------------------------------------------------------------------
+static void DMATransferDone(uint, uint tag)
+{
+  if(!g_SpikeSource.DMATransferDone(tag))
+  {
+    LOG_PRINT(LOG_LEVEL_ERROR, "Spike source unable to handle DMA tag %u", tag);
+  }
+}
 //-----------------------------------------------------------------------------
 static void TimerTick(uint tick, uint)
 {
@@ -124,7 +133,9 @@ static void TimerTick(uint tick, uint)
       };
 
     // Update spike source
-    g_SpikeSource.Update(tick, emitSpikeLambda, g_SpikeRecording);
+    g_SpikeSource.Update(tick, emitSpikeLambda, g_SpikeRecording,
+      g_AppWords[AppWordNumSpikeSources]
+    );
 
     // Transfer spike recording buffer to SDRAM
     g_SpikeRecording.TransferBuffer();
@@ -152,6 +163,7 @@ extern "C" void c_main()
   
   // Register callbacks
   spin1_callback_on(TIMER_TICK,         TimerTick,        2);
+  spin1_callback_on(DMA_TRANSFER_DONE,  DMATransferDone,   0);
   
   // Start simulation
   spin1_start(SYNC_WAIT);

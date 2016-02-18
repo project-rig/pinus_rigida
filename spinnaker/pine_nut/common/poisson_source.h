@@ -30,7 +30,7 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool ReadSDRAMData(uint32_t *region, uint32_t)
+  bool ReadSDRAMData(uint32_t *region, uint32_t, unsigned int)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "PoissonSource::ReadSDRAMData");
 
@@ -97,8 +97,14 @@ public:
     return true;
   }
 
+  bool DMATransferDone(uint tag)
+  {
+    return false;
+  }
+
   template<typename E>
-  void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording)
+  void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording,
+              unsigned int)
   {
     // Loop through slow source
     auto *slowTimeToSpike = m_SlowTimeToSpike;
