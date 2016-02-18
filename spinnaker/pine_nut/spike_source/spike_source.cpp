@@ -1,24 +1,22 @@
-#include "spike_source_poisson.h"
+#include "spike_source.h"
 
 // Standard includes
 #include <climits>
 
 // Common includes
 #include "../common/config.h"
-#include "../common/random/mars_kiss64.h"
 #include "../common/log.h"
-#include "../common/poisson_source.h"
 #include "../common/profiler.h"
 #include "../common/spike_recording.h"
 #include "../common/spinnaker.h"
 #include "../common/utils.h"
 
+// Configuration include
+#include "config.h"
+
 // Namespaces
-using namespace Common::FixedPointNumber;
-using namespace Common::Random;
 using namespace Common;
-using namespace Common::Utils;
-using namespace SpikeSourcePoisson;
+using namespace SpikeSource;
 
 //-----------------------------------------------------------------------------
 // Anonymous namespace
@@ -33,7 +31,7 @@ uint32_t g_AppWords[AppWordMax];
 
 SpikeRecording g_SpikeRecording;
 
-PoissonSource<MarsKiss64> g_PoissonSource;
+Source g_SpikeSource;
 
 //----------------------------------------------------------------------------
 // Functions
@@ -59,9 +57,9 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
       g_AppWords[AppWordKey], g_AppWords[AppWordNumSpikeSources]);
   }
 
-  // Read poisson source region
-  if(!g_PoissonSource.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionPoissonSource), flags))
+  // Read source region
+  if(!g_SpikeSource.ReadSDRAMData(
+    Common::Config::GetRegionStart(baseAddress, RegionSpikeSource), flags))
   {
     return false;
   }
@@ -125,8 +123,8 @@ static void TimerTick(uint tick, uint)
         }
       };
 
-    // Update poisson source
-    g_PoissonSource.Update(tick, emitSpikeLambda, g_SpikeRecording);
+    // Update spike source
+    g_SpikeSource.Update(tick, emitSpikeLambda, g_SpikeRecording);
 
     // Transfer spike recording buffer to SDRAM
     g_SpikeRecording.TransferBuffer();

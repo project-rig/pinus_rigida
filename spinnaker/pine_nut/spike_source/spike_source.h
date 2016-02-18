@@ -1,6 +1,6 @@
 #pragma once
 
-namespace SpikeSourcePoisson
+namespace SpikeSource
 {
 //-----------------------------------------------------------------------------
 // Enumerations
@@ -9,7 +9,7 @@ namespace SpikeSourcePoisson
 enum Region
 {
   RegionSystem,
-  RegionPoissonSource,
+  RegionSpikeSource,
   RegionSpikeRecording = 4,
   RegionProfiler,
 };
@@ -22,4 +22,4 @@ enum AppWord
   AppWordMax,
 };
 
-}  // namespace SpikeSourcePoisson
+}  // namespace SpikeSource
