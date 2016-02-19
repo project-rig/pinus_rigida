@@ -37,11 +37,13 @@ class ID(int, common.IDMixin):
 # State
 #------------------------------------------------------------------------------
 class State(common.control.BaseState):
+    # These are required to be present for various
+    # bits of PyNN, but not really relevant for P.R.
+    mpi_rank = 0
+    num_processes = 1
+
     def __init__(self):
         common.control.BaseState.__init__(self)
-        # JK: Can these be removed
-        self.mpi_rank = 0
-        self.num_processes = 1
         self.clear()
         self.dt = 0.1
         self.populations = []
@@ -344,7 +346,7 @@ class State(common.control.BaseState):
             for v in c_cluster.verts:
                 logger.debug("\t\tVertex %s", v)
 
-                # Use native S15.16 format
+                # Use native S16.15 format
                 v.weight_fixed_point = 15
 
                 # Get placement and allocation
@@ -482,8 +484,7 @@ class State(common.control.BaseState):
 
         # Get system info
         system_info = self.machine_controller.get_system_info()
-        logger.debug("Found %ux%u chip machine",
-            system_info.width, system_info.height)
+        logger.debug("Found %u chip machine",len(system_info))
 
         # Place-and-route
         logger.info("Placing and routing")

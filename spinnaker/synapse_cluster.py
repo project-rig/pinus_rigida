@@ -20,7 +20,7 @@ logger = logging.getLogger("pinus_rigida")
 # Regions
 # ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
-    """Region names, corresponding to those defined in `ensemble.h`"""
+    """Region names, corresponding to those defined in `synapse_processor.h`"""
     system = 0
     key_lookup = 1
     synaptic_matrix = 2

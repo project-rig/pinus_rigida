@@ -20,7 +20,7 @@ logger = logging.getLogger("pinus_rigida")
 # Regions
 # ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
-    """Region names, corresponding to those defined in `ensemble.h`"""
+    """Region names, corresponding to those defined in `current_input.h`"""
     system = 0
     neuron = 1
     output_buffer = 2
