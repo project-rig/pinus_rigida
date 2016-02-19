@@ -47,13 +47,13 @@ class SpikeSourcePoisson(Region):
         # transform slice of lazy parameter array
         self.slow_params = lazy_param_map.apply_indices(
             parameters, cell_type.slow_immutable_param_map,
-            slow_indices, sim_timestep_ms)
+            slow_indices, sim_timestep_ms=sim_timestep_ms)
 
         # Use fast spike source parameter map to
         # transform slice of lazy parameter array
         self.fast_params = lazy_param_map.apply_indices(
             parameters, cell_type.fast_immutable_param_map,
-            fast_indices, sim_timestep_ms)
+            fast_indices, sim_timestep_ms=sim_timestep_ms)
 
     # --------------------------------------------------------------------------
     # Region methods

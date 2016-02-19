@@ -44,7 +44,7 @@ exp_synapse_translations = build_translations(
 
 #-------------------------------------------------------------------
 # Neuron region maps
-#------------------------------------------------------------lazy_array_fixed_point-------
+#-------------------------------------------------------------------
 # Build maps of where and how parameters need to be written into neuron regions
 if_curr_neuron_immutable_param_map = [
     ("v_thresh",    "i4", lazy_param_map.s1615),
@@ -86,6 +86,7 @@ class IF_curr_exp(cells.IF_curr_exp):
     # a SpiNNaker neuron processor handle
     max_neurons_per_core = 512
 
+    # JK: not necessary
     neuron_region_class = regions.Neuron
     synapse_region_class = regions.Synapse
 

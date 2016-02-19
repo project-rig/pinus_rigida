@@ -20,13 +20,13 @@ logger = logging.getLogger("pinus_rigida")
 # Regions
 # ------------------------------------------------------------------------------
 class Regions(enum.IntEnum):
-    """Region names, corresponding to those defined in `ensemble.h`"""
-    system = 0,
-    neuron = 1,
-    output_buffer = 2,
+    """Region names, corresponding to those defined in `current_input.h`"""
+    system = 0
+    neuron = 1
+    output_buffer = 2
     output_weight = 3
-    spike_recording = 4,
-    profiler = 5,
+    spike_recording = 4
+    profiler = 5
 
 # ------------------------------------------------------------------------------
 # CurrentInputCluster
@@ -60,13 +60,13 @@ class CurrentInputCluster(object):
             cell_type.max_current_inputs_per_core)
 
         current_input_app = path.join(model_binaries, filename + ".aplx")
-        logger.debug("\t\t\tCurrent input application:%s"
-                    % current_input_app)
+        logger.debug("\t\t\tCurrent input application:%s",
+                    current_input_app)
 
         # Loop through slice
         self.verts = []
         for post_slice in post_slices:
-            logger.debug("\t\t\tPost slice:%s" % str(post_slice))
+            logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
             # Build input vert and add to list
             input_vert = InputVertex(post_slice, receptor_index)
@@ -90,7 +90,7 @@ class CurrentInputCluster(object):
         vertex_size_bytes = sizeof_regions_named(self.regions,
                                                  region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, post_vertex_slice, weights, out_buffers, fp):
@@ -124,7 +124,7 @@ class CurrentInputCluster(object):
         for r in (Regions.neuron,
                   Regions.output_weight,
                   Regions.spike_recording):
-            region_arguments[Regions(r)] = Args(post_vertex_slice)
+            region_arguments[r] = Args(post_vertex_slice)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\

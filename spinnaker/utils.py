@@ -113,6 +113,7 @@ class LazyArrayFloatToFixConverter(object):
         vals = deepcopy(values) if self.copy else copy(values)
 
         # Saturate the values
+        # JK: Think more here
         # **TODO** this needs implementing in terms of less and more
         #vals = np.clip(values, self.min_value, self.max_value)
         #vals = vals.apply(partial(np.clip, a_min=self.min_value,
@@ -130,13 +131,24 @@ class LazyArrayFloatToFixConverter(object):
 # Functions
 # ------------------------------------------------------------------------------
 def evenly_slice(quantity, maximum_slice_size):
-    # Build lists of start and end indices of slices
-    slice_starts = range(0, quantity, maximum_slice_size)
-    slice_ends = [min(s + maximum_slice_size, quantity) for s in slice_starts]
+    # Thankyou @mundya for this implementation
+    # Calculate number of slices required
+    num_slices = int(math.ceil(float(quantity) / float(maximum_slice_size)))
 
-    # Zip starts and ends together into list
-    # of slices and pair these with resources
-    return [UnitStrideSlice(s, e) for s, e in zip(slice_starts, slice_ends)]
+    # Determine the chunk sizes
+    slice_length = quantity // num_slices
+    num_larger = quantity % num_slices
+
+    # Yield the larger slices
+    pos = 0
+    for _ in range(num_larger):
+        yield UnitStrideSlice(pos, pos + slice_length + 1)
+        pos += slice_length + 1
+
+    # Yield the standard sized slices
+    for _ in range(num_slices - num_larger):
+        yield UnitStrideSlice(pos, pos + slice_length)
+        pos += slice_length
 
 
 def calc_bitfield_words(bits):

@@ -54,5 +54,14 @@ class FromListConnector(FromListConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice):
-        assert False, "The bloody list's already in memory - apply slices"
-        return len(self.conn_list)
+        # Extract columns of pre and post indices from connection list
+        pre_indices = self.conn_list[:,0]
+        post_indices = self.conn_list[:,0]
+
+        # Return number of list entries which contain
+        # connections in both pre and post slices
+        # http://stackoverflow.com/questions/9560207/how-to-count-values-in-a-certain-range-in-a-numpy-array
+        return ((pre_indices >= pre_slice.start) &
+                (pre_indices < pre_slice.stop) &
+                (post_indices >= post_slice.start) &
+                (post_indices < post_slice.stop)).sum()

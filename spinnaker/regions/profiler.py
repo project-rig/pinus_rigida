@@ -104,14 +104,14 @@ class Profiler(Region):
                 # (we assume they aren't ever nested)
                 if len(tag_entry_times) == (len(tag_exit_times) + 1):
                     num_trim_tags = len(tag_entry_times) - len(tag_exit_times)
-                    logger.warn("Profile finishes with tag %s open - trimming %u tags"
-                        % (tag_names[tag], num_trim_tags))
+                    logger.warn("Profile finishes with tag %s open - trimming %u tags",
+                                tag_names[tag], num_trim_tags)
                     tag_entry_times = tag_entry_times[:-num_trim_tags]
 
                 # If number of entry and exit tags still don't match something
                 # Has probably crashed early so the profiling data is useless
                 if len(tag_entry_times) != len(tag_exit_times):
-                    logger.error("Tag %s broken:" % tag_names[tag])
+                    logger.error("Tag %s broken:", tag_names[tag])
                 # Otherwise
                 else:
                     # Subtract entry times from exit times

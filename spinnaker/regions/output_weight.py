@@ -41,5 +41,5 @@ class OutputWeight(Region):
             elements of the region should be included.
         """
         # Convert slice of weights to fixed-point and write
-        fp.write(NumpyFloatToFixConverter(signed=True, n_bits=32, n_frac=16)(
+        fp.write(NumpyFloatToFixConverter(signed=True, n_bits=32, n_frac=15)(
             weights[vertex_slice.python_slice]).tostring())

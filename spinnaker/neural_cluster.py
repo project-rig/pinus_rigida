@@ -22,19 +22,16 @@ logger = logging.getLogger("pinus_rigida")
 # Regions
 # -----------------------------------------------------------------------------
 class Regions(enum.IntEnum):
+    # JK: probably update this and try and use relative enum numbering
     """Region names, corresponding to those defined in `ensemble.h`"""
-    system = 0,
-    neuron = 1,
-    synapse = 2,
-    input_buffer = 3,
-    spike_recording = 4,
-    analogue_recording_start = 5,
-    analogue_recording_0 = 5,
-    analogue_recording_1 = 6,
-    analogue_recording_2 = 7,
-    analogue_recording_3 = 8,
-    analogue_recording_end = 9,
-    profiler = 9,
+    system = 0
+    neuron = 1
+    synapse = 2
+    input_buffer = 3
+    spike_recording = 4
+    analogue_recording_start = 5
+    analogue_recording_end = analogue_recording_start + 4
+    profiler = analogue_recording_end
 
 #------------------------------------------------------------------------------
 # Vertex
@@ -82,8 +79,8 @@ class NeuralCluster(object):
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
 
-        # If cell type has a synapse region class
-        if hasattr(cell_type, "synapse_region_class"):
+        # If cell type has any receptors i.e. any need for synaptic input
+        if len(cell_type.receptor_types) > 0:
             # Add a synapse region and an input buffer
             self.regions[Regions.synapse] = cell_type.synapse_region_class(
                 cell_type, parameters, initial_values, sim_timestep_ms)
@@ -108,6 +105,7 @@ class NeuralCluster(object):
         filename = "neuron_" + cell_type.__class__.__name__.lower()
 
         # Add profiler region if required
+        # JH, AM, JK: Agreed this system doesn't make sense in PyNN as we have objects
         if config.get("profile_samples", None) is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config["profile_samples"])
@@ -125,8 +123,8 @@ class NeuralCluster(object):
         # Get neuron application name
         neuron_app = path.join(model_binaries, filename + ".aplx")
 
-        logger.debug("\t\tNeuron application:%s" % neuron_app)
-        logger.debug("\t\t%u neuron vertices" % len(self.verts))
+        logger.debug("\t\tNeuron application:%s", neuron_app)
+        logger.debug("\t\t%u neuron vertices", len(self.verts))
 
         # Loop through neuron vertices and their corresponding resources
         for v in self.verts:
@@ -148,7 +146,7 @@ class NeuralCluster(object):
         vertex_size_bytes = sizeof_regions_named(self.regions,
                                                  region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes" % vertex_size_bytes)
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
         return vertex_size_bytes
 
     def write_to_file(self, key, vertex_slice, in_buffers, fp):
@@ -213,7 +211,7 @@ class NeuralCluster(object):
                                   Regions.synapse,
                                   Regions.spike_recording),
                                  analogue_recording_regions):
-            region_arguments[Regions(r)] = Args(vertex_slice)
+            region_arguments[r] = Args(vertex_slice)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\

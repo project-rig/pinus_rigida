@@ -12,7 +12,7 @@ from bisect import bisect_left
 from six import iteritems
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
-                                     "max_cols", "matrix"])
+                                     "max_cols", "rows"])
 
 logger = logging.getLogger("pinus_rigida")
 
@@ -24,6 +24,9 @@ class SynapticMatrix(Region):
     # Number of bits for various synapse components
     IndexBits = 10
     DelayBits = 3
+
+    row_dtype = [("weight", np.float32), ("delay", np.float32),
+                 ("index", np.uint32)]
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -64,9 +67,6 @@ class SynapticMatrix(Region):
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
         """
-        # Define record array type for rows
-        row_dtype = [("w", np.float32), ("d", np.float32), ("i", np.uint32)]
-
         # Create a numpy fixed point convert to convert
         # Floating point weights to this format
         # **NOTE** weights are only 16-bit, but final words need to be 32-bit
@@ -74,43 +74,44 @@ class SynapticMatrix(Region):
                                                    weight_fixed_point)
 
         # How much should we shift weights to be above index and delay
-        weight_shift = SynapticMatrix.IndexBits + SynapticMatrix.DelayBits
+        weight_shift = self.IndexBits + self.DelayBits
 
         # Loop through sub matrices
         assert fp.tell() == 0
-        for m, p in zip(sub_matrices, matrix_placements):
-            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u"
-                         % (p, m.max_cols))
+        for matrix, placement in zip(sub_matrices, matrix_placements):
+            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u",
+                         placement, matrix.max_cols)
 
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
-            fp.seek(p * 4, 0)
+            fp.seek(placement * 4, 0)
+
+            # Build matrix large enough for entire ragged matrix
+            matrix_words = np.empty((len(matrix.rows), matrix.max_cols + 1),
+                                    dtype=np.uint32)
 
             # Loop through matrix rows
-            for r in m.matrix:
+            for i, row in enumerate(matrix.rows):
                 # Convert row to numpy record array
-                r_np = np.asarray(r, dtype=row_dtype)
+                row = np.asarray(row, dtype=self.row_dtype)
 
                 # Quantise delays
                 # **TODO** take timestep into account
-                d_quantised = np.empty(len(r_np), dtype=np.uint32)
-                np.round(r_np["d"], out=d_quantised)
+                delay_quantised = np.empty(len(row), dtype=np.uint32)
+                np.round(row["delay"], out=delay_quantised)
 
                 # Convert weight to fixed point
-                w_fixed = float_to_weight(r_np["w"])
+                weight_fixed = float_to_weight(row["weight"])
 
                 # Combine together into synaptic words
-                words = np.empty(len(r_np) + 1, dtype=np.uint32)
-                words[0] = len(r_np)
-                words[1:] = (r_np["i"]
-                             | (d_quantised << SynapticMatrix.IndexBits)
-                             | (w_fixed << weight_shift))
-                # Write words
-                fp.write(words.tostring())
+                matrix_words[i,0] = len(row)
+                matrix_words[i,1:1 + len(row)] = (
+                    row["index"]
+                    | (delay_quantised << self.IndexBits)
+                    | (weight_fixed << weight_shift))
 
-                # Seek forward by padding
-                pad_words = m.max_cols - len(r_np)
-                fp.seek(pad_words * 4, 1)
+            # Write matrix
+            fp.write(matrix_words.tostring())
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -147,7 +148,7 @@ class SynapticMatrix(Region):
                                        for (w, d, j) in row[row_start:row_end]]
 
                     # Determine maximum number of columns in sub-matrix
-                    max_cols = max([len(row) for row in rows])
+                    max_cols = max(len(row) for row in rows)
 
                     # If there any columns in sub-matrix
                     if max_cols > 0:

@@ -57,19 +57,12 @@ class Projection(common.Projection, ContextMixin):
             # Add this projection to each post-population in 
             # assembly's list of incoming connections
             for p in self.post.populations:
-                p.incoming_projections[self.synapse_cluster_type][self.pre].append(self)
+                p.incoming_projections[self._synapse_cluster_type][self.pre].append(self)
         # Otherwise add it to the post-synaptic population's list
         # **THINK** what about population-views? add to their parent?
         else:
-            self.post.incoming_projections[self.synapse_cluster_type][self.pre].append(self)
-    
-    def build(self, **context_kwargs):
-        # connect the populations
-        # **TODO** this may already have been connected by another assembled post population
-         # Build each projection, adding the matrix rows to the context
-        with self.get_new_context(**context_kwargs):
-            self._connector.connect(self)
-    
+            self.post.incoming_projections[self._synapse_cluster_type][self.pre].append(self)
+
     def __len__(self):
         raise NotImplementedError
 
@@ -77,11 +70,21 @@ class Projection(common.Projection, ContextMixin):
         #parameter_space = ParameterSpace
         raise NotImplementedError
 
-    def create_current_input_cluster(self, simulation_timestep_us,
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _build(self, **context_kwargs):
+        # connect the populations
+        # **TODO** this may already have been connected by another assembled post population
+         # Build each projection, adding the matrix rows to the context
+        with self.get_new_context(**context_kwargs):
+            self._connector.connect(self)
+
+    def _create_current_input_cluster(self, simulation_timestep_us,
                                       timer_period_us, simulation_ticks,
                                       vertex_applications, vertex_resources):
         # Assert that this projection can be directly connected
-        assert self.directly_connectable
+        assert self._directly_connectable
 
         # Extract parameter lazy array for pre-synaptic population
         if isinstance(self.pre.celltype, StandardCellType):
@@ -119,9 +122,9 @@ class Projection(common.Projection, ContextMixin):
     def _synaptic_convergent_connect(self, presynaptic_indices,
                                    postsynaptic_index, matrix_rows,
                                    weight_range, **connection_parameters):
-        self.post.convergent_connect(presynaptic_indices, postsynaptic_index,
-                                     matrix_rows, weight_range,
-                                     **connection_parameters)
+        self.post._convergent_connect(presynaptic_indices, postsynaptic_index,
+                                      matrix_rows, weight_range,
+                                      **connection_parameters)
 
     @ContextMixin.use_contextual_arguments()
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
@@ -142,27 +145,30 @@ class Projection(common.Projection, ContextMixin):
                                                   postsynaptic_index,
                                                   **connection_parameters)
 
-    def build_direct_connection(self):
+    def _build_direct_connection(self):
         # Assert that the connection is directly connectable
-        assert self.directly_connectable
+        assert self._directly_connectable
 
         # Create, initially zeroed away of direct connection weights
         direct_weights = np.zeros(self.post.size)
 
         # Build
-        self.build(directly_connect=True, direct_weights=direct_weights)
+        self._build(directly_connect=True, direct_weights=direct_weights)
 
         return direct_weights
 
-    def estimate_num_synapses(self, pre_slice, post_slice):
+    def _estimate_num_synapses(self, pre_slice, post_slice):
         return self._connector.estimate_num_synapses(pre_slice, post_slice)
 
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
     @property
-    def synapse_cluster_type(self):
+    def _synapse_cluster_type(self):
         return (self.synapse_type.__class__, self.receptor_type)
 
     @property
-    def directly_connectable(self):
+    def _directly_connectable(self):
         # If conversion of direct connections is disabled, return false
         if not self._simulator.state.convert_direct_connections:
             return False
