@@ -88,7 +88,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 // Event handler functions
 //-----------------------------------------------------------------------------
-static void DMATransferDone(uint, uint tag)
+void DMATransferDone(uint, uint tag)
 {
   if(!g_SpikeSource.DMATransferDone(tag))
   {
@@ -96,7 +96,7 @@ static void DMATransferDone(uint, uint tag)
   }
 }
 //-----------------------------------------------------------------------------
-static void TimerTick(uint tick, uint)
+void TimerTick(uint tick, uint)
 {
   // Subtract 1 from tick as they start at 1
   tick--;

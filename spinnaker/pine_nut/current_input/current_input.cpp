@@ -147,7 +147,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 void DMATransferDone(uint, uint tag)
 {
-  if(!g_SpikeSource.DMATransferDone(tag))
+  if(tag != DMATagOutputWrite && !g_SpikeSource.DMATransferDone(tag))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Spike source unable to handle DMA tag %u", tag);
   }
@@ -201,7 +201,7 @@ void TimerTick(uint tick, uint)
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
     for(unsigned int i = 0; i < g_AppWords[AppWordNumCurrentSources]; i++)
     {
-      io_printf(IO_BUF, "%u,", outputBuffer[i]);
+      io_printf(IO_BUF, "%u,", g_OutputBuffer[i]);
     }
     io_printf(IO_BUF, "\n");
 #endif
