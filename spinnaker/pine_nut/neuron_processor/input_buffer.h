@@ -72,7 +72,7 @@ public:
 
       // Start DMA into input buffer
       auto inputBuffer = m_InputBuffers[inputBufferIndex];
-      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffers[tick % 2]),
+      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffers[(tick + 1) % 2]),
                          m_DMABuffer, DMA_READ, numNeurons * sizeof(T));
       return false;
     }
