@@ -130,8 +130,7 @@ class LazyArrayFloatToFixConverter(object):
 # ------------------------------------------------------------------------------
 # Functions
 # ------------------------------------------------------------------------------
-# AM, JH: This a)doesn't evenly slice and b)Nengo SpiNNaker has an implementation called divide_slice
-def evenly_slice(quantity, maximum_slice_size):
+def split_slice(quantity, maximum_slice_size):
     # Build lists of start and end indices of slices
     slice_starts = range(0, quantity, maximum_slice_size)
     slice_ends = [min(s + maximum_slice_size, quantity) for s in slice_starts]

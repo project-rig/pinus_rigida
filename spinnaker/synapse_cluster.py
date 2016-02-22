@@ -11,7 +11,7 @@ from utils import Args, InputVertex
 
 # Import functions
 from six import iteritems
-from utils import (create_app_ptr_and_region_files_named, evenly_slice,
+from utils import (create_app_ptr_and_region_files_named, split_slice,
                    model_binaries, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
@@ -72,10 +72,10 @@ class SynapseCluster(object):
             self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
             filename += "_profiled"
 
-        # Slice post-synaptic neurons evenly based on synapse type
+        # Split population slice
         # **NOTE** this is typically based only on memory
-        post_slices = evenly_slice(
-            post_pop_size, synapse_model.max_post_neurons_per_core)
+        post_slices = split_slice(post_pop_size,
+                                  synapse_model.max_post_neurons_per_core)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
             synapse_model, receptor_index)

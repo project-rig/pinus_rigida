@@ -18,7 +18,6 @@ from rig.netlist import Net
 # Import functions
 from rig.place_and_route import place_and_route_wrapper
 from six import iteritems, itervalues
-from spinnaker.utils import evenly_slice
 
 logger = logging.getLogger("pinus_rigida")
 
