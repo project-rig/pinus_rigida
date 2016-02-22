@@ -47,9 +47,10 @@ class Vertex(InputVertex):
 class SynapseCluster(object):
     # Tag names, corresponding to those defined in synapse_processor.h
     profiler_tag_names = {
-        0:  "Multicast packet received",
-        1:  "Setup next DMA row read",
-        2:  "Process row",
+        0:  "Timer tick",
+        1:  "Multicast packet received",
+        2:  "Setup next DMA row read",
+        3:  "Process row",
     }
 
     def __init__(self, timer_period_us, sim_ticks, config, post_pop_size,

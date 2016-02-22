@@ -17,9 +17,9 @@ void Exp::Print(char *stream, const MutableState &mutableState, const ImmutableS
 
   io_printf(stream, "\tImmutable state:\n");
   io_printf(stream, "\t\tExpTauSynExc      = %11.4k\n", immutableState.m_ExpTauSynExc);
-  io_printf(stream, "\t\tInitE             = %11.4k [nA]\n", immutableState.m_InitE);
+  io_printf(stream, "\t\tInitExc           = %11.4k [nA]\n", immutableState.m_InitExc);
   io_printf(stream, "\t\tExpTauSynInh      = %11.4k\n", immutableState.m_ExpTauSynInh);
-  io_printf(stream, "\t\tInitI             = %11.4k [nA]\n", immutableState.m_InitI);
+  io_printf(stream, "\t\tInitInh           = %11.4k [nA]\n", immutableState.m_InitInh);
 }
 };  // namespace NeuronModels
 };  // namespace NeuronProcessor

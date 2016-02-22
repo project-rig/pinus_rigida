@@ -118,6 +118,9 @@ class Population(common.Population):
     # Public SpiNNaker methods
     # --------------------------------------------------------------------------
     def get_neural_profile_data(self):
+        logger.info("Downloading neural profile for population %s",
+                    self.label)
+
         # Assert that profiling is enabled
         assert self.spinnaker_config.get("profile_samples", None) is not None
 
@@ -125,6 +128,9 @@ class Population(common.Population):
         return self._simulator.state.pop_neuron_clusters[self].read_profile()
 
     def get_synapse_profile_data(self):
+        logger.info("Downloading synapse profile for population %s",
+                    self.label)
+
         # Assert that profiling is enabled
         assert self.spinnaker_config.get("profile_samples", None) is not None
 

@@ -134,6 +134,7 @@ class SynapticMatrix(Region):
                     # Create a numpy array to hold the rows of the sub-matrix
                     # Connecting this pre-neuron vertex to this vertexs-lice
                     sub_rows = np.empty(len(rows), dtype=object)
+                    max_cols = 0
                     for i, row in enumerate(rows):
                         # Extract indices
                         row_idxs = [s.index for s in row]
@@ -147,8 +148,8 @@ class SynapticMatrix(Region):
                         sub_rows[i] = [(w, d, j - vertex_slice.start)
                                        for (w, d, j) in row[row_start:row_end]]
 
-                    # Determine maximum number of columns in sub-matrix
-                    max_cols = max(len(row) for row in rows)
+                        # Update maximum columns
+                        max_cols = max(max_cols, row_end - row_start)
 
                     # If there any columns in sub-matrix
                     if max_cols > 0:

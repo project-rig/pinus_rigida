@@ -37,13 +37,14 @@ public:
     // Excitatory decay constants
     S1615 m_ExpTauSynExc;
 
-    // Excitatory initial value
-    S1615 m_InitE;
+    // Excitatory scale
+    S1615 m_InitExc;
 
     // Inhibitory decay constant
     S1615 m_ExpTauSynInh;
 
-    S1615 m_InitI;
+    // Inhibitory scale
+    S1615 m_InitInh;
   };
 
   //-----------------------------------------------------------------------------
@@ -52,25 +53,24 @@ public:
   static inline void ApplyInput(MutableState &mutableState, const ImmutableState &immutableState, S1615 input, unsigned int receptorType)
   {
     // Apply input to correct receptor
-    // **TODO** Are m_ExpTauSynExc and m_ExpTauSynInh always going to be 16 bits? If so, can we use 16x32 DSP multiply
     if(receptorType == 0)
     {
-      mutableState.m_ISynExc += MulS1615(input, immutableState.m_InitE);
+      mutableState.m_ISynExc += input;
     }
     else
     {
-      mutableState.m_ISynInh += MulS1615(input, immutableState.m_InitI);
+      mutableState.m_ISynInh += input;
     }
   }
 
-  static inline S1615 GetExcInput(const MutableState &mutableState, const ImmutableState &)
+  static inline S1615 GetExcInput(const MutableState &mutableState, const ImmutableState &immutableState)
   {
-    return mutableState.m_ISynExc;
+    return MulS1615(mutableState.m_ISynExc, immutableState.m_InitExc);
   }
 
-  static inline S1615 GetInhInput(const MutableState &mutableState, const ImmutableState &)
+  static inline S1615 GetInhInput(const MutableState &mutableState, const ImmutableState &immutableState)
   {
-    return mutableState.m_ISynInh;
+    return MulS1615(mutableState.m_ISynInh, immutableState.m_InitInh);
   }
 
   static inline void Shape(MutableState &mutableState, const ImmutableState &immutableState)
