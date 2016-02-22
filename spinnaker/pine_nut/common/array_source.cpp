@@ -15,12 +15,14 @@ bool ArraySource::ReadSDRAMData(uint32_t *region, uint32_t, unsigned int numNeur
   // Read the time of the next spike block and store pointer to the start of the spike data region
   m_NextSpikeTick = (uint)region[0];
   m_NextSpikeBlockAddress = &region[1];
-  LOG_PRINT(LOG_LEVEL_INFO, "\tNext spike tick:%u, next spike block address:%08x",
-            m_NextSpikeTick, m_NextSpikeBlockAddress);
 
   // Allocate DMA buffer
   // **NOTE** one word is required for next spike tick word
   m_SpikeBlockSizeWords = BitField::GetWordSize(numNeurons) + 1;
+
+  LOG_PRINT(LOG_LEVEL_INFO, "\tNext spike tick:%u, next spike block address:%08x, spike block words:%u",
+            m_NextSpikeTick, m_NextSpikeBlockAddress, m_SpikeBlockSizeWords);
+
   unsigned int numBytes = m_SpikeBlockSizeWords * sizeof(uint32_t);
   m_DMABuffer = (uint32_t*)spin1_malloc(numBytes);
   if(m_DMABuffer == NULL)
@@ -32,7 +34,7 @@ bool ArraySource::ReadSDRAMData(uint32_t *region, uint32_t, unsigned int numNeur
   // If the next spike occurs in the 1st timestep
   if(m_NextSpikeTick == 0)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Copying first block into DMA buffer synchronously");
+    LOG_PRINT(LOG_LEVEL_INFO, "Synchronously copying first spike block into DMA buffer");
 
     // Synchronously copy next block into DMA buffer
     spin1_memcpy(m_DMABuffer, m_NextSpikeBlockAddress, numBytes);
@@ -42,7 +44,14 @@ bool ArraySource::ReadSDRAMData(uint32_t *region, uint32_t, unsigned int numNeur
 
     // Set state to reflect that there is data already in the buffer
     m_State = StateSpikeBlockInBuffer;
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    BitField::PrintBits(IO_BUF, &m_DMABuffer[1], m_SpikeBlockSizeWords - 1);
+    io_printf(IO_BUF, "\n");
+#endif
   }
+
+  return true;
 }
 //-----------------------------------------------------------------------------
 bool ArraySource::DMATransferDone(uint tag)
@@ -60,6 +69,11 @@ bool ArraySource::DMATransferDone(uint tag)
     // Set state to reflect that there is now data in the buffer
     LOG_PRINT(LOG_LEVEL_TRACE, "DMA transfer complete");
     m_State = StateSpikeBlockInBuffer;
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    BitField::PrintBits(IO_BUF, &m_DMABuffer[1], m_SpikeBlockSizeWords - 1);
+    io_printf(IO_BUF, "\n");
+#endif
     return true;
   }
   else

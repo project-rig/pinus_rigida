@@ -34,7 +34,7 @@ public:
   void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording,
               unsigned int numNeurons)
   {
-    // If a spike block has been transferred ready for this tick
+    // If we should be transmitting spikes this tick
     if(m_NextSpikeTick == tick)
     {
       // If there is data in the buffer
@@ -48,7 +48,7 @@ public:
           if(spiked)
           {
             // Emit a spike
-            LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
+            LOG_PRINT(LOG_LEVEL_TRACE, "\tEmitting spike");
             emitSpikeFunction(s);
           }
 
@@ -56,23 +56,36 @@ public:
           spikeRecording.RecordSpike(s, spiked);
         }
 
-        // Update next spike tick from start of block and
+        // Read next spike tick from start of block and
         // Advance offset to next block to fetch
         m_NextSpikeTick = m_DMABuffer[0];
         m_NextSpikeBlockAddress += m_SpikeBlockSizeWords;
 
-        // Set state to DMA progress and start DMA
-        m_State = StateDMAInProgress;
+        // Reset state
+        m_State = StateInactive;
 
-        // Start a DMA transfer from the absolute address of the spike block into buffer
-        spin1_dma_transfer(DMATagSpikeDataRead, const_cast<uint32_t*>(m_NextSpikeBlockAddress),
-          m_DMABuffer, DMA_READ, m_SpikeBlockSizeWords * sizeof(uint32_t));
+        LOG_PRINT(LOG_LEVEL_TRACE, "\tNext spike tick:%u", m_NextSpikeTick);
       }
       // Otherwise error
       else
       {
-        LOG_PRINT(LOG_LEVEL_WARN, "DMA hasn't completed in time for next tick");
+        LOG_PRINT(LOG_LEVEL_WARN, "DMA hasn't completed in time to transmit spikes at tick %u", tick);
       }
+    }
+
+    // If there are more spikes to send and we're inactive
+    // (i.e. next block hasn't already been read)
+    if(m_NextSpikeTick != UINT32_MAX && m_State == StateInactive)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tStarting DMA to read in spikes for tick %u from %08x",
+                m_NextSpikeTick, m_NextSpikeBlockAddress);
+
+      // Set state to DMA progress and start DMA
+      m_State = StateDMAInProgress;
+
+      // Start a DMA transfer from the absolute address of the spike block into buffer
+      spin1_dma_transfer(DMATagSpikeDataRead, const_cast<uint32_t*>(m_NextSpikeBlockAddress),
+        m_DMABuffer, DMA_READ, m_SpikeBlockSizeWords * sizeof(uint32_t));
     }
   }
 
