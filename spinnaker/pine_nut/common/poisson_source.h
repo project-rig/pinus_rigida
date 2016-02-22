@@ -23,6 +23,12 @@ template <typename R>
 class PoissonSource
 {
 public:
+  //-----------------------------------------------------------------------------
+  // Constants
+  //-----------------------------------------------------------------------------
+  // Poisson source doesn't use any DMA tags
+  static const uint DMATagMax = 0;
+
   PoissonSource() : m_NumSlow(0), m_SlowImmutableState(NULL), m_SlowTimeToSpike(NULL), m_NumFast(0), m_FastImmutableState(NULL)
   {
   }
@@ -97,7 +103,7 @@ public:
     return true;
   }
 
-  bool DMATransferDone(uint tag)
+  bool DMATransferDone(uint)
   {
     return false;
   }

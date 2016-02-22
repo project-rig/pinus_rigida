@@ -1,6 +1,6 @@
 #pragma once
 
-namespace CurrentInputPoisson
+namespace CurrentInput
 {
 //-----------------------------------------------------------------------------
 // Enumerations
@@ -9,7 +9,7 @@ namespace CurrentInputPoisson
 enum Region
 {
   RegionSystem,
-  RegionPoissonSource,
+  RegionSpikeSource,
   RegionOutputBuffer,
   RegionOutputWeight,
   RegionSpikeRecording,
@@ -23,4 +23,4 @@ enum AppWord
   AppWordMax,
 };
 
-} // CurrentInputPoisson
+} // CurrentInput

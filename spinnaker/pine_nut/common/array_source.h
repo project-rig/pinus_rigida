@@ -19,6 +19,15 @@ namespace Common
 class ArraySource
 {
 public:
+  //-----------------------------------------------------------------------------
+  // Enumerations
+  //-----------------------------------------------------------------------------
+  enum DMATag
+  {
+    DMATagSpikeDataRead,
+    DMATagMax,
+  };
+
   ArraySource() : m_NextSpikeTick(0), m_SpikeBlockSizeWords(0),
     m_NextSpikeBlockAddress(NULL), m_DMABuffer(NULL), m_State(StateInactive)
   {
@@ -90,11 +99,6 @@ public:
   }
 
 private:
-  //-----------------------------------------------------------------------------
-  // Constants
-  //-----------------------------------------------------------------------------
-  static const uint DMATagSpikeDataRead = 0;
-
   //-----------------------------------------------------------------------------
   // Enumerations
   //-----------------------------------------------------------------------------

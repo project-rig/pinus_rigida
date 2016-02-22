@@ -1,14 +1,11 @@
-# SpiNNaker Nengo Integration
+# Top level make file
 # ----------------------------------------------------------------------------
 # Authors:
-#  Andrew Mundy <mundya@cs.man.ac.uk>
-#  Terry Stewart
-#
-# February - April 2014
+#  James Knight
 # ----------------------------------------------------------------------------
-# Code derived from Andrew Rowley, University of Manchester
+# Code derived from Andrew Mundy and Andrew Rowley, University of Manchester
 
-APPS = neuron_processor synapse_processor spike_source current_input_poisson
+APPS = neuron_processor synapse_processor spike_source current_input
 
 all :
 	for a in $(APPS); do ( cd $$a; "$(MAKE)" ) || exit $$?; done
