@@ -6,6 +6,7 @@ from output_buffer import OutputBuffer
 from output_weight import OutputWeight
 from profiler import Profiler
 from spike_recording import SpikeRecording
+from spike_source_array import SpikeSourceArray
 from spike_source_poisson import SpikeSourcePoisson
 from synapse import Synapse
 from synaptic_matrix import SynapticMatrix

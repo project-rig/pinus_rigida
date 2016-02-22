@@ -148,11 +148,19 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
         ("end_time", "I4", lazy_param_map.integer_time_divide),
         ("rate", "I4", lazy_param_map.u032_rate_exp_minus_lambda),
     ]
-'''
+
 class SpikeSourceArray(cells.SpikeSourceArray):
     __doc__ = cells.SpikeSourceArray.__doc__
 
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    max_neurons_per_core = 256
+    max_current_inputs_per_core = 512
+
+    directly_connectable = True
+    neuron_region_class = regions.SpikeSourceArray
+    current_input_region_class = regions.SpikeSourceArray
+
     translations = build_translations(
-        ('spike_times', 'SPIKE_TIMES'),
+        ("spike_times", "spike_times"),
     )
-'''
