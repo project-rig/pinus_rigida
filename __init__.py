@@ -48,7 +48,6 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
     simulator.state.realtime_proportion = extra_params.get("realtime_proportion", 1.0)
     simulator.state.convert_direct_connections = extra_params.get("convert_direct_connections", True)
     simulator.state.stop_on_spinnaker = extra_params.get("stop_on_spinnaker", True)
-    simulator.state.config = extra_params.get("config", {})
     return rank()
 
 def end(compatible_output=True):

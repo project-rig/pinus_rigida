@@ -105,10 +105,9 @@ class NeuralCluster(object):
         filename = "neuron_" + cell_type.__class__.__name__.lower()
 
         # Add profiler region if required
-        # JH, AM, JK: Agreed this system doesn't make sense in PyNN as we have objects
-        if config.get("profile_samples", None) is not None:
+        if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
-                regions.Profiler(config["profile_samples"])
+                regions.Profiler(config.num_profile_samples)
             filename += "_profiled"
 
         # Slice population evenly

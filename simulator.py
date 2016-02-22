@@ -219,8 +219,9 @@ class State(common.control.BaseState):
                     net_key = (n_vert.key, n_vert.mask)
 
                     # Create a net connecting neuron vertex to synapse vertices
+                    mean_firing_rate = pop.spinnaker_config.mean_firing_rate
                     net = Net(n_vert, filtered_post_s_verts,
-                              pop._mean_firing_rate * len(n_vert.neuron_slice))
+                              mean_firing_rate * len(n_vert.neuron_slice))
 
                     # Add net to list and associate with key
                     nets.append(net)

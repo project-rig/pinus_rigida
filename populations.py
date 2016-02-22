@@ -18,6 +18,7 @@ from rig.utils.contexts import ContextMixin
 from six import (iteritems, itervalues)
 from spinnaker.neural_cluster import NeuralCluster
 from spinnaker.synapse_cluster import SynapseCluster
+from spinnaker.spinnaker_population_config import SpinnakerPopulationConfig
 
 logger = logging.getLogger("pinus_rigida")
 
@@ -102,6 +103,9 @@ class Population(common.Population):
         __doc__ = common.Population.__doc__
         super(Population, self).__init__(size, cellclass, cellparams, structure, initial_values, label)
 
+        # Create a spinnaker config
+        self.spinnaker_config = SpinnakerPopulationConfig()
+
         # Dictionary mapping pre-synaptic populations to
         # incoming projections, subdivided by synapse type
         # {synapse_cluster_type: {pynn_population: [pynn_projection]}}
@@ -122,7 +126,7 @@ class Population(common.Population):
                     self.label)
 
         # Assert that profiling is enabled
-        assert self.spinnaker_config.get("profile_samples", None) is not None
+        assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from neuron cluster
         return self._simulator.state.pop_neuron_clusters[self].read_profile()
@@ -132,7 +136,7 @@ class Population(common.Population):
                     self.label)
 
         # Assert that profiling is enabled
-        assert self.spinnaker_config.get("profile_samples", None) is not None
+        assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from each synapse cluster
         s_clusters = self._simulator.state.pop_synapse_clusters[self]
@@ -275,16 +279,6 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
-    @property
-    def _mean_firing_rate(self):
-        # **TODO** allow this to be overriden for e.g. poisson source
-        return self.spinnaker_config.get("mean_firing_rate", 10.0)
-
-    @property
-    def spinnaker_config(self):
-        # **TODO** merge in celltype config
-        return self._simulator.state.config.get(self, {})
-
     @property
     def _entirely_directly_connectable(self):
         # If conversion of direct connections is disabled, return false

@@ -68,8 +68,9 @@ class SynapseCluster(object):
         filename = "synapse_" + synapse_model.__name__.lower()
 
         # Add profiler region if required
-        if config.get("profile_samples", None) is not None:
-            self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
+        if config.num_profile_samples is not None:
+            self.regions[Regions.profiler] =\
+                regions.Profiler(config.num_profile_samples)
             filename += "_profiled"
 
         # Slice post-synaptic neurons evenly based on synapse type
@@ -106,7 +107,8 @@ class SynapseCluster(object):
                         pre_vertex.neuron_slice, post_slice)
 
                     # Use this to calculate event rate
-                    synaptic_event_rate = total_synapses * proj.pre._mean_firing_rate
+                    pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
+                    synaptic_event_rate = total_synapses * pre_mean_rate
 
                     # **TODO** SDRAM estimation
                     logger.debug("\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f",

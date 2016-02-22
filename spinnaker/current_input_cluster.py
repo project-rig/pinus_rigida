@@ -50,8 +50,9 @@ class CurrentInputCluster(object):
         filename = "current_input_" + cell_type.__class__.__name__.lower()
 
         # Add profiler region if required
-        if config.get("profile_samples", None) is not None:
-            self.regions[Regions.profiler] = regions.Profiler(config["profile_samples"])
+        if config.num_profile_samples is not None:
+            self.regions[Regions.profiler] =\
+                regions.Profiler(config.num_profile_samples)
             filename += "_profiled"
 
         # Slice current input
