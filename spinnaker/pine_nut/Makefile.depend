@@ -7,6 +7,10 @@ else
 	APP = $(PINUS_APP)
 endif
 
+ifdef LOG_LEVEL
+	CFLAGS += -DLOG_LEVEL=$(LOG_LEVEL)
+endif
+
 # Get absolute path of THIS make file i.e. the pine_nut directory
 PINE_NUT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
