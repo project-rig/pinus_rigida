@@ -26,7 +26,7 @@ namespace
 //----------------------------------------------------------------------------
 // Module level variables
 //----------------------------------------------------------------------------
-Common::Config g_Config;
+Config g_Config;
 uint32_t g_AppWords[AppWordMax];
 
 SpikeRecording g_SpikeRecording;
@@ -46,7 +46,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read system region
   if(!g_Config.ReadSystemRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionSystem),
+    Config::GetRegionStart(baseAddress, RegionSystem),
     flags, AppWordMax, g_AppWords))
   {
     return false;
@@ -59,7 +59,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read source region
   if(!g_SpikeSource.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionSpikeSource), flags,
+    Config::GetRegionStart(baseAddress, RegionSpikeSource), flags,
     g_AppWords[AppWordNumSpikeSources]))
   {
     return false;
@@ -67,15 +67,15 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read spike recording region
   if(!g_SpikeRecording.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
+    Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
     g_AppWords[AppWordNumSpikeSources]))
   {
     return false;
   }
 
   // Read profiler region
-  if(!Common::Profiler::ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionProfiler),
+  if(!Profiler::ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionProfiler),
     flags))
   {
     return false;
@@ -108,7 +108,7 @@ static void TimerTick(uint tick, uint)
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise profiling
-    Common::Profiler::Finalise();
+    Profiler::Finalise();
 
     // Finalise any recordings that are in progress, writing
     // back the final amounts of samples recorded to SDRAM
