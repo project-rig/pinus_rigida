@@ -130,25 +130,15 @@ class LazyArrayFloatToFixConverter(object):
 # ------------------------------------------------------------------------------
 # Functions
 # ------------------------------------------------------------------------------
+# AM, JH: This a)doesn't evenly slice and b)Nengo SpiNNaker has an implementation called divide_slice
 def evenly_slice(quantity, maximum_slice_size):
-    # Thankyou @mundya for this implementation
-    # Calculate number of slices required
-    num_slices = int(math.ceil(float(quantity) / float(maximum_slice_size)))
+    # Build lists of start and end indices of slices
+    slice_starts = range(0, quantity, maximum_slice_size)
+    slice_ends = [min(s + maximum_slice_size, quantity) for s in slice_starts]
 
-    # Determine the chunk sizes
-    slice_length = quantity // num_slices
-    num_larger = quantity % num_slices
-
-    # Yield the larger slices
-    pos = 0
-    for _ in range(num_larger):
-        yield UnitStrideSlice(pos, pos + slice_length + 1)
-        pos += slice_length + 1
-
-    # Yield the standard sized slices
-    for _ in range(num_slices - num_larger):
-        yield UnitStrideSlice(pos, pos + slice_length)
-        pos += slice_length
+    # Zip starts and ends together into list
+    # of slices and pair these with resources
+    return [UnitStrideSlice(s, e) for s, e in zip(slice_starts, slice_ends)]
 
 
 def calc_bitfield_words(bits):
