@@ -283,8 +283,7 @@ class Population(common.Population):
     @property
     def spinnaker_config(self):
         # **TODO** merge in celltype config
-        # AM, JK: Don't use default dict  use get with {} instead (OR SOMETHING)
-        return self._simulator.state.config[self]
+        return self._simulator.state.config.get(self, {})
 
     @property
     def _entirely_directly_connectable(self):
