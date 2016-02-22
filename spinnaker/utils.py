@@ -36,22 +36,51 @@ class InputVertex(object):
         self.out_buffers = None
         self.region_memory = None
 
+    # --------------------------------------------------------------------------
+    # Magic methods
+    # --------------------------------------------------------------------------
     def __str__(self):
         return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)
+
+    # --------------------------------------------------------------------------
+    # Public methods
+    # --------------------------------------------------------------------------
+    def get_in_buffer(self, post_slice):
+        # Check the slices involved overlap
+        assert post_slice.overlaps(self.post_neuron_slice)
+
+        # Calculate the offset
+        offset_bytes = (post_slice.start - self.post_neuron_slice.start) * 4
+        assert offset_bytes >= 0
+
+        # Return offset pointers into out buffers
+        return [b + offset_bytes for b in self.out_buffers]
     
 # ------------------------------------------------------------------------------
 # UnitStrideSlice
 # ------------------------------------------------------------------------------
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
-    @property
-    def python_slice(self):
-        return slice(self.start, self.stop)
-
+    # --------------------------------------------------------------------------
+    # Magic methods
+    # --------------------------------------------------------------------------
     def __len__(self):
         return self.stop - self.start
 
     def __str__(self):
         return "[%u, %u)" % (self.start, self.stop)
+
+    # --------------------------------------------------------------------------
+    # Public methods
+    # --------------------------------------------------------------------------
+    def overlaps(self, other):
+        return (self.start < other.stop) and (self.stop > other.start)
+
+    # --------------------------------------------------------------------------
+    # Properties
+    # --------------------------------------------------------------------------
+    @property
+    def python_slice(self):
+        return slice(self.start, self.stop)
 
 # ------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter

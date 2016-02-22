@@ -142,8 +142,6 @@ class State(common.control.BaseState):
         # **TODO** make this process iterative so if result of
         # there are more than 15 synapse processors for each
         # neuron processor, split more and try again
-        # **TODO** post-synaptic limits should perhaps be based on
-        # shifts down of 1024 to avoid overlapping weirdness
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
 
@@ -254,7 +252,7 @@ class State(common.control.BaseState):
                     # Find synapse and current vertices with the same slice
                     # **TODO** different ratios here
                     n.input_verts = [i for i in itertools.chain(s_verts, c_verts)
-                                     if i.post_neuron_slice == n.neuron_slice]
+                                     if i.post_neuron_slice.overlaps(n.neuron_slice)]
 
                     logger.debug("\t\tConstraining neuron vert and %u input verts to same chip",
                                  len(n.input_verts))
@@ -408,7 +406,8 @@ class State(common.control.BaseState):
                                              y=vertex_placement[1]):
                     # Get the input buffers from each synapse vertex
                     in_buffers = [
-                        (s.out_buffers, s.receptor_index, s.weight_fixed_point)
+                        (s.get_in_buffer(v.neuron_slice), s.receptor_index,
+                         s.weight_fixed_point)
                         for s in v.input_verts]
 
                     # Calculate required memory size

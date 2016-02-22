@@ -14,7 +14,7 @@ class StaticSynapse(synapses.StaticSynapse):
 
     # How many post-synaptic neurons per core can a
     # SpiNNaker synapse_processor of this type handle
-    max_post_neurons_per_core = 512 #1024
+    max_post_neurons_per_core = 1024
 
     # Assuming relatively long row length, at what rate can a SpiNNaker
     # synapse_processor of this type process synaptic events (hZ)
