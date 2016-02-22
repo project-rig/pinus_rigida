@@ -79,7 +79,11 @@ class AnalogueRecording(Region):
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
 
         # Each sample requires one word per neuron
+        # If there are none i.e. no neurons in this vertex
+        # are being recorded, return an empty dictionary
         sample_words = vertex_indices.count()
+        if sample_words == 0:
+            return {}
 
         # Seek to start of recording memory
         region_memory.seek(calc_slice_bitfield_words(vertex_slice) * 4)
