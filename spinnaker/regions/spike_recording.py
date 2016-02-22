@@ -97,7 +97,7 @@ class SpikeRecording(Region):
         # Swap endianness
         data = data.view(dtype=np.uint32).byteswap().view(dtype=np.uint8)
 
-        # Reverse bit order within each wordsimulation_timestep_ms
+        # Reverse bit order within each word
         data = np.fliplr(np.unpackbits(data).reshape(-1, 32))
 
         # Finally reshape into a sample shaped vector

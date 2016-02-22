@@ -80,7 +80,7 @@ class State(common.control.BaseState):
         self.segment_counter += 1
 
     def stop(self):
-        if self.machine_controller is not None:
+        if self.machine_controller is not None and self.stop_on_spinnaker:
             logger.info("Stopping SpiNNaker application")
             self.machine_controller.send_signal("stop")
 
