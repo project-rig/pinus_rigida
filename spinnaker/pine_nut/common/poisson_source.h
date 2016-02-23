@@ -23,6 +23,12 @@ template <typename R>
 class PoissonSource
 {
 public:
+  //-----------------------------------------------------------------------------
+  // Constants
+  //-----------------------------------------------------------------------------
+  // Poisson source doesn't use any DMA tags
+  static const uint DMATagMax = 0;
+
   PoissonSource() : m_NumSlow(0), m_SlowImmutableState(NULL), m_SlowTimeToSpike(NULL), m_NumFast(0), m_FastImmutableState(NULL)
   {
   }
@@ -30,7 +36,7 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool ReadSDRAMData(uint32_t *region, uint32_t)
+  bool ReadSDRAMData(uint32_t *region, uint32_t, unsigned int)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "PoissonSource::ReadSDRAMData");
 
@@ -97,8 +103,14 @@ public:
     return true;
   }
 
+  bool DMATransferDone(uint)
+  {
+    return false;
+  }
+
   template<typename E>
-  void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording)
+  void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording,
+              unsigned int)
   {
     // Loop through slow source
     auto *slowTimeToSpike = m_SlowTimeToSpike;

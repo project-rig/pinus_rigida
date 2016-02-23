@@ -1,26 +1,25 @@
 #pragma once
 
-namespace CurrentInputPoisson
+namespace SpikeSource
 {
 //-----------------------------------------------------------------------------
 // Enumerations
 //-----------------------------------------------------------------------------
-// Indexes of current input executable regions
+// Indices or regions
 enum Region
 {
   RegionSystem,
-  RegionPoissonSource,
-  RegionOutputBuffer,
-  RegionOutputWeight,
-  RegionSpikeRecording,
+  RegionSpikeSource,
+  RegionSpikeRecording = 4,
   RegionProfiler,
 };
 
 // Indexes of application words
 enum AppWord
 {
-  AppWordNumCurrentSources,
+  AppWordKey,
+  AppWordNumSpikeSources,
   AppWordMax,
 };
 
-} // CurrentInputPoisson
+}  // namespace SpikeSource

@@ -1,19 +1,18 @@
-#include "current_input_poisson.h"
+#include "current_input.h"
 
 // Common includes
 #include "../common/config.h"
-#include "../common/random/mars_kiss64.h"
 #include "../common/log.h"
-#include "../common/poisson_source.h"
 #include "../common/profiler.h"
 #include "../common/spike_recording.h"
 #include "../common/spinnaker.h"
 
+// Configuration include
+#include "config.h"
+
 // Namespaces
-using namespace Common::Random;
 using namespace Common;
-using namespace Common::Utils;
-using namespace CurrentInputPoisson;
+using namespace CurrentInput;
 
 //-----------------------------------------------------------------------------
 // Anonymous namespace
@@ -21,17 +20,14 @@ using namespace CurrentInputPoisson;
 namespace
 {
 //----------------------------------------------------------------------------
-// Enumerations
+// Constants
 //----------------------------------------------------------------------------
-enum DMATag
-{
-  DMATagOutputWrite,
-};
+const uint DMATagOutputWrite = Source::DMATagMax;
 
 //----------------------------------------------------------------------------
 // Module level variables
 //----------------------------------------------------------------------------
-Common::Config g_Config;
+Config g_Config;
 uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
 uint32_t *g_OutputWeights = NULL;
@@ -42,7 +38,7 @@ uint32_t g_AppWords[AppWordMax];
 
 SpikeRecording g_SpikeRecording;
 
-PoissonSource<MarsKiss64> g_PoissonSource;
+Source g_SpikeSource;
 
 //-----------------------------------------------------------------------------
 bool ReadOutputBufferRegion(uint32_t *region, uint32_t)
@@ -92,7 +88,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read system region
   if(!g_Config.ReadSystemRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionSystem),
+    Config::GetRegionStart(baseAddress, RegionSystem),
     flags, AppWordMax, g_AppWords))
   {
     return false;
@@ -103,16 +99,17 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
       g_AppWords[AppWordNumCurrentSources]);
   }
 
-  // Read poisson source region
-  if(!g_PoissonSource.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionPoissonSource), flags))
+  // Read spike source region
+  if(!g_SpikeSource.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionSpikeSource), flags,
+    g_AppWords[AppWordNumCurrentSources]))
   {
     return false;
   }
 
   // Read output buffer region
   if(!ReadOutputBufferRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionOutputBuffer),
+    Config::GetRegionStart(baseAddress, RegionOutputBuffer),
     flags))
   {
     return false;
@@ -120,7 +117,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read output weight region
   if(!ReadOutputWeightRegion(
-    Common::Config::GetRegionStart(baseAddress, RegionOutputWeight),
+    Config::GetRegionStart(baseAddress, RegionOutputWeight),
     flags))
   {
     return false;
@@ -128,7 +125,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read spike recording region
   if(!g_SpikeRecording.ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
+    Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
     g_AppWords[AppWordNumCurrentSources]))
   {
     return false;
@@ -136,7 +133,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read profiler region
   if(!Common::Profiler::ReadSDRAMData(
-    Common::Config::GetRegionStart(baseAddress, RegionProfiler),
+    Config::GetRegionStart(baseAddress, RegionProfiler),
     flags))
   {
     return false;
@@ -147,6 +144,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
 //-----------------------------------------------------------------------------
 // Event handler functions
+//-----------------------------------------------------------------------------
+void DMATransferDone(uint, uint tag)
+{
+  if(tag != DMATagOutputWrite && !g_SpikeSource.DMATransferDone(tag))
+  {
+    LOG_PRINT(LOG_LEVEL_ERROR, "Spike source unable to handle DMA tag %u", tag);
+  }
+}
 //-----------------------------------------------------------------------------
 void TimerTick(uint tick, uint)
 {
@@ -160,7 +165,7 @@ void TimerTick(uint tick, uint)
     LOG_PRINT(LOG_LEVEL_INFO, "Simulation complete");
 
     // Finalise profiling
-    Common::Profiler::Finalise();
+    Profiler::Finalise();
     
     // Finalise any recordings that are in progress, writing
     // back the final amounts of samples recorded to SDRAM
@@ -186,7 +191,8 @@ void TimerTick(uint tick, uint)
       };
 
     // Update poisson source
-    g_PoissonSource.Update(tick, emitSpikeLambda, g_SpikeRecording);
+    g_SpikeSource.Update(tick, emitSpikeLambda, g_SpikeRecording,
+      g_AppWords[AppWordNumCurrentSources]);
 
     // Transfer spike recording buffer to SDRAM
     g_SpikeRecording.TransferBuffer();
@@ -195,7 +201,7 @@ void TimerTick(uint tick, uint)
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
     for(unsigned int i = 0; i < g_AppWords[AppWordNumCurrentSources]; i++)
     {
-      io_printf(IO_BUF, "%u,", outputBuffer[i]);
+      io_printf(IO_BUF, "%u,", g_OutputBuffer[i]);
     }
     io_printf(IO_BUF, "\n");
 #endif
@@ -215,7 +221,7 @@ extern "C" void c_main()
 {
   //static_init();
   // Get this core's base address using alloc tag
-  uint32_t *baseAddress = Common::Config::GetBaseAddressAllocTag();
+  uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
 
   // If reading SDRAM data fails
   if(!ReadSDRAMData(baseAddress, 0))
@@ -229,6 +235,7 @@ extern "C" void c_main()
 
   // Register callbacks
   spin1_callback_on(TIMER_TICK,         TimerTick,         2);
+  spin1_callback_on(DMA_TRANSFER_DONE,  DMATransferDone,   0);
 
   // Start simulation
   spin1_start(SYNC_WAIT);
