@@ -36,22 +36,51 @@ class InputVertex(object):
         self.out_buffers = None
         self.region_memory = None
 
+    # --------------------------------------------------------------------------
+    # Magic methods
+    # --------------------------------------------------------------------------
     def __str__(self):
         return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)
+
+    # --------------------------------------------------------------------------
+    # Public methods
+    # --------------------------------------------------------------------------
+    def get_in_buffer(self, post_slice):
+        # Check the slices involved overlap
+        assert post_slice.overlaps(self.post_neuron_slice)
+
+        # Calculate the offset
+        offset_bytes = (post_slice.start - self.post_neuron_slice.start) * 4
+        assert offset_bytes >= 0
+
+        # Return offset pointers into out buffers
+        return [b + offset_bytes for b in self.out_buffers]
     
 # ------------------------------------------------------------------------------
 # UnitStrideSlice
 # ------------------------------------------------------------------------------
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
-    @property
-    def python_slice(self):
-        return slice(self.start, self.stop)
-
+    # --------------------------------------------------------------------------
+    # Magic methods
+    # --------------------------------------------------------------------------
     def __len__(self):
         return self.stop - self.start
 
     def __str__(self):
         return "[%u, %u)" % (self.start, self.stop)
+
+    # --------------------------------------------------------------------------
+    # Public methods
+    # --------------------------------------------------------------------------
+    def overlaps(self, other):
+        return (self.start < other.stop) and (self.stop > other.start)
+
+    # --------------------------------------------------------------------------
+    # Properties
+    # --------------------------------------------------------------------------
+    @property
+    def python_slice(self):
+        return slice(self.start, self.stop)
 
 # ------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter
@@ -130,25 +159,14 @@ class LazyArrayFloatToFixConverter(object):
 # ------------------------------------------------------------------------------
 # Functions
 # ------------------------------------------------------------------------------
-def evenly_slice(quantity, maximum_slice_size):
-    # Thankyou @mundya for this implementation
-    # Calculate number of slices required
-    num_slices = int(math.ceil(float(quantity) / float(maximum_slice_size)))
+def split_slice(quantity, maximum_slice_size):
+    # Build lists of start and end indices of slices
+    slice_starts = range(0, quantity, maximum_slice_size)
+    slice_ends = [min(s + maximum_slice_size, quantity) for s in slice_starts]
 
-    # Determine the chunk sizes
-    slice_length = quantity // num_slices
-    num_larger = quantity % num_slices
-
-    # Yield the larger slices
-    pos = 0
-    for _ in range(num_larger):
-        yield UnitStrideSlice(pos, pos + slice_length + 1)
-        pos += slice_length + 1
-
-    # Yield the standard sized slices
-    for _ in range(num_slices - num_larger):
-        yield UnitStrideSlice(pos, pos + slice_length)
-        pos += slice_length
+    # Zip starts and ends together into list
+    # of slices and pair these with resources
+    return [UnitStrideSlice(s, e) for s, e in zip(slice_starts, slice_ends)]
 
 
 def calc_bitfield_words(bits):

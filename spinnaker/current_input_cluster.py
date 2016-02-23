@@ -11,7 +11,7 @@ from utils import (Args, InputVertex)
 
 # Import functions
 from six import iteritems
-from utils import (create_app_ptr_and_region_files_named, evenly_slice,
+from utils import (create_app_ptr_and_region_files_named, split_slice,
                    model_binaries, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
@@ -56,9 +56,8 @@ class CurrentInputCluster(object):
             filename += "_profiled"
 
         # Slice current input
-        post_slices = evenly_slice(
-            parameters.shape[0],
-            cell_type.max_current_inputs_per_core)
+        post_slices = split_slice(parameters.shape[0],
+                                  cell_type.max_current_inputs_per_core)
 
         current_input_app = path.join(model_binaries, filename + ".aplx")
         logger.debug("\t\t\tCurrent input application:%s",

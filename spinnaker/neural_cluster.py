@@ -12,7 +12,7 @@ from utils import Args
 
 # Import functions
 from six import iteritems
-from utils import (create_app_ptr_and_region_files_named, evenly_slice,
+from utils import (create_app_ptr_and_region_files_named, split_slice,
                    model_binaries, sizeof_regions_named)
 
 logger = logging.getLogger("pinus_rigida")
@@ -110,10 +110,10 @@ class NeuralCluster(object):
                 regions.Profiler(config.num_profile_samples)
             filename += "_profiled"
 
-        # Slice population evenly
+        # Split population slice
         # **TODO** pick based on timestep and parameters
-        neuron_slices = evenly_slice(parameters.shape[0],
-                                     cell_type.max_neurons_per_core)
+        neuron_slices = split_slice(parameters.shape[0],
+                                    cell_type.max_neurons_per_core)
 
         # Build neuron vertices for each slice allocating a keyspace for each vertex
         self.verts = [Vertex(keyspace, neuron_slice, pop_id, vert_id)
