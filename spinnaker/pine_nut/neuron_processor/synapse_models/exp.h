@@ -50,7 +50,7 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline void ApplyInput(MutableState &mutableState, const ImmutableState &immutableState, S1615 input, unsigned int receptorType)
+  static inline void ApplyInput(MutableState &mutableState, const ImmutableState &, S1615 input, unsigned int receptorType)
   {
     // Apply input to correct receptor
     if(receptorType == 0)
