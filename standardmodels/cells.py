@@ -84,7 +84,7 @@ class IF_curr_exp(cells.IF_curr_exp):
 
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    max_neurons_per_core = 512
+    max_neurons_per_core = 1024
 
     # JK: not necessary
     neuron_region_class = regions.Neuron

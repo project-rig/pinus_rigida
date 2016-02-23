@@ -18,7 +18,7 @@ class StaticSynapse(synapses.StaticSynapse):
 
     # Assuming relatively long row length, at what rate can a SpiNNaker
     # synapse_processor of this type process synaptic events (hZ)
-    max_synaptic_event_rate = 3E6 #5E6
+    max_synaptic_event_rate = 5E6
 
     def _get_minimum_delay(self):
         d = state.min_delay

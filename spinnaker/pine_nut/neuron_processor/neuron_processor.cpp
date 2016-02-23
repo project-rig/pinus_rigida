@@ -44,9 +44,11 @@ enum DMATag
 Common::Config g_Config;
 uint32_t g_AppWords[AppWordMax];
 
+uint16_t *g_NeuronImmutableStateIndices = NULL;
 Neuron::MutableState *g_NeuronMutableState = NULL;
 Neuron::ImmutableState *g_NeuronImmutableState = NULL;
 
+uint16_t *g_SynapseImmutableStateIndices = NULL;
 Synapse::MutableState *g_SynapseMutableState = NULL;
 Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
@@ -74,7 +76,8 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   }
 
   LOG_PRINT(LOG_LEVEL_TRACE, "\tNeuron immutable state");
-  if(!AllocateCopyStructArray(g_AppWords[AppWordNumNeurons], region, g_NeuronImmutableState))
+  if(!AllocateCopyIndexedStructArray(g_AppWords[AppWordNumNeurons], region,
+    g_NeuronImmutableStateIndices, g_NeuronImmutableState))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate neuron immutable state array");
     return false;
@@ -86,7 +89,8 @@ bool ReadNeuronRegion(uint32_t *region, uint32_t)
   for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
     io_printf(IO_BUF, "Neuron %u:\n", n);
-    Neuron::Print(IO_BUF, g_NeuronMutableState[n], g_NeuronImmutableState[n]);
+    Neuron::Print(IO_BUF, g_NeuronMutableState[n],
+      g_NeuronImmutableState[g_NeuronImmutableStateIndices[n]]);
   }
   LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------");
 #endif
@@ -106,7 +110,8 @@ bool ReadSynapseRegion(uint32_t *region, uint32_t)
   }
 
   LOG_PRINT(LOG_LEVEL_TRACE, "\tSynapse immutable state");
-  if(!AllocateCopyStructArray(g_AppWords[AppWordNumNeurons], region, g_SynapseImmutableState))
+  if(!AllocateCopyIndexedStructArray(g_AppWords[AppWordNumNeurons], region,
+    g_SynapseImmutableStateIndices, g_SynapseImmutableState))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate synapse immutable state array");
     return false;
@@ -118,7 +123,9 @@ bool ReadSynapseRegion(uint32_t *region, uint32_t)
   for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
     io_printf(IO_BUF, "Neuron %u:\n", n);
-    Synapse::Print(IO_BUF, g_SynapseMutableState[n], g_SynapseImmutableState[n]);
+    Synapse::Print(IO_BUF, g_SynapseMutableState[n],
+      g_SynapseImmutableState[g_SynapseImmutableStateIndices[n]]
+    );
   }
   LOG_PRINT(LOG_LEVEL_TRACE, "------------------------------------------");
 #endif
@@ -211,16 +218,16 @@ void UpdateNeurons()
 
   // Loop through neurons
   auto *neuronMutableState = g_NeuronMutableState;
-  const auto *neuronImmutableState = g_NeuronImmutableState;
+  const uint16_t *neuronImmutableStateIndex = g_NeuronImmutableStateIndices;
   auto *synapseMutableState = g_SynapseMutableState;
-  const auto *synapseImmutableState = g_SynapseImmutableState;
+  const uint16_t *synapseImmutableStateIndex = g_SynapseImmutableStateIndices;
   for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
 
     // Get synaptic input
     auto &synMutable = *synapseMutableState++;
-    const auto &synImmutable = *synapseImmutableState++;
+    const auto &synImmutable = g_SynapseImmutableState[*synapseImmutableStateIndex++];
     S1615 excInput = Synapse::GetExcInput(synMutable, synImmutable);
     S1615 inhInput = Synapse::GetInhInput(synMutable, synImmutable);
 
@@ -229,7 +236,7 @@ void UpdateNeurons()
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tExcitatory input:%k, Inhibitory input:%k, External current:%knA",
               excInput, inhInput, extCurrent);
     auto &neuronMutable = *neuronMutableState++;
-    const auto &neuronImmutable = *neuronImmutableState++;
+    const auto &neuronImmutable = g_NeuronImmutableState[*neuronImmutableStateIndex++];
     bool spiked = Neuron::Update(neuronMutable, neuronImmutable,
       excInput, inhInput, extCurrent);
 
@@ -260,10 +267,10 @@ void UpdateNeurons()
     }
 
     // **HACK** sleep for 1us after every other neuron to better space spiking
-    if((n % 2) != 0)
+    /*if((n % 2) != 0)
     {
       spin1_delay_us(1);
-    }
+    }*/
   }
 
   // Transfer spike recording buffer to SDRAM
@@ -284,7 +291,7 @@ static void DMATransferDone(uint, uint tag)
       [](unsigned int neuron, S1615 input, unsigned int receptorType)
       {
         Synapse::ApplyInput(g_SynapseMutableState[neuron],
-                            g_SynapseImmutableState[neuron],
+                            g_SynapseImmutableState[g_SynapseImmutableStateIndices[neuron]],
                             input, receptorType);
       };
 
@@ -338,10 +345,11 @@ static void TimerTick(uint tick, uint)
     // Loop through neurons and shape synaptic inputs
     Profiler::WriteEntry(Profiler::Enter | ProfilerTagSynapseShape);
     auto *synapseMutableState = g_SynapseMutableState;
-    const auto *synapseImmutableState = g_SynapseImmutableState;
+    const uint16_t *synapseImmutableStateIndex = g_SynapseImmutableStateIndices;
     for(uint n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
     {
-      Synapse::Shape(*synapseMutableState++, *synapseImmutableState++);
+      Synapse::Shape(*synapseMutableState++,
+                     g_SynapseImmutableState[*synapseImmutableStateIndex++]);
     }
     Profiler::WriteEntry(Profiler::Exit | ProfilerTagSynapseShape);
 
