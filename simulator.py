@@ -106,6 +106,17 @@ class State(common.control.BaseState):
                     print self.machine_controller.get_iobuf(p, x, y)
             raise Exception("Unexpected core failures before reaching %s state." % desired_to_state)
 
+    def _estimate_constraints(self, hardware_timestep_us):
+        logger.info("Estimating constraints")
+
+        # Loop through populations whose output can't be
+        # entirely be replaced by direct connections
+        populations = [p for p in self.populations
+                       if not p._entirely_directly_connectable]
+        for pop_id, pop in enumerate(populations):
+            logger.debug("\tPopulation:%s", pop.label)
+            pop._estimate_constraints(hardware_timestep_us)
+
     def _allocate_neuron_clusters(self, vertex_applications, vertex_resources,
                                   keyspace, hardware_timestep_us,
                                   duration_timesteps):
@@ -439,6 +450,9 @@ class State(common.control.BaseState):
         logger.info("Simulating for %u %ums timesteps using a hardware timestep of %uus",
             duration_timesteps, self.dt, hardware_timestep_us)
         
+        # Estimate constraints
+        self._estimate_constraints(hardware_timestep_us)
+
         # Create a 32-bit keyspace
         keyspace = BitField(32)
         keyspace.add_field("population_index", tags="routing")

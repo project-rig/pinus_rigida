@@ -55,7 +55,8 @@ class SynapseCluster(object):
 
     def __init__(self, timer_period_us, sim_ticks, config, post_pop_size,
                  synapse_model, receptor_index, synaptic_projections,
-                 pop_neuron_clusters, vertex_applications, vertex_resources):
+                 pop_neuron_clusters, vertex_applications, vertex_resources,
+                 post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(timer_period_us,
@@ -74,9 +75,7 @@ class SynapseCluster(object):
             filename += "_profiled"
 
         # Split population slice
-        # **NOTE** this is typically based only on memory
-        post_slices = split_slice(post_pop_size,
-                                  synapse_model.max_post_neurons_per_core)
+        post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
             synapse_model, receptor_index)

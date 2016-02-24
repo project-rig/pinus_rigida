@@ -15,7 +15,7 @@ from pyNN.parameters import ParameterSpace, simplify
 from . import simulator
 from .recording import Recorder
 from rig.utils.contexts import ContextMixin
-from six import (iteritems, itervalues)
+from six import iteritems, itervalues
 from spinnaker.neural_cluster import NeuralCluster
 from spinnaker.synapse_cluster import SynapseCluster
 from spinnaker.spinnaker_population_config import SpinnakerPopulationConfig
@@ -47,6 +47,12 @@ class WeightRange(object):
 
         # Calculate where the weight format fixed-point lies
         return (16 - int(max_msb))
+
+# Round a j constraint to the lowest power-of-two
+# multiple of the minium j constraint
+def round_j_constraint(j_constraint, min_j_constraint):
+    return min_j_constraint * int(2 ** math.floor(
+        math.log(j_constraint / min_j_constraint, 2)))
 
 # --------------------------------------------------------------------------
 # Assembly
@@ -181,6 +187,65 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
+    def _estimate_constraints(self, hardware_timestep_us):
+        # Determine the fraction of 1ms that the hardware timestep is.
+        # This is used to scale all time-driven estimates
+        timestep_multiplier = min(1.0, float(hardware_timestep_us) / 1000.0)
+        logger.debug("\t\tTimestep multiplier:%f", timestep_multiplier)
+
+        # **TODO** incorporate firing rate annotation in sane way
+
+        # Apply both multipliers to the hard maximum specified in celltype
+        self.neuron_j_constraint = int(self.celltype.max_neurons_per_core *
+                                       timestep_multiplier)
+        logger.debug("\t\tNeuron j constraint:%u",
+                     self.neuron_j_constraint)
+
+        self.synapse_j_constraints = {}
+        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+            # Chain together incoming projections from all populations
+            projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
+            synaptic_projections = [p for p in projections
+                                    if not p._directly_connectable]
+
+            logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
+                         synapse_type[0],
+                         synapse_type[0].max_post_neurons_per_core)
+            self.synapse_j_constraints[synapse_type] =\
+                synapse_type[0].max_post_neurons_per_core
+
+        # Find the minimum constraint in j
+        min_j_constraint = min(self.neuron_j_constraint,
+                               *itervalues(self.synapse_j_constraints))
+
+        logger.debug("\t\tMin j constraint:%u", min_j_constraint)
+
+        # Round j constraints to multiples of minimum
+        self.neuron_j_constraint = round_j_constraint(
+            self.neuron_j_constraint, min_j_constraint)
+
+        self.synapse_j_constraints = {
+            t: round_j_constraint(c, min_j_constraint)
+            for t, c in iteritems(self.synapse_j_constraints)}
+
+        # Now determin the maximum constraint i.e. the 'width'
+        # that will be constrained together
+        max_j_constraint = max(self.neuron_j_constraint,
+                               *itervalues(self.synapse_j_constraints))
+
+        # Calculate how many cores this means will be required
+        num_cores = (max_j_constraint / self.neuron_j_constraint) +\
+            sum(max_j_constraint / c for c in itervalues(self.synapse_j_constraints))
+
+        # Check that this will fit on a chip
+        # **TODO** iterate, dividing maximum constraint by 2
+        assert num_cores <= 16
+
+        logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
+        for synapse_type, synapse_j_constrain in iteritems(self.synapse_j_constraints):
+            logger.debug("\t\tSynapse type:%s - J constraint:%u",
+                         synapse_type, synapse_j_constrain)
+
     def _create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
                               simulation_ticks, vertex_applications,
                               vertex_resources, keyspace):
@@ -197,7 +262,8 @@ class Population(common.Population):
                              timer_period_us, simulation_ticks,
                              self.recorder.indices_to_record,
                              self.spinnaker_config, vertex_applications,
-                             vertex_resources, keyspace)
+                             vertex_resources, keyspace,
+                             self.neuron_j_constraint)
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
                                 vertex_applications, vertex_resources):
@@ -221,7 +287,8 @@ class Population(common.Population):
                                self.spinnaker_config, self.size,
                                synapse_type[0], receptor_index,
                                synaptic_projections, pop_neuron_clusters,
-                               vertex_applications, vertex_resources)
+                               vertex_applications, vertex_resources,
+                               self.synapse_j_constraints[synapse_type])
 
             # Add cluster to dictionary
             synapse_clusters[synapse_type] = c

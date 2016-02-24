@@ -69,7 +69,7 @@ class NeuralCluster(object):
     def __init__(self, pop_id, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record, config, vertex_applications,
-                 vertex_resources, keyspace):
+                 vertex_resources, keyspace, post_synaptic_width):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -111,9 +111,7 @@ class NeuralCluster(object):
             filename += "_profiled"
 
         # Split population slice
-        # **TODO** pick based on timestep and parameters
-        neuron_slices = split_slice(parameters.shape[0],
-                                    cell_type.max_neurons_per_core)
+        neuron_slices = split_slice(parameters.shape[0], post_synaptic_width)
 
         # Build neuron vertices for each slice allocating a keyspace for each vertex
         self.verts = [Vertex(keyspace, neuron_slice, pop_id, vert_id)
