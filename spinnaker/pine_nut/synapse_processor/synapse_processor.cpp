@@ -273,7 +273,7 @@ void UserEvent(uint, uint)
 //-----------------------------------------------------------------------------
 void TimerTick(uint tick, uint)
 {
-  Profiler::Tag<ProfilerTagTimerTick> p;
+  Profiler::TagDisableIRQFIQ<ProfilerTagTimerTick> p;
   
   // Cache tick
   // **NOTE** ticks start at 1
