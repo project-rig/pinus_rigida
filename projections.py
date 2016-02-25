@@ -101,7 +101,8 @@ class Projection(common.Projection, ContextMixin):
             self.pre.celltype, pre_parameters, self.pre.initial_values,
             simulation_timestep_us, timer_period_us, simulation_ticks,
             self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
-            receptor_index, vertex_applications, vertex_resources)
+            receptor_index, vertex_applications, vertex_resources,
+            self.current_input_j_constraint)
 
     @ContextMixin.use_contextual_arguments()
     def _direct_convergent_connect(self, presynaptic_indices,

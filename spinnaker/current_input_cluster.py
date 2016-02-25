@@ -34,7 +34,8 @@ class Regions(enum.IntEnum):
 class CurrentInputCluster(object):
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms,
                  timer_period_us, sim_ticks, indices_to_record, config,
-                 receptor_index, vertex_applications, vertex_resources):
+                 receptor_index, vertex_applications, vertex_resources,
+                 post_synaptic_width):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -56,8 +57,7 @@ class CurrentInputCluster(object):
             filename += "_profiled"
 
         # Slice current input
-        post_slices = split_slice(parameters.shape[0],
-                                  cell_type.max_current_inputs_per_core)
+        post_slices = split_slice(parameters.shape[0], post_synaptic_width)
 
         current_input_app = path.join(model_binaries, filename + ".aplx")
         logger.debug("\t\t\tCurrent input application:%s",

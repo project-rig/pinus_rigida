@@ -202,21 +202,35 @@ class Population(common.Population):
                      self.neuron_j_constraint)
 
         self.synapse_j_constraints = {}
+        current_input_j_constraints = {}
         for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
-            # Chain together incoming projections from all populations
-            projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
-            synaptic_projections = [p for p in projections
-                                    if not p._directly_connectable]
+            # Get list of incoming directly connectable projections
+            projections = list(itertools.chain.from_iterable(
+                itervalues(pre_pop_projections)))
+            directly_connectable_projections = [p for p in projections
+                                                if p._directly_connectable]
 
-            logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
-                         synapse_type[0],
-                         synapse_type[0].max_post_neurons_per_core)
-            self.synapse_j_constraints[synapse_type] =\
-                synapse_type[0].max_post_neurons_per_core
+            # If there's any non-directly connectable projections,
+            # Also add a synapse constraint for this synapse type
+            if len(projections) != len(directly_connectable_projections):
+                synapse_constraint = synapse_type[0].max_post_neurons_per_core
+                logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
+                            synapse_type[0], synapse_constraint)
+                self.synapse_j_constraints[synapse_type] = synapse_constraint
+
+            # Loop through directly connectable projectsions and add contraints
+            for p in directly_connectable_projections:
+                current_input_constraint =\
+                    p.pre.celltype.max_current_inputs_per_core
+                logger.debug("\t\tDirectly connectable projection:%s  - Current input contraint:%u",
+                             p.label, current_input_constraint)
+                current_input_j_constraints[p] = current_input_constraint
 
         # Find the minimum constraint in j
-        min_j_constraint = min(self.neuron_j_constraint,
-                               *itervalues(self.synapse_j_constraints))
+        min_j_constraint = min(
+            self.neuron_j_constraint,
+            *itertools.chain(itervalues(self.synapse_j_constraints),
+                             itervalues(current_input_j_constraints)))
 
         logger.debug("\t\tMin j constraint:%u", min_j_constraint)
 
@@ -228,23 +242,47 @@ class Population(common.Population):
             t: round_j_constraint(c, min_j_constraint)
             for t, c in iteritems(self.synapse_j_constraints)}
 
+        current_input_j_constraints = {
+            t: round_j_constraint(c, min_j_constraint)
+            for t, c in iteritems(current_input_j_constraints)}
+
         # Now determin the maximum constraint i.e. the 'width'
         # that will be constrained together
-        max_j_constraint = max(self.neuron_j_constraint,
-                               *itervalues(self.synapse_j_constraints))
+        max_j_constraint = max(
+            self.neuron_j_constraint,
+            *itertools.chain(itervalues(self.synapse_j_constraints),
+                             itervalues(current_input_j_constraints)))
+
+        # **TODO** include pre-synaptic cost
+        # 1) Loop through incoming projections
+        # 2) For each one estimate number of synapses based on j constraint and NO pre-slice
+        # 3) Use pre populations rate estimate and synapse type to determine how many i synapse vertices this will result in
+        # 4) Use this to calculate number of cores
 
         # Calculate how many cores this means will be required
-        num_cores = (max_j_constraint / self.neuron_j_constraint) +\
-            sum(max_j_constraint / c for c in itervalues(self.synapse_j_constraints))
+        num_neuron_cores = max_j_constraint / self.neuron_j_constraint
+        num_synapse_cores = sum(
+            max_j_constraint / c
+            for c in itervalues(self.synapse_j_constraints))
+        num_current_input_cores = sum(
+            max_j_constraint / c
+            for c in itervalues(current_input_j_constraints))
+        num_cores = num_neuron_cores + num_synapse_cores + num_current_input_cores
 
         # Check that this will fit on a chip
         # **TODO** iterate, dividing maximum constraint by 2
         assert num_cores <= 16
 
         logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
-        for synapse_type, synapse_j_constrain in iteritems(self.synapse_j_constraints):
+        for synapse_type, constraint in iteritems(self.synapse_j_constraints):
             logger.debug("\t\tSynapse type:%s - J constraint:%u",
-                         synapse_type, synapse_j_constrain)
+                         synapse_type, constraint)
+        for proj, constraint in iteritems(current_input_j_constraints):
+            logger.debug("\t\tDirect input projection:%s - J constraint:%u",
+                         proj.label, constraint)
+
+            # Also store constraint in projection
+            proj.current_input_j_constraint = constraint
 
     def _create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
                               simulation_ticks, vertex_applications,
@@ -279,19 +317,22 @@ class Population(common.Population):
             synaptic_projections = [p for p in projections
                                     if not p._directly_connectable]
 
-            # Find index of receptor type
-            receptor_index = self.celltype.receptor_types.index(synapse_type[1])
+            # If there are any synaptic projections
+            if len(synaptic_projections) > 0:
+                # Find index of receptor type
+                receptor_index = self.celltype.receptor_types.index(
+                    synapse_type[1])
 
-            # Create synapse cluster
-            c = SynapseCluster(timer_period_us, simulation_ticks,
-                               self.spinnaker_config, self.size,
-                               synapse_type[0], receptor_index,
-                               synaptic_projections, pop_neuron_clusters,
-                               vertex_applications, vertex_resources,
-                               self.synapse_j_constraints[synapse_type])
+                # Create synapse cluster
+                c = SynapseCluster(timer_period_us, simulation_ticks,
+                                self.spinnaker_config, self.size,
+                                synapse_type[0], receptor_index,
+                                synaptic_projections, pop_neuron_clusters,
+                                vertex_applications, vertex_resources,
+                                self.synapse_j_constraints[synapse_type])
 
-            # Add cluster to dictionary
-            synapse_clusters[synapse_type] = c
+                # Add cluster to dictionary
+                synapse_clusters[synapse_type] = c
 
         # Return synapse clusters
         return synapse_clusters
