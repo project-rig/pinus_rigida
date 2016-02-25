@@ -1,5 +1,5 @@
+/build/
+*.txt
 *.aplx
 *.elf
-*.txt
-/build/
 /build_profiled/
