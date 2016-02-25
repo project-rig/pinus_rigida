@@ -148,6 +148,18 @@ class Population(common.Population):
         s_clusters = self._simulator.state.pop_synapse_clusters[self]
         return {t: c.read_profile() for t, c in iteritems(s_clusters)}
 
+    def get_current_input_profile_data(self):
+        logger.info("Downloading current input profile for population %s",
+                    self.label)
+
+        # Assert that profiling is enabled
+        assert self.spinnaker_config.num_profile_samples is not None
+
+        # Read profile from each current input cluster
+        return {p: self._simulator.state.proj_current_input_clusters[p].read_profile()
+                for p in self.outgoing_projections
+                if p._directly_connectable}
+
     # --------------------------------------------------------------------------
     # Internal PyNN methods
     # --------------------------------------------------------------------------

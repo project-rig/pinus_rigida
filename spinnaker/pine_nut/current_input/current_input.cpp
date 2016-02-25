@@ -155,6 +155,8 @@ void DMATransferDone(uint, uint tag)
 //-----------------------------------------------------------------------------
 void TimerTick(uint tick, uint)
 {
+  Profiler::TagDisableIRQFIQ<ProfilerTagTimerTick> p;
+
   // Subtract 1 from tick as they start at 1
   tick--;
 

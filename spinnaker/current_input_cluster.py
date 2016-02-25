@@ -32,6 +32,11 @@ class Regions(enum.IntEnum):
 # CurrentInputCluster
 # ------------------------------------------------------------------------------
 class CurrentInputCluster(object):
+    # Tag names, corresponding to those defined in current_input.h
+    profiler_tag_names = {
+        0:  "Timer tick",
+    }
+
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms,
                  timer_period_us, sim_ticks, indices_to_record, config,
                  receptor_index, vertex_applications, vertex_resources,
@@ -114,6 +119,16 @@ class CurrentInputCluster(object):
 
         return region_memory
     
+    def read_profile(self):
+        # Get the profile recording region and
+        region = self.regions[Regions.profiler]
+
+        # Return profile data for each vertex that makes up population
+        return [(v.post_neuron_slice.python_slice,
+                 region.read_profile(v.region_memory[Regions.profiler],
+                                     self.profiler_tag_names))
+                 for v in self.verts]
+
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------

@@ -23,4 +23,9 @@ enum AppWord
   AppWordMax,
 };
 
+enum ProfilerTag
+{
+  ProfilerTagTimerTick,
+};
+
 } // CurrentInput
