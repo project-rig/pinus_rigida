@@ -233,7 +233,8 @@ class Population(common.Population):
             # Loop through directly connectable projectsions and add contraints
             for p in directly_connectable_projections:
                 current_input_constraint =\
-                    p.pre.celltype.max_current_inputs_per_core
+                    int(p.pre.celltype.max_current_inputs_per_core *
+                        timestep_multiplier)
                 logger.debug("\t\tDirectly connectable projection:%s  - Current input contraint:%u",
                              p.label, current_input_constraint)
                 current_input_j_constraints[p] = current_input_constraint
