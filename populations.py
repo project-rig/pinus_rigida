@@ -325,11 +325,11 @@ class Population(common.Population):
 
                 # Create synapse cluster
                 c = SynapseCluster(timer_period_us, simulation_ticks,
-                                self.spinnaker_config, self.size,
-                                synapse_type[0], receptor_index,
-                                synaptic_projections, pop_neuron_clusters,
-                                vertex_applications, vertex_resources,
-                                self.synapse_j_constraints[synapse_type])
+                                   self.spinnaker_config, self.size,
+                                   synapse_type[0], receptor_index,
+                                   synaptic_projections, pop_neuron_clusters,
+                                   vertex_applications, vertex_resources,
+                                   self.synapse_j_constraints[synapse_type])
 
                 # Add cluster to dictionary
                 synapse_clusters[synapse_type] = c
