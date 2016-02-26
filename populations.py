@@ -262,10 +262,12 @@ class Population(common.Population):
                              current_input_constraint)
 
         # Find the minimum constraint in j
-        min_j_constraint = min(
-            self.neuron_j_constraint,
-            *itertools.chain(itervalues(self.synapse_j_constraints),
-                             itervalues(current_input_j_constraints)))
+        min_j_constraint = self.neuron_j_constraint
+        if len(self.synapse_j_constraints) > 0 or len(current_input_j_constraints) > 0:
+            min_j_constraint = min(
+                min_j_constraint,
+                *itertools.chain(itervalues(self.synapse_j_constraints),
+                                itervalues(current_input_j_constraints)))
 
         logger.debug("\t\tMin j constraint:%u", min_j_constraint)
 
@@ -321,10 +323,12 @@ class Population(common.Population):
 
         # Now determin the maximum constraint i.e. the 'width'
         # that will be constrained together
-        max_j_constraint = max(
-            self.neuron_j_constraint,
-            *itertools.chain(itervalues(self.synapse_j_constraints),
-                            itervalues(current_input_j_constraints)))
+        max_j_constraint = self.neuron_j_constraint
+        if len(self.synapse_j_constraints) > 0 or len(current_input_j_constraints) > 0:
+            max_j_constraint = max(
+                max_j_constraint,
+                *itertools.chain(itervalues(self.synapse_j_constraints),
+                                itervalues(current_input_j_constraints)))
 
         # Calculate how many cores this means will be required
         num_neuron_cores = max_j_constraint / self.neuron_j_constraint
