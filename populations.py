@@ -4,25 +4,28 @@ import logging
 import math
 import numpy
 import sys
-from rig import machine
 from pyNN import common
 
 # Import classes
 from collections import defaultdict, namedtuple
 from operator import itemgetter
 from pyNN.standardmodels import StandardCellType
-from pyNN.parameters import ParameterSpace, simplify
+from pyNN.parameters import ParameterSpace
 from . import simulator
 from .recording import Recorder
-from rig.utils.contexts import ContextMixin
-from six import iteritems, itervalues
 from spinnaker.neural_cluster import NeuralCluster
 from spinnaker.synapse_cluster import SynapseCluster
 from spinnaker.spinnaker_population_config import SpinnakerPopulationConfig
+from spinnaker.utils import UnitStrideSlice
+
+# Import functions
+from pyNN.parameters import simplify
+from six import iteritems, itervalues
 
 logger = logging.getLogger("pinus_rigida")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
+
 
 # --------------------------------------------------------------------------
 # WeightRange
@@ -48,11 +51,13 @@ class WeightRange(object):
         # Calculate where the weight format fixed-point lies
         return (16 - int(max_msb))
 
+
 # Round a j constraint to the lowest power-of-two
 # multiple of the minium j constraint
 def round_j_constraint(j_constraint, min_j_constraint):
     return min_j_constraint * int(2 ** math.floor(
         math.log(j_constraint / min_j_constraint, 2)))
+
 
 # --------------------------------------------------------------------------
 # Assembly
@@ -81,7 +86,7 @@ class PopulationView(common.PopulationView):
             if isinstance(value, numpy.ndarray):
                 value = value[self.mask]
             parameter_dict[name] = simplify(value)
-        return ParameterSpace(parameter_dict, shape=(self.size,)) # or local size?
+        return ParameterSpace(parameter_dict, shape=(self.size,))
 
     def _set_parameters(self, parameter_space):
         raise NotImplementedError()
@@ -103,11 +108,12 @@ class Population(common.Population):
     _simulator = simulator
     _recorder_class = Recorder
     _assembly_class = Assembly
-    
+
     def __init__(self, size, cellclass, cellparams=None, structure=None,
                  initial_values={}, label=None):
         __doc__ = common.Population.__doc__
-        super(Population, self).__init__(size, cellclass, cellparams, structure, initial_values, label)
+        super(Population, self).__init__(size, cellclass, cellparams,
+                                         structure, initial_values, label)
 
         # Create a spinnaker config
         self.spinnaker_config = SpinnakerPopulationConfig()
@@ -120,10 +126,10 @@ class Population(common.Population):
         # List of outgoing projections from this population
         # [pynn_projection]
         self.outgoing_projections = list()
-        
+
         # Add population to simulator
         self._simulator.state.populations.append(self)
-    
+
     # --------------------------------------------------------------------------
     # Public SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -156,7 +162,8 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from each current input cluster
-        return {p: self._simulator.state.proj_current_input_clusters[p].read_profile()
+        c_clusters = self._simulator.state.proj_current_input_clusters
+        return {p: c_clusters[p].read_profile()
                 for p in self.outgoing_projections
                 if p._directly_connectable}
 
@@ -205,14 +212,16 @@ class Population(common.Population):
         timestep_multiplier = min(1.0, float(hardware_timestep_us) / 1000.0)
         logger.debug("\t\tTimestep multiplier:%f", timestep_multiplier)
 
-        # **TODO** incorporate firing rate annotation in sane way
-
-        # Apply both multipliers to the hard maximum specified in celltype
+        # Apply timestep multipliers to the hard maximum specified in celltype
         self.neuron_j_constraint = int(self.celltype.max_neurons_per_core *
                                        timestep_multiplier)
+
+        # Clamp constraint to actual size of population
+        self.neuron_j_constraint = min(self.neuron_j_constraint, self.size)
         logger.debug("\t\tNeuron j constraint:%u",
                      self.neuron_j_constraint)
 
+        # Loop through synapse types
         self.synapse_j_constraints = {}
         current_input_j_constraints = {}
         for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
@@ -222,22 +231,35 @@ class Population(common.Population):
             directly_connectable_projections = [p for p in projections
                                                 if p._directly_connectable]
 
-            # If there's any non-directly connectable projections,
-            # Also add a synapse constraint for this synapse type
+            # If there's any non-directly connectable projections of this type
             if len(projections) != len(directly_connectable_projections):
+                # Get hard maximum from synapse type
                 synapse_constraint = synapse_type[0].max_post_neurons_per_core
-                logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
-                            synapse_type[0], synapse_constraint)
+
+                # Clamp constraint to actual size of
+                # population and add to dictionary
+                synapse_constraint = min(synapse_constraint, self.size)
                 self.synapse_j_constraints[synapse_type] = synapse_constraint
 
-            # Loop through directly connectable projectsions and add contraints
+                logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
+                             synapse_type[0], synapse_constraint)
+
+            # Loop through directly connectable projections
             for p in directly_connectable_projections:
+                # Apply timestep multipliers to the
+                # hard maximum specified in celltype
                 current_input_constraint =\
                     int(p.pre.celltype.max_current_inputs_per_core *
                         timestep_multiplier)
-                logger.debug("\t\tDirectly connectable projection:%s  - Current input contraint:%u",
-                             p.label, current_input_constraint)
+
+                # Clamp constraint to actual size of
+                # population and add to dictionary
+                current_input_constraint = min(current_input_constraint,
+                                               self.size)
                 current_input_j_constraints[p] = current_input_constraint
+                logger.debug("\t\tDirectly connectable projection:%s "
+                             "- Current input contraint:%u", p.label,
+                             current_input_constraint)
 
         # Find the minimum constraint in j
         min_j_constraint = min(
@@ -259,24 +281,56 @@ class Population(common.Population):
             t: round_j_constraint(c, min_j_constraint)
             for t, c in iteritems(current_input_j_constraints)}
 
+        # Loop again through incoming synapse types to estimate i_constraints
+        synapse_num_i_cores = {}
+        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+            # Get list of synaptic connections
+            projections = itertools.chain.from_iterable(
+                itervalues(pre_pop_projections))
+            synaptic_projections = [p for p in projections
+                                    if not p._directly_connectable]
+
+            # If there are any
+            if len(synaptic_projections) > 0:
+                 # Build suitable post-slice for
+                post_slice = UnitStrideSlice(
+                    0, self.synapse_j_constraints[synapse_type])
+
+                # Loop through list of projections
+                total_synaptic_event_rate = 0.0
+                for proj in synaptic_projections:
+                    # If projection is directly connectable, skip
+                    if proj._directly_connectable:
+                        continue
+
+                    # Estimate number of synapses the connection between
+                    # The pre and the post-slice of neurons will contain
+                    total_synapses = proj._estimate_num_synapses(
+                        UnitStrideSlice(0, proj.pre.size), post_slice)
+
+                    # Use this to calculate event rate
+                    pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
+                    total_synaptic_event_rate += total_synapses * pre_mean_rate
+
+                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(synapse_type[0].max_synaptic_event_rate)))
+                logger.debug("\t\tSynapse type:%s - Total synaptic event rate:%f, num cores:%u",
+                            synapse_type[0], total_synaptic_event_rate, num_i_cores)
+
+                # Add number of i cores to dictionary
+                synapse_num_i_cores[synapse_type] = num_i_cores
+
         # Now determin the maximum constraint i.e. the 'width'
         # that will be constrained together
         max_j_constraint = max(
             self.neuron_j_constraint,
             *itertools.chain(itervalues(self.synapse_j_constraints),
-                             itervalues(current_input_j_constraints)))
-
-        # **TODO** include pre-synaptic cost
-        # 1) Loop through incoming projections
-        # 2) For each one estimate number of synapses based on j constraint and NO pre-slice
-        # 3) Use pre populations rate estimate and synapse type to determine how many i synapse vertices this will result in
-        # 4) Use this to calculate number of cores
+                            itervalues(current_input_j_constraints)))
 
         # Calculate how many cores this means will be required
         num_neuron_cores = max_j_constraint / self.neuron_j_constraint
         num_synapse_cores = sum(
-            max_j_constraint / c
-            for c in itervalues(self.synapse_j_constraints))
+            synapse_num_i_cores[t] * (max_j_constraint / c)
+            for t, c in iteritems(self.synapse_j_constraints))
         num_current_input_cores = sum(
             max_j_constraint / c
             for c in itervalues(current_input_j_constraints))
@@ -285,6 +339,10 @@ class Population(common.Population):
         # Check that this will fit on a chip
         # **TODO** iterate, dividing maximum constraint by 2
         assert num_cores <= 16
+
+        logger.debug("\t\tConstraints will contain up to %u neuron cores, %u synapse cores and %u current input cores (%u in total)",
+                     num_neuron_cores, num_synapse_cores,
+                     num_current_input_cores, num_cores)
 
         logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
         for synapse_type, constraint in iteritems(self.synapse_j_constraints):
@@ -297,16 +355,17 @@ class Population(common.Population):
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
 
-    def _create_neural_cluster(self, pop_id, simulation_timestep_us, timer_period_us,
-                              simulation_ticks, vertex_applications,
-                              vertex_resources, keyspace):
+    def _create_neural_cluster(self, pop_id, simulation_timestep_us,
+                               timer_period_us, simulation_ticks,
+                               vertex_applications, vertex_resources,
+                               keyspace):
         # Extract parameter lazy array
         if isinstance(self.celltype, StandardCellType):
             parameters = self.celltype.native_parameters
         else:
             parameters = self.celltype.parameter_space
         parameters.shape = (self.size,)
-        
+
         # Create neural cluster
         return NeuralCluster(pop_id, self.celltype, parameters,
                              self.initial_values, simulation_timestep_us,
@@ -317,7 +376,7 @@ class Population(common.Population):
                              self.neuron_j_constraint)
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
-                                vertex_applications, vertex_resources):
+                                 vertex_applications, vertex_resources):
         # Get neuron clusters dictionary from simulator
         # **THINK** is it better to get this as ANOTHER parameter
         pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
@@ -326,7 +385,8 @@ class Population(common.Population):
         synapse_clusters = {}
         for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
-            projections = list(itertools.chain.from_iterable(itervalues(pre_pop_projections)))
+            projections = list(itertools.chain.from_iterable(
+                itervalues(pre_pop_projections)))
             synaptic_projections = [p for p in projections
                                     if not p._directly_connectable]
 
@@ -352,16 +412,18 @@ class Population(common.Population):
 
     def _build_incoming_connection(self, synapse_type):
         population_matrix_rows = {}
-        
+
         # Create weight range object to track range of
         # weights present in incoming connections
         weight_range = WeightRange()
-        
+
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
         for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
-            # Create an array to hold matrix rows and initialize each one with an empty list
-            population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size, dtype=object)
+            # Create an array to hold matrix rows
+            # and initialize each one with an empty list
+            population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size,
+                                                          dtype=object)
             for r in range(pre_pop.size):
                 population_matrix_rows[pre_pop][r] = []
 
@@ -383,16 +445,16 @@ class Population(common.Population):
 
         return population_matrix_rows, weight_fixed_point
 
-    def _convergent_connect(self, presynaptic_indices,
-                           postsynaptic_index, matrix_rows,
-                           weight_range, **connection_parameters):
+    def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
+                            matrix_rows, weight_range,
+                            **connection_parameters):
         # Extract connection parameters
         weight = abs(connection_parameters["weight"])
         delay = connection_parameters["delay"]
 
         # Update incoming weight range
         weight_range.update(weight)
-        
+
         # Add synapse to each row
         for p in matrix_rows[presynaptic_indices]:
             p.append(Synapse(weight, delay, postsynaptic_index))
@@ -405,7 +467,7 @@ class Population(common.Population):
         # If conversion of direct connections is disabled, return false
         if not self._simulator.state.convert_direct_connections:
             return False
-        
+
         # If cell type isn't directly connectable, the population can't be
         if not self.celltype.directly_connectable:
             return False
@@ -413,4 +475,3 @@ class Population(common.Population):
         # If none of the outgoing projections aren't directly connectable!
         return not any([not o._connector.directly_connectable
                         for o in self.outgoing_projections])
-
