@@ -40,7 +40,7 @@ class STDPMechanism(synapses.STDPMechanism):
         if d == 'auto':
             d = state.dt
         return d
-    
+
 
 class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     __doc__ = synapses.AdditiveWeightDependence.__doc__
@@ -63,7 +63,9 @@ class MultiplicativeWeightDependence(synapses.MultiplicativeWeightDependence):
         ('A_minus',   'aLTD'),
     )
 
-class AdditivePotentiationMultiplicativeDepression(synapses.AdditivePotentiationMultiplicativeDepression):
+class AdditivePotentiationMultiplicativeDepression(
+    synapses.AdditivePotentiationMultiplicativeDepression):
+
     __doc__ = synapses.AdditivePotentiationMultiplicativeDepression.__doc__
 
     translations = build_translations(

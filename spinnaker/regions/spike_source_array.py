@@ -1,6 +1,4 @@
 # Import modules
-from .. import lazy_param_map
-import lazyarray as la
 import logging
 import numpy as np
 import struct
@@ -9,14 +7,14 @@ import struct
 from region import Region
 
 # Import functions
-from copy import deepcopy
-from ..utils import (calc_bitfield_words, calc_slice_bitfield_words)
+from ..utils import calc_slice_bitfield_words
 
 logger = logging.getLogger("pinus_rigida")
 
-# ------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # SpikeSourceArray
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class SpikeSourceArray(Region):
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
         # Cache spike times and timestep
@@ -41,7 +39,8 @@ class SpikeSourceArray(Region):
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        # Calculate the size of each spike block (1 extra word for next spike time)
+        # Calculate the size of each spike block
+        # (1 extra word for next spike time)
         spike_block_bytes = (calc_slice_bitfield_words(vertex_slice) + 1) * 4
 
         # Find the largest number of spikes in any of the neurons in the slice
@@ -68,37 +67,38 @@ class SpikeSourceArray(Region):
         slice_spike_times = self.spike_times[vertex_slice.python_slice]
 
         # Determine time of last spike and convert to ms
-        max_spike_time_ms = max(s.max() for s in slice_spike_times)
-        max_spike_timestep = int(round(max_spike_time_ms / self.sim_timestep_ms))
+        max_time_ms = max(s.max() for s in slice_spike_times)
+        max_timestep = int(round(max_time_ms / self.sim_timestep_ms))
 
         # Build mask array to hold spikes
         vertex_words = calc_slice_bitfield_words(vertex_slice)
-        spike_vector = np.zeros((max_spike_timestep + 1,
+        spike_vector = np.zeros((max_timestep + 1,
                                  vertex_words * 32), dtype=np.uint8)
 
         # Loop through neurons
         for i, s in enumerate(slice_spike_times):
-            # Round spiketimes to nearest timestep
-            spike_timesteps = np.rint(s.value / self.sim_timestep_ms).astype(int)
-
-            # Bin to create spike vector
-            neuron_spike_vector = np.bincount(spike_timesteps)
+            # Round spiketimes to nearest timestep and
+            # bin to create spike vector
+            n_spike_vector = np.bincount(
+                np.rint(s.value / self.sim_timestep_ms).astype(int))
 
             # Warn if there are any timesteps in
             # which multiple spikes are specified
-            if np.any(neuron_spike_vector > 1):
-                logger.warn("Neuron %u in spike source array spikes multiples times in one %f ms timestep, this will be treated as a single spike",
+            if np.any(n_spike_vector > 1):
+                logger.warn("Neuron %u in spike source array spikes "
+                            "multiples times in one %f ms timestep, this "
+                            "will be treated as a single spike",
                             i, self.sim_timestep_ms)
 
             # Copy bit vector into mask array
-            spike_vector[0:len(neuron_spike_vector), i] = (neuron_spike_vector > 0)
+            spike_vector[0:len(n_spike_vector), i] = (n_spike_vector > 0)
 
         # Determine which columns have any spike blocks associated
         timestep_mask = np.any(spike_vector, axis=1)
 
         # Get timesteps in which there are spike blocks
         timesteps = np.where(timestep_mask)[0]
-        spike_vector = spike_vector[timestep_mask,:]
+        spike_vector = spike_vector[timestep_mask, :]
 
         # Seperate out first timestep from the next timesteps
         # to be  written with each spike block
@@ -123,4 +123,4 @@ class SpikeSourceArray(Region):
 
         # Write first timestep followed by spike blocks
         fp.write(struct.pack("I", first_timestep))
-        t = fp.write(spike_blocks.tostring())
+        fp.write(spike_blocks.tostring())

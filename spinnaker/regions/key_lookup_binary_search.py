@@ -4,8 +4,6 @@ import struct
 # Import classes
 from region import Region
 
-# Import functions
-from operator import itemgetter
 
 # ------------------------------------------------------------------------------
 # KeyLookupBinarySearch

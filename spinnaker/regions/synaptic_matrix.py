@@ -104,8 +104,8 @@ class SynapticMatrix(Region):
                 weight_fixed = float_to_weight(row["weight"])
 
                 # Combine together into synaptic words
-                matrix_words[i,0] = len(row)
-                matrix_words[i,1:1 + len(row)] = (
+                matrix_words[i, 0] = len(row)
+                matrix_words[i, 1:1 + len(row)] = (
                     row["index"]
                     | (delay_quantised << self.IndexBits)
                     | (weight_fixed << weight_shift))

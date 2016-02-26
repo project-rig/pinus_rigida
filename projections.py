@@ -1,11 +1,8 @@
-from itertools import repeat
 try:
     from itertools import izip
 except ImportError:
     izip = zip  # Python 3 zip returns an iterator already
 from pyNN import common
-from pyNN.core import ezip
-from pyNN.parameters import ParameterSpace
 from pyNN.space import Space
 from pyNN.standardmodels import StandardCellType
 from . import simulator
@@ -15,11 +12,12 @@ from .standardmodels.synapses import StaticSynapse
 import logging
 import numpy as np
 
-from rig.utils.contexts import ContextMixin, Required
+from rig.utils.contexts import ContextMixin
 
 from spinnaker.current_input_cluster import CurrentInputCluster
 
 logger = logging.getLogger("pinus_rigida")
+
 
 class Projection(common.Projection, ContextMixin):
     __doc__ = common.Projection.__doc__
@@ -29,10 +27,11 @@ class Projection(common.Projection, ContextMixin):
     def __init__(self, presynaptic_population, postsynaptic_population,
                  connector, synapse_type, source=None, receptor_type=None,
                  space=Space(), label=None):
-        common.Projection.__init__(self, presynaptic_population, postsynaptic_population,
-                                   connector, synapse_type, source, receptor_type,
+        common.Projection.__init__(self, presynaptic_population,
+                                   postsynaptic_population, connector,
+                                   synapse_type, source, receptor_type,
                                    space, label)
-        
+
         # Initialise the context stack
         ContextMixin.__init__(self, {})
 
@@ -52,9 +51,10 @@ class Projection(common.Projection, ContextMixin):
 
         # If post-synaptic population in an assembly
         if isinstance(self.post, common.Assembly):
-            assert self.post._homogeneous_synapses, "Inhomogeneous assemblies not yet supported"
-            
-            # Add this projection to each post-population in 
+            assert self.post._homogeneous_synapses, (
+                "Inhomogeneous assemblies not yet supported")
+
+            # Add this projection to each post-population in
             # assembly's list of incoming connections
             for p in self.post.populations:
                 p.incoming_projections[self._synapse_cluster_type][self.pre].append(self)
@@ -67,16 +67,15 @@ class Projection(common.Projection, ContextMixin):
         raise NotImplementedError
 
     def set(self, **attributes):
-        #parameter_space = ParameterSpace
         raise NotImplementedError
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
     def _build(self, **context_kwargs):
-        # connect the populations
-        # **TODO** this may already have been connected by another assembled post population
-         # Build each projection, adding the matrix rows to the context
+        # **TODO** this may already have been connected
+        # by another assembled post population
+        # Build each projection, adding the matrix rows to the context
         with self.get_new_context(**context_kwargs):
             self._connector.connect(self)
 
@@ -94,7 +93,8 @@ class Projection(common.Projection, ContextMixin):
         pre_parameters.shape = (self.pre.size,)
 
         # Find index of receptor type
-        receptor_index = self.post.celltype.receptor_types.index(self.receptor_type)
+        receptor_index =\
+            self.post.celltype.receptor_types.index(self.receptor_type)
 
         # Create current input cluster
         return CurrentInputCluster(
@@ -108,21 +108,24 @@ class Projection(common.Projection, ContextMixin):
     def _direct_convergent_connect(self, presynaptic_indices,
                                    postsynaptic_index, direct_weights,
                                    **connection_parameters):
-        # **TODO** one-to-one connections that reshuffle cells COULD be supported
+        # **TODO** one-to-one connections that
+        # reshuffle cells COULD be supported
         assert len(presynaptic_indices) == 1
         assert presynaptic_indices[0] == postsynaptic_index
 
         # Warn if delay doesn't match simulation timestep
-        #if connection_parameters["delay"] != self._simulator.state.dt:
-        #    logger.warn("Direct connections are treated as having delay of one timestep")
+        # if connection_parameters["delay"] != self._simulator.state.dt:
+        #    logger.warn("Direct connections are treated "
+        #                "as having delay of one timestep")
 
         # Set weight in direct weights array
-        direct_weights[postsynaptic_index] = abs(connection_parameters["weight"])
+        direct_weights[postsynaptic_index] =\
+            abs(connection_parameters["weight"])
 
     @ContextMixin.use_contextual_arguments()
     def _synaptic_convergent_connect(self, presynaptic_indices,
-                                   postsynaptic_index, matrix_rows,
-                                   weight_range, **connection_parameters):
+                                     postsynaptic_index, matrix_rows,
+                                     weight_range, **connection_parameters):
         self.post._convergent_connect(presynaptic_indices, postsynaptic_index,
                                       matrix_rows, weight_range,
                                       **connection_parameters)
@@ -133,8 +136,8 @@ class Projection(common.Projection, ContextMixin):
         # If post-synaptic population in an assembly
         if isinstance(self.post, common.Assembly):
             assert False
-        #**TODO** figure out which population within assembly post index relates to
-        # Otherwise add it to the post-synaptic population's list
+        # **TODO** figure out which population within assembly post index
+        # relates to Otherwise add it to the post-synaptic population's list
         # **TODO** what about population-views? add to their parent?
         else:
             if directly_connect:
@@ -173,11 +176,10 @@ class Projection(common.Projection, ContextMixin):
         # If conversion of direct connections is disabled, return false
         if not self._simulator.state.convert_direct_connections:
             return False
-        
+
         # If the pre-synaptic celltype can be directly connectable,
         # the connector can be reduced to a direct connector and
         # the synapse type is static
-        #return False
         return (self.pre.celltype.directly_connectable and
                 self._connector.directly_connectable and
                 type(self.synapse_type) is self._static_synapse_class)

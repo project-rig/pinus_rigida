@@ -2,6 +2,7 @@
 from region import Region
 from rig.type_casts import NumpyFloatToFixConverter
 
+
 # ------------------------------------------------------------------------------
 # OutputWeight
 # ------------------------------------------------------------------------------

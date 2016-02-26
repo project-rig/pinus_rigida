@@ -66,7 +66,8 @@ class ParameterSpace(Region):
         """
         # Find unique immutable synapse parameter slice
         unique_immutable = np.unique(
-            self.immutable_params[vertex_slice.python_slice], return_inverse=True)
+            self.immutable_params[vertex_slice.python_slice],
+            return_inverse=True)
 
         # Write mutable parameter slice as string
         fp.write(self.mutable_params[vertex_slice.python_slice].tostring())

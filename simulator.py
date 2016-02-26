@@ -10,9 +10,8 @@ from collections import defaultdict
 from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.consts import AppState
-from rig.machine_control.machine_controller import MachineController, MemoryIO
-from rig.place_and_route.constraints import (ReserveResourceConstraint,
-                                             SameChipConstraint)
+from rig.machine_control.machine_controller import MachineController
+from rig.place_and_route.constraints import SameChipConstraint
 from rig.netlist import Net
 
 # Import functions
@@ -23,18 +22,20 @@ logger = logging.getLogger("pinus_rigida")
 
 name = "SpiNNaker"
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # ID
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class ID(int, common.IDMixin):
     def __init__(self, n):
         """Create an ID object with numerical value `n`."""
         int.__init__(n)
         common.IDMixin.__init__(self)
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # State
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class State(common.control.BaseState):
     # These are required to be present for various
     # bits of PyNN, but not really relevant for P.R.
@@ -54,23 +55,23 @@ class State(common.control.BaseState):
             self._build(simtime)
         except:
             self.end()
-        
+
         self.t += simtime
         self.running = True
-        
+
     def run_until(self, tstop):
         # Build data
         self._build(tstop - self.t)
-        
+
         self.t = tstop
         self.running = True
-        
+
     def clear(self):
         self.recorders = set([])
         self.id_counter = 42
         self.segment_counter = -1
         self.reset()
-        
+
     def reset(self):
         """Reset the state of the current network to time t = 0."""
         self.running = False
@@ -84,7 +85,7 @@ class State(common.control.BaseState):
             self.machine_controller.send_signal("stop")
 
     def _wait_for_transition(self, placements, allocations,
-                             from_state, desired_to_state,
+                             from_state, to_state,
                              num_verts):
         while True:
             # If no cores are still in from_state, stop
@@ -94,17 +95,20 @@ class State(common.control.BaseState):
             # Wait a bit
             time.sleep(1.0)
 
-        # Check if any cores haven't exited cleanly
-        if self.machine_controller.count_cores_in_state(desired_to_state) != num_verts:
+        # Check if any cores haven't reached to_state
+        cores_in_to_state =\
+            self.machine_controller.count_cores_in_state(to_state)
+        if cores_in_to_state != num_verts:
             # Loop through all placed vertices
-            for vertex, (x,y) in iteritems(placements):
+            for vertex, (x, y) in iteritems(placements):
                 p = allocations[vertex][machine.Cores].start
                 status = self.machine_controller.get_processor_status(p, x, y)
-                if status.cpu_state is not desired_to_state:
+                if status.cpu_state is not to_state:
                     print("Core ({}, {}, {}) in state {!s}".format(
                         x, y, p, status.cpu_state))
                     print self.machine_controller.get_iobuf(p, x, y)
-            raise Exception("Unexpected core failures before reaching %s state." % desired_to_state)
+            raise Exception("Unexpected core failures "
+                            "before reaching %s state." % to_state)
 
     def _estimate_constraints(self, hardware_timestep_us):
         logger.info("Estimating constraints")
@@ -164,7 +168,8 @@ class State(common.control.BaseState):
         return pop_synapse_clusters
 
     def _allocate_current_input_clusters(self, vertex_applications,
-                                         vertex_resources, hardware_timestep_us,
+                                         vertex_resources,
+                                         hardware_timestep_us,
                                          duration_timesteps):
         logger.info("Allocating current input clusters")
 
@@ -208,7 +213,8 @@ class State(common.control.BaseState):
             if len(pop.outgoing_projections) > 0:
                 logger.debug("\tPopulation label:%s", pop.label)
 
-                # Get synapse vertices associated with post-synaptic population
+                # Get synapse vertices associated
+                # with post-synaptic population
                 post_s_verts = list(itertools.chain.from_iterable(
                     [self.pop_synapse_clusters[o.post][o._synapse_cluster_type].verts
                     for o in pop.outgoing_projections]))
@@ -220,8 +226,9 @@ class State(common.control.BaseState):
                 for n_vert in n_cluster.verts:
                     # Get subset of the synapse vertices that need
                     # to be connected to this neuron vertex
-                    filtered_post_s_verts = [s for s in post_s_verts
-                                             if n_vert in s.incoming_connections[pop]]
+                    filtered_post_s_verts = [
+                        s for s in post_s_verts
+                        if n_vert in s.incoming_connections[pop]]
 
                     # Create a key for this source neuron vertex
                     net_key = (n_vert.key, n_vert.mask)
@@ -261,13 +268,14 @@ class State(common.control.BaseState):
 
                 # Loop through neuron vertices
                 for n in n_verts:
-                    # Find synapse and current vertices with the same slice
-                    # **TODO** different ratios here
-                    n.input_verts = [i for i in itertools.chain(s_verts, c_verts)
-                                     if i.post_neuron_slice.overlaps(n.neuron_slice)]
+                    # Find synapse and current vertices
+                    # with overlapping slices
+                    n.input_verts = [
+                        i for i in itertools.chain(s_verts, c_verts)
+                        if i.post_neuron_slice.overlaps(n.neuron_slice)]
 
-                    logger.debug("\t\tConstraining neuron vert and %u input verts to same chip",
-                                 len(n.input_verts))
+                    logger.debug("\t\tConstraining neuron vert and %u input "
+                                 "verts to same chip", len(n.input_verts))
 
                     # Build same chip constraint and add to list
                     constraints.append(SameChipConstraint(n.input_verts + [n]))
@@ -282,17 +290,19 @@ class State(common.control.BaseState):
         for pop, synapse_types in iteritems(self.pop_synapse_clusters):
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(synapse_types):
-                logger.debug("\tPopulation label:%s, synapse type:%s" %
-                            (pop.label, str(s_type)))
+                logger.debug("\tPopulation label:%s, synapse type:%s",
+                             (pop.label, str(s_type)))
 
                 # Expand any incoming connections
-                matrices, weight_fixed_point = pop._build_incoming_connection(s_type)
+                matrices, weight_fixed_point =\
+                    pop._build_incoming_connection(s_type)
 
                 # Loop through synapse verts
                 for v in s_cluster.verts:
                     logger.debug("\t\tVertex %s", v)
 
-                    # Cache weight fixed-point for this synapse point in vertex
+                    # Cache weight fixed-point for
+                    # this synapse point in vertex
                     v.weight_fixed_point = weight_fixed_point
 
                     # Get placement and allocation
@@ -306,13 +316,14 @@ class State(common.control.BaseState):
                     # Partition the matrices
                     sub_matrices, matrix_placements =\
                         s_cluster.partition_matrices(matrices,
-                                                        v.post_neuron_slice,
-                                                        v.incoming_connections)
+                                                     v.post_neuron_slice,
+                                                     v.incoming_connections)
 
                     # Select placed chip
                     with self.machine_controller(x=vertex_placement[0],
-                                                    y=vertex_placement[1]):
-                        # Allocate two output buffers for this synapse population
+                                                 y=vertex_placement[1]):
+                        # Allocate two output buffers
+                        # for this synapse population
                         out_buffer_bytes = len(v.post_neuron_slice) * 4
                         v.out_buffers = [
                             self.machine_controller.sdram_alloc(
@@ -328,10 +339,11 @@ class State(common.control.BaseState):
                         # Allocate a suitable memory block
                         # for this vertex and get memory io
                         # **NOTE** this is tagged by core
-                        memory_io = self.machine_controller.sdram_alloc_as_filelike(
-                            size, tag=core.start)
+                        memory_io =\
+                            self.machine_controller.sdram_alloc_as_filelike(
+                                size, tag=core.start)
                         logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                        core.start, memory_io.address)
+                                     core.start, memory_io.address)
 
                         # Write the vertex to file
                         v.region_memory = s_cluster.write_to_file(
@@ -383,10 +395,11 @@ class State(common.control.BaseState):
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
                     # **NOTE** this is tagged by core
-                    memory_io = self.machine_controller.sdram_alloc_as_filelike(
-                        size, tag=core.start)
+                    memory_io =\
+                        self.machine_controller.sdram_alloc_as_filelike(
+                            size, tag=core.start)
                     logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                    core.start, memory_io.address)
+                                 core.start, memory_io.address)
 
                     # Write the vertex to file
                     v.region_memory = c_cluster.write_to_file(
@@ -429,8 +442,9 @@ class State(common.control.BaseState):
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
                     # **NOTE** this is tagged by core
-                    memory_io = self.machine_controller.sdram_alloc_as_filelike(
-                        size, tag=core.start)
+                    memory_io =\
+                        self.machine_controller.sdram_alloc_as_filelike(
+                            size, tag=core.start)
                     logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
                                  core.start, memory_io.address)
 
@@ -443,13 +457,15 @@ class State(common.control.BaseState):
         # realtime proportion to get hardware timestep
         hardware_timestep_us = int(round((1000.0 * float(self.dt)) /
                                          float(self.realtime_proportion)))
-        
-        # Determine how long simulation is in timesteps
-        duration_timesteps = int(math.ceil(float(duration_ms) / float(self.dt)))
 
-        logger.info("Simulating for %u %ums timesteps using a hardware timestep of %uus",
-            duration_timesteps, self.dt, hardware_timestep_us)
-        
+        # Determine how long simulation is in timesteps
+        duration_timesteps =\
+            int(math.ceil(float(duration_ms) / float(self.dt)))
+
+        logger.info("Simulating for %u %ums timesteps "
+                    "using a hardware timestep of %uus",
+                    duration_timesteps, self.dt, hardware_timestep_us)
+
         # Estimate constraints
         self._estimate_constraints(hardware_timestep_us)
 
@@ -457,8 +473,9 @@ class State(common.control.BaseState):
         keyspace = BitField(32)
         keyspace.add_field("population_index", tags="routing")
         keyspace.add_field("vertex_index", tags="routing")
-        keyspace.add_field("neuron_id", length=10, start_at=0, tags="application")
-        
+        keyspace.add_field("neuron_id", length=10, start_at=0,
+                           tags="application")
+
         # Create empty dictionaries to contain Rig mappings
         # of vertices to  applications and resources
         vertex_applications = {}
@@ -493,11 +510,12 @@ class State(common.control.BaseState):
 
         # Get machine controller from connected SpiNNaker board and boot
         self.machine_controller = MachineController(self.spinnaker_hostname)
-        self.machine_controller.boot(self.spinnaker_width, self.spinnaker_height)
+        self.machine_controller.boot(self.spinnaker_width,
+                                     self.spinnaker_height)
 
         # Get system info
         system_info = self.machine_controller.get_system_info()
-        logger.debug("Found %u chip machine",len(system_info))
+        logger.debug("Found %u chip machine", len(system_info))
 
         # Place-and-route
         logger.info("Placing and routing")
@@ -512,11 +530,11 @@ class State(common.control.BaseState):
                                  hardware_timestep_us, duration_timesteps)
 
         self._load_current_input_verts(placements, allocations,
-                                       hardware_timestep_us, duration_timesteps)
+                                       hardware_timestep_us,
+                                       duration_timesteps)
 
         self._load_neuron_verts(placements, allocations, hardware_timestep_us,
                                 duration_timesteps)
-
 
         # Load routing tables and applications
         logger.info("Loading routing tables")

@@ -1,8 +1,6 @@
-# Import modules
-from .. import lazy_param_map
-
 # Import classes
 from parameter_space import ParameterSpace
+
 
 # ------------------------------------------------------------------------------
 # Neuron

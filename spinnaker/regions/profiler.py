@@ -10,6 +10,7 @@ MS_SCALE = (1.0 / 200032.4)
 
 logger = logging.getLogger("pinus_rigida")
 
+
 # ------------------------------------------------------------------------------
 # Profiler
 # ------------------------------------------------------------------------------
@@ -54,7 +55,7 @@ class Profiler(Region):
 
         # Read number of words written by profiler
         word_written = struct.unpack("I", region_memory.read(4))[0]
-        
+
         # Read these from memory
         data = np.fromstring(region_memory.read(word_written * 4),
                              dtype=np.uint32)
@@ -104,7 +105,8 @@ class Profiler(Region):
                 # (we assume they aren't ever nested)
                 if len(tag_entry_times) == (len(tag_exit_times) + 1):
                     num_trim_tags = len(tag_entry_times) - len(tag_exit_times)
-                    logger.warn("Profile finishes with tag %s open - trimming %u tags",
+                    logger.warn("Profile finishes with tag %s "
+                                "open - trimming %u tags",
                                 tag_names[tag], num_trim_tags)
                     tag_entry_times = tag_entry_times[:-num_trim_tags]
 
@@ -116,7 +118,8 @@ class Profiler(Region):
                 else:
                     # Subtract entry times from exit times
                     # to get durations of each call
-                    tag_durations = np.subtract(tag_exit_times, tag_entry_times)
+                    tag_durations = np.subtract(tag_exit_times,
+                                                tag_entry_times)
 
                     # Add entry times and durations to dictionary
                     tag_dictionary[tag_names[tag]] = (

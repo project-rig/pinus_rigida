@@ -35,7 +35,8 @@ def apply(lazy_params, param_map, size, **kwargs):
         # Otherwise, apply lazy transformation and evaluate
         else:
             param_name, _, param_mapping = param
-            params[field_name] = param_mapping(lazy_params[param_name], **kwargs).evaluate()
+            params[field_name] =\
+                param_mapping(lazy_params[param_name], **kwargs).evaluate()
 
     return params
 
@@ -87,7 +88,7 @@ def s1615(values, **kwargs):
     return float_to_s1615_no_copy(vals)
 
 
-def s1615_time_multiply(values, **kwargs):
+def s1615_time_multiply(values, sim_timestep_ms, **kwargs):
     # Copy values and divide by timestep
     scaled_vals = deepcopy(values)
     scaled_vals /= sim_timestep_ms

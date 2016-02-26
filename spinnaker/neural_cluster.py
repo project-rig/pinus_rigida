@@ -18,9 +18,9 @@ from utils import (create_app_ptr_and_region_files_named, split_slice,
 logger = logging.getLogger("pinus_rigida")
 
 
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # Regions
-# -----------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     # JK: probably update this and try and use relative enum numbering
     """Region names, corresponding to those defined in `ensemble.h`"""
@@ -33,14 +33,16 @@ class Regions(enum.IntEnum):
     analogue_recording_end = analogue_recording_start + 4
     profiler = analogue_recording_end
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # Vertex
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class Vertex(object):
-    def __init__(self, parent_keyspace, neuron_slice, population_index, vertex_index):
+    def __init__(self, parent_keyspace, neuron_slice,
+                 population_index, vertex_index):
         self.neuron_slice = neuron_slice
         self.keyspace = parent_keyspace(population_index=population_index,
-            vertex_index=vertex_index)
+                                        vertex_index=vertex_index)
         self.input_verts = list()
         self.region_memory = None
 
@@ -54,6 +56,7 @@ class Vertex(object):
 
     def __str__(self):
         return "<neuron slice:%s>" % (str(self.neuron_slice))
+
 
 # -----------------------------------------------------------------------------
 # NeuralCluster
@@ -89,9 +92,9 @@ class NeuralCluster(object):
 
         # Assert that there are sufficient analogue
         # recording regions for this celltype's needs
-        assert (Regions.analogue_recording_end -
-                Regions.analogue_recording_start) >=\
-                    (len(cell_type.recordable) - 1)
+        num_analogue_rec_regions = Regions.analogue_recording_end -\
+            Regions.analogue_recording_start
+        assert num_analogue_rec_regions >= (len(cell_type.recordable) - 1)
 
         # Loop through cell's non-spike recordables
         # and create analogue recording regions
@@ -113,7 +116,8 @@ class NeuralCluster(object):
         # Split population slice
         neuron_slices = split_slice(parameters.shape[0], post_synaptic_width)
 
-        # Build neuron vertices for each slice allocating a keyspace for each vertex
+        # Build neuron vertices for each slice,
+        # allocating a keyspace for each vertex
         self.verts = [Vertex(keyspace, neuron_slice, pop_id, vert_id)
                       for vert_id, neuron_slice in enumerate(neuron_slices)]
 
@@ -130,7 +134,7 @@ class NeuralCluster(object):
 
             # Add resources to dictionary
             # **TODO** add SDRAM
-            vertex_resources[v] = { machine.Cores: 1 }
+            vertex_resources[v] = {machine.Cores: 1}
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -193,7 +197,7 @@ class NeuralCluster(object):
         return [(v.neuron_slice.python_slice,
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
-                 for v in self.verts]
+                for v in self.verts]
 
     # --------------------------------------------------------------------------
     # Private methods

@@ -19,18 +19,20 @@ from pyNN.connectors import (AllToAllConnector,
                              CloneConnector,
                              ArrayConnector)
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # AllToAllConnector
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class AllToAllConnector(AllToAllConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice):
         return len(pre_slice) * len(post_slice)
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # FixedProbabilityConnector
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class FixedProbabilityConnector(FixedProbabilityConnector):
     directly_connectable = False
 
@@ -38,25 +40,27 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
         return int(round(self.p_connect * float(len(pre_slice)) *
                          float(len(post_slice))))
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # OneToOneConnector
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class OneToOneConnector(OneToOneConnector):
     directly_connectable = True
 
     def estimate_num_synapses(self, pre_slice, post_slice):
         return min(len(pre_slice), len(post_slice))
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # FromListConnector
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class FromListConnector(FromListConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice):
         # Extract columns of pre and post indices from connection list
-        pre_indices = self.conn_list[:,0]
-        post_indices = self.conn_list[:,0]
+        pre_indices = self.conn_list[:, 0]
+        post_indices = self.conn_list[:, 0]
 
         # Return number of list entries which contain
         # connections in both pre and post slices

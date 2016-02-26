@@ -7,12 +7,16 @@ from pyNN import recording
 # Import classes
 from bitarray import bitarray
 from collections import defaultdict
-from rig.utils.contexts import ContextMixin, Required
+from rig.utils.contexts import ContextMixin
 
 from . import simulator
 
 logger = logging.getLogger("pinus_rigida")
 
+
+# ----------------------------------------------------------------------------
+# Recorder
+# ----------------------------------------------------------------------------
 class Recorder(recording.Recorder, ContextMixin):
     _simulator = simulator
 
@@ -53,21 +57,24 @@ class Recorder(recording.Recorder, ContextMixin):
             else:
                 # Convert variable name to channel number
                 # **HACK** subtract one assuming first entry is spikes
-                channel = self.population.celltype.recordable.index(variable) - 1
+                channel =\
+                    self.population.celltype.recordable.index(variable) - 1
 
                 # Update this variables dictionary with values from this vertex
                 signals[variable].update(n_cluster.read_signal(
                     channel, vertex.region_memory, vertex.neuron_slice))
 
-    def _get_current_segment(self, filter_ids=None, variables='all', clear=False):
+    def _get_current_segment(self, filter_ids=None,
+                             variables='all', clear=False):
         logger.info("Downloading recorded data for population %s",
                     self.population.label)
 
-        variables_to_include = set(self.recorded.keys())
+        vars_to_include = set(self.recorded.keys())
         if variables is not "all":
-            variables_to_include = variables_to_include.intersection(set(variables))
+            vars_to_include = vars_to_include.intersection(set(variables))
 
-        # If a SpiNNaker neuron population was created for the recorded population
+        # If a SpiNNaker neuron population was
+        # created for the recorded population
         sim_state = self._simulator.state
         spike_times = {}
         signals = defaultdict(dict)
@@ -77,12 +84,14 @@ class Recorder(recording.Recorder, ContextMixin):
 
             # Loop through all neuron vertices and read
             for vertex in n_cluster.verts:
-                self._read_vertex(n_cluster, vertex, variables_to_include,
+                self._read_vertex(n_cluster, vertex, vars_to_include,
                                   spike_times, signals)
 
-        # Create context containing data read from spinnaker and call superclass
+        # Create context containing data read
+        # from spinnaker and call superclass
         with self.get_new_context(spike_times=spike_times, signals=signals):
-            return super(Recorder, self)._get_current_segment(filter_ids, variables, clear)
+            return super(Recorder, self)._get_current_segment(filter_ids,
+                                                              variables, clear)
 
     @ContextMixin.use_contextual_arguments()
     def _get_spiketimes(self, id, spike_times, signals):
@@ -93,7 +102,8 @@ class Recorder(recording.Recorder, ContextMixin):
         return spike_times[index]
 
     @ContextMixin.use_contextual_arguments()
-    def _get_all_signals(self, variable, ids, spike_times, signals, clear=False):
+    def _get_all_signals(self, variable, ids, spike_times,
+                         signals, clear=False):
         # Stack together signals for this variable from all ids
         signal = signals[variable]
         return np.vstack((signal[self.population.id_to_index(id)]
@@ -101,10 +111,8 @@ class Recorder(recording.Recorder, ContextMixin):
 
     def _localpass_count(self, variable, filter_ids=None):
         N = {}
-        if variable == 'spikes':
+        if variable == "spikes":
             raise NotImplementedError("Not implemented")
-            #for id in self.filter_recorded(variable, filter_ids):
-            #    N[int(id)] = 2
         else:
             raise Exception("Only implemented for spikes")
         return N

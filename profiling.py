@@ -1,11 +1,11 @@
 # Import modules
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import numpy as np
 
 # Import functions
 from scipy.stats import binned_statistic
 from six import iteritems, iterkeys, itervalues
+
 
 def print_summary(profiling_data, duration, dt=1.0):
     """
@@ -79,7 +79,8 @@ def write_csv_header(profiling_data, csv_writer, extra_column_headers):
     csv_writer.writerow(extra_column_headers + list(iterkeys(profiling_data)))
 
 
-def write_csv_row(profiling_data, duration, dt, csv_writer, extra_column_values):
+def write_csv_row(profiling_data, duration, dt, csv_writer,
+                  extra_column_values):
     """
     Write a row into standard profiler format CSV with user values
     followed by mean times for each profiler tag extracted from profiling_data

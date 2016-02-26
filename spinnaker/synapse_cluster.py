@@ -16,9 +16,10 @@ from utils import (create_app_ptr_and_region_files_named, split_slice,
 
 logger = logging.getLogger("pinus_rigida")
 
-# ------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # Regions
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class Regions(enum.IntEnum):
     """Region names, corresponding to those defined in `synapse_processor.h`"""
     system = 0
@@ -28,9 +29,10 @@ class Regions(enum.IntEnum):
     output_buffer = 4
     profiler = 5
 
-#------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # Vertex
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class Vertex(InputVertex):
     def __init__(self, post_neuron_slice, receptor_index):
         # Superclass
@@ -40,6 +42,7 @@ class Vertex(InputVertex):
 
     def add_connection(self, pre_pop, pre_neuron_vertex):
         self.incoming_connections[pre_pop].append(pre_neuron_vertex)
+
 
 # ------------------------------------------------------------------------------
 # SynapseCluster
@@ -78,7 +81,7 @@ class SynapseCluster(object):
         post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
-            synapse_model, receptor_index)
+                     synapse_model, receptor_index)
 
         # Get synapse application name
         # **THINK** is there any point in doing anything cleverer than this
@@ -90,15 +93,16 @@ class SynapseCluster(object):
         for post_slice in post_slices:
             logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
-            # Loop through all non-directly connectable projections of this type
-            vertex_event_rate = 0.0
-            vertex = Vertex(post_slice, receptor_index)
+            # Loop through all non-directly connectable
+            # projections of this type
+            vert_event_rate = 0.0
+            vert = Vertex(post_slice, receptor_index)
             for proj in synaptic_projections:
-                # **TODO** check if projection and pre-population can be directly attached
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
                 for pre_vertex in pop_neuron_clusters[proj.pre].verts:
-                    logger.debug("\t\t\t\tPre slice:%s", str(pre_vertex.neuron_slice))
+                    logger.debug("\t\t\t\tPre slice:%s",
+                                 str(pre_vertex.neuron_slice))
 
                     # Estimate number of synapses the connection between
                     # The pre and the post-slice of neurons will contain
@@ -107,30 +111,32 @@ class SynapseCluster(object):
 
                     # Use this to calculate event rate
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
-                    synaptic_event_rate = total_synapses * pre_mean_rate
+                    pre_rate = total_synapses * pre_mean_rate
 
                     # **TODO** SDRAM estimation
-                    logger.debug("\t\t\t\t\tTotal synapses:%d, synaptic event rate:%f",
-                                 total_synapses, synaptic_event_rate)
+                    logger.debug("\t\t\t\t\tTotal synapses:%d, "
+                                 "synaptic event rate:%f",
+                                 total_synapses, pre_rate)
 
                     # Add this connection to the synapse vertex
-                    vertex.add_connection(proj.pre, pre_vertex)
+                    vert.add_connection(proj.pre, pre_vertex)
 
                     # Add event rate to total for current synapse processor
-                    vertex_event_rate += synaptic_event_rate
+                    vert_event_rate += pre_rate
 
-                    # If it's more than this type of synapse processor can handle
-                    if vertex_event_rate > synapse_model.max_synaptic_event_rate:
+                    # If it's more than this type of
+                    # synapse processor can handle
+                    if vert_event_rate > synapse_model.max_synaptic_event_rate:
                         # Add current synapse vertex to list
-                        self.verts.append(vertex)
+                        self.verts.append(vert)
 
                         # Create replacement and reset event rate
-                        vertex = Vertex(post_slice, receptor_index)
-                        vertex_event_rate = 0.0
+                        vert = Vertex(post_slice, receptor_index)
+                        vert_event_rate = 0.0
 
             # If the last synapse vertex created had any incoming connections
-            if len(vertex.incoming_connections) > 0:
-                self.verts.append(vertex)
+            if len(vert.incoming_connections) > 0:
+                self.verts.append(vert)
 
         logger.debug("\t\t\t%u synapse vertices", len(self.verts))
 
@@ -141,15 +147,16 @@ class SynapseCluster(object):
 
             # Add resources to dictionary
             # **TODO** add SDRAM
-            vertex_resources[v] = { machine.Cores: 1 }
+            vertex_resources[v] = {machine.Cores: 1}
 
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, in_connections):
         # Partition matrices
-        sub_matrices = self.regions[Regions.synaptic_matrix].partition_matrices(
-            matrices, vertex_slice, in_connections)
+        sub_matrices =\
+            self.regions[Regions.synaptic_matrix].partition_matrices(
+                matrices, vertex_slice, in_connections)
 
         # Place them in memory
         matrix_placements = self.regions[Regions.key_lookup].place_matrices(
@@ -192,7 +199,7 @@ class SynapseCluster(object):
             # Perform the write
             region.write_subregion_to_file(mem, *args, **kwargs)
         return region_memory
-    
+
     def read_profile(self):
         # Get the profile recording region and
         region = self.regions[Regions.profiler]
@@ -201,13 +208,14 @@ class SynapseCluster(object):
         return [(v.post_neuron_slice.python_slice,
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
-                 for v in self.verts]
+                for v in self.verts]
 
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrices,
-                              matrix_placements, weight_fixed_point, out_buffers):
+                              matrix_placements, weight_fixed_point,
+                              out_buffers):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them

@@ -17,17 +17,18 @@ from six import (iteritems, iterkeys)
 # Determine model binaries path for models in this module
 model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
 
-# ------------------------------------------------------------------------------
+
+# ----------------------------------------------------------------------------
 # Args
-# ------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
 
 
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 # InputVertex
-#------------------------------------------------------------------------------
+# ----------------------------------------------------------------------------
 class InputVertex(object):
     def __init__(self, post_neuron_slice, receptor_index):
         self.post_neuron_slice = post_neuron_slice
@@ -40,7 +41,8 @@ class InputVertex(object):
     # Magic methods
     # --------------------------------------------------------------------------
     def __str__(self):
-        return "<post neuron slice:%s, receptor index:%u>" % (str(self.post_neuron_slice), self.receptor_index)
+        return ("<post neuron slice:%s, receptor index:%u>" %
+                (str(self.post_neuron_slice), self.receptor_index))
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -55,7 +57,8 @@ class InputVertex(object):
 
         # Return offset pointers into out buffers
         return [b + offset_bytes for b in self.out_buffers]
-    
+
+
 # ------------------------------------------------------------------------------
 # UnitStrideSlice
 # ------------------------------------------------------------------------------
@@ -81,6 +84,7 @@ class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     @property
     def python_slice(self):
         return slice(self.start, self.stop)
+
 
 # ------------------------------------------------------------------------------
 # LazyArrayFloatToFixConverter
@@ -144,8 +148,8 @@ class LazyArrayFloatToFixConverter(object):
         # Saturate the values
         # JK: Think more here
         # **TODO** this needs implementing in terms of less and more
-        #vals = np.clip(values, self.min_value, self.max_value)
-        #vals = vals.apply(partial(np.clip, a_min=self.min_value,
+        # vals = np.clip(values, self.min_value, self.max_value)
+        # vals = vals.apply(partial(np.clip, a_min=self.min_value,
         #                          m_max=self.max_value))
         # Scale and round
         vals *= (2.0 ** self.n_frac)

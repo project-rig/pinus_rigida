@@ -1,8 +1,6 @@
-# Import modules
-from .. import lazy_param_map
-
 # Import classes
 from parameter_space import ParameterSpace
+
 
 # ------------------------------------------------------------------------------
 # Synapse
@@ -14,4 +12,3 @@ class Synapse(ParameterSpace):
                                       cell_type.synapse_immutable_param_map,
                                       parameters, initial_values,
                                       sim_timestep_ms=sim_timestep_ms)
-

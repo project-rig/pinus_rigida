@@ -16,6 +16,7 @@ from utils import (create_app_ptr_and_region_files_named, split_slice,
 
 logger = logging.getLogger("pinus_rigida")
 
+
 # ------------------------------------------------------------------------------
 # Regions
 # ------------------------------------------------------------------------------
@@ -27,6 +28,7 @@ class Regions(enum.IntEnum):
     output_weight = 3
     spike_recording = 4
     profiler = 5
+
 
 # ------------------------------------------------------------------------------
 # CurrentInputCluster
@@ -66,7 +68,7 @@ class CurrentInputCluster(object):
 
         current_input_app = path.join(model_binaries, filename + ".aplx")
         logger.debug("\t\t\tCurrent input application:%s",
-                    current_input_app)
+                     current_input_app)
 
         # Loop through slice
         self.verts = []
@@ -82,7 +84,7 @@ class CurrentInputCluster(object):
 
             # Add resources to dictionary
             # **TODO** add SDRAM
-            vertex_resources[input_vert] = { machine.Cores: 1 }
+            vertex_resources[input_vert] = {machine.Cores: 1}
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -118,7 +120,7 @@ class CurrentInputCluster(object):
             region.write_subregion_to_file(mem, *args, **kwargs)
 
         return region_memory
-    
+
     def read_profile(self):
         # Get the profile recording region and
         region = self.regions[Regions.profiler]
@@ -127,7 +129,7 @@ class CurrentInputCluster(object):
         return [(v.post_neuron_slice.python_slice,
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
-                 for v in self.verts]
+                for v in self.verts]
 
     # --------------------------------------------------------------------------
     # Private methods
