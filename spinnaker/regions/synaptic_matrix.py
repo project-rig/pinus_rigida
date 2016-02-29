@@ -1,4 +1,5 @@
 # Import modules
+import itertools
 import logging
 import numpy as np
 
@@ -9,6 +10,7 @@ from rig.type_casts import NumpyFloatToFixConverter
 
 # Import functions
 from bisect import bisect_left
+from operator import itemgetter
 from six import iteritems
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
@@ -25,7 +27,7 @@ class SynapticMatrix(Region):
     IndexBits = 10
     DelayBits = 3
 
-    row_dtype = [("weight", np.float32), ("delay", np.float32),
+    row_dtype = [("weight", np.float32), ("delay", np.uint32),
                  ("index", np.uint32)]
 
     # --------------------------------------------------------------------------
@@ -117,6 +119,10 @@ class SynapticMatrix(Region):
     # Public methods
     # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
+        # Create lambda function to group delays into DTCM
+        # **TODO** use synapse_type.max_dtcm_delay_slots
+        delay_grouper = lambda d: d[1] // 8
+
         # Loop through all incoming connections
         sub_matrices = []
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
@@ -145,9 +151,17 @@ class SynapticMatrix(Region):
                         row_end = bisect_left(row_idxs, vertex_slice.stop)
 
                         # Use these to build sub-row indexed from slice start
-                        sub_rows[i] = [(w, d, j - vertex_slice.start)
-                                       for (w, d, j) in row[row_start:row_end]]
+                        sub_row = [(w, d, j - vertex_slice.start)
+                                   for (w, d, j) in row[row_start:row_end]]
 
+                        # Sort sub-row by delay
+                        print sub_row
+                        sub_row.sort(key=itemgetter(1))
+                        print sub_row
+                        sub_rows[i] = [list(delay_group)
+                                       for _, delay_group in itertools.groupby(sub_row, delay_grouper)]
+                        print sub_rows[i]
+                        assert False
                         # Update maximum columns
                         max_cols = max(max_cols, row_end - row_start)
 

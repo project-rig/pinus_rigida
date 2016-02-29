@@ -2,7 +2,7 @@
 import itertools
 import logging
 import math
-import numpy
+import numpy as np
 import sys
 from pyNN import common
 
@@ -83,7 +83,7 @@ class PopulationView(common.PopulationView):
         parameter_dict = {}
         for name in names:
             value = self.parent._parameters[name]
-            if isinstance(value, numpy.ndarray):
+            if isinstance(value, np.ndarray):
                 value = value[self.mask]
             parameter_dict[name] = simplify(value)
         return ParameterSpace(parameter_dict, shape=(self.size,))
@@ -171,13 +171,13 @@ class Population(common.Population):
     # Internal PyNN methods
     # --------------------------------------------------------------------------
     def _create_cells(self):
-        id_range = numpy.arange(simulator.state.id_counter,
-                                simulator.state.id_counter + self.size)
-        self.all_cells = numpy.array([simulator.ID(id) for id in id_range],
-                                     dtype=simulator.ID)
+        id_range = np.arange(simulator.state.id_counter,
+                             simulator.state.id_counter + self.size)
+        self.all_cells = np.array([simulator.ID(id) for id in id_range],
+                                  dtype=simulator.ID)
 
         # In terms of MPI, all SpiNNaker neurons are local
-        self._mask_local = numpy.ones((self.size,), bool)
+        self._mask_local = np.ones((self.size,), bool)
 
         for id in self.all_cells:
             id.parent = self
@@ -421,27 +421,38 @@ class Population(common.Population):
         # weights present in incoming connections
         weight_range = WeightRange()
 
+        # Calculate the maximum supported delay in timesteps
+        max_delay_timesteps = round(float(self._simulator.state.max_delay) /
+                                    float(self._simulator.state.dt))
+
+        # Use this to calculate the number of extension (SDRAM) rows
+        # that will be required to support this maximum delay
+        max_extension_rows = math.ceil(
+            max_delay_timesteps / float(synapse_type[0].max_dtcm_delay_slots))
+
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
         for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
             # Create an array to hold matrix rows
             # and initialize each one with an empty list
-            population_matrix_rows[pre_pop] = numpy.empty(pre_pop.size,
-                                                          dtype=object)
-            for r in range(pre_pop.size):
-                population_matrix_rows[pre_pop][r] = []
+            # **YUCK** her be syntactic dragons
+            pop_matrix_rows[pre_pop] = np.empty(
+                (max_extension_rows, pre_pop.size), dtype=object)
+            for r in np.nditer(pop_matrix_rows[pre_pop],
+                               op_flags=["readwrite"]):
+                r[...] = []
 
             # Loop through projections and build
             for projection in projections:
-                projection._build(matrix_rows=population_matrix_rows[pre_pop],
+                projection._build(matrix_rows=pop_matrix_rows[pre_pop],
                                   weight_range=weight_range,
                                   directly_connect=False)
 
             # Sort each row in matrix by post-synaptic neuron
             # **THINK** is this necessary or does
             # PyNN always move left to right
-            for r in population_matrix_rows[pre_pop]:
-                r.sort(key=itemgetter(2))
+            #for r in pop_matrix_rows[pre_pop]:
+            #    r.sort(key=itemgetter(2))
 
         # Calculate where the weight format fixed-point lies
         weight_fixed_point = weight_range.fixed_point
@@ -454,14 +465,18 @@ class Population(common.Population):
                             **connection_parameters):
         # Extract connection parameters
         weight = abs(connection_parameters["weight"])
-        delay = connection_parameters["delay"]
+        delay_ms = connection_parameters["delay"]
+
+        # Convert delay into timesteps and round
+        delay_timesteps = int(round(float(delay_ms) /
+                                    float(self._simulator.state.dt)))
 
         # Update incoming weight range
         weight_range.update(weight)
 
         # Add synapse to each row
         for p in matrix_rows[presynaptic_indices]:
-            p.append(Synapse(weight, delay, postsynaptic_index))
+            p.append(Synapse(weight, delay_timesteps, postsynaptic_index))
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
