@@ -30,7 +30,7 @@ public:
   static bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords],
                          F applyInputFunction)
   {
-    register T *synapticWords = (T*)&dmaBuffer[1];
+    register T *synapticWords = (T*)&dmaBuffer[3];
     register uint32_t count = dmaBuffer[0];
     
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing row with %u synapses", count);
@@ -51,8 +51,8 @@ public:
   
   static unsigned int GetRowWords(unsigned int rowSynapses)
   {
-    // One header word and a synapse
-    return 1 + ((rowSynapses * sizeof(T)) / 4);
+    // Three header word and a synapse
+    return 3 + ((rowSynapses * sizeof(T)) / 4);
   }
 
 private:
