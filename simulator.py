@@ -291,7 +291,7 @@ class State(common.control.BaseState):
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(synapse_types):
                 logger.debug("\tPopulation label:%s, synapse type:%s",
-                             (pop.label, str(s_type)))
+                             pop.label, str(s_type))
 
                 # Expand any incoming connections
                 matrices, weight_fixed_point =\
