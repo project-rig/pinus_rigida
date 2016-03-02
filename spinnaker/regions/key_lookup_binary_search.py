@@ -4,13 +4,15 @@ import struct
 # Import classes
 from region import Region
 
+# Import functions
+from ..utils import get_row_offset_length
 
 # ------------------------------------------------------------------------------
 # KeyLookupBinarySearch
 # ------------------------------------------------------------------------------
 class KeyLookupBinarySearch(Region):
-    # How many of the low bits are used to represent row length
-    NumSynapseBits = 10
+    # How many bits are used to represent row length
+    LengthBits = 10
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -59,7 +61,7 @@ class KeyLookupBinarySearch(Region):
         for m, p in sorted(zip(sub_matrices, matrix_placements)):
             data += struct.pack(
                 "III", m.key, m.mask,
-                (m.max_cols - 1) | (p << KeyLookupBinarySearch.NumSynapseBits)
+                get_row_offset_length(p, m.max_cols, self.LengthBits)
             )
 
         # Write data to filelike

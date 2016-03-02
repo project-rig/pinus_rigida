@@ -415,32 +415,20 @@ class Population(common.Population):
         return synapse_clusters
 
     def _build_incoming_connection(self, synapse_type):
-        population_matrix_rows = {}
-
         # Create weight range object to track range of
         # weights present in incoming connections
         weight_range = WeightRange()
 
-        # Calculate the maximum supported delay in timesteps
-        max_delay_timesteps = round(float(self._simulator.state.max_delay) /
-                                    float(self._simulator.state.dt))
-
-        # Use this to calculate the number of extension (SDRAM) rows
-        # that will be required to support this maximum delay
-        max_extension_rows = math.ceil(
-            max_delay_timesteps / float(synapse_type[0].max_dtcm_delay_slots))
-
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
+        pop_matrix_rows = {}
         for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
             # Create an array to hold matrix rows
             # and initialize each one with an empty list
             # **YUCK** her be syntactic dragons
-            pop_matrix_rows[pre_pop] = np.empty(
-                (max_extension_rows, pre_pop.size), dtype=object)
-            for r in np.nditer(pop_matrix_rows[pre_pop],
-                               op_flags=["readwrite"]):
-                r[...] = []
+            pop_matrix_rows[pre_pop] = np.empty(pre_pop.size, dtype=object)
+            for r in range(pre_pop.size):
+                pop_matrix_rows[pre_pop][r] = []
 
             # Loop through projections and build
             for projection in projections:
@@ -458,7 +446,7 @@ class Population(common.Population):
         weight_fixed_point = weight_range.fixed_point
         logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
 
-        return population_matrix_rows, weight_fixed_point
+        return pop_matrix_rows, weight_fixed_point
 
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             matrix_rows, weight_range,

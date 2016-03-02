@@ -12,11 +12,16 @@ from rig.type_casts import NumpyFloatToFixConverter
 from bisect import bisect_left
 from operator import itemgetter
 from six import iteritems
+from ..utils import get_row_offset_length
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
                                      "max_cols", "rows"])
 
+row_dtype = [("weight", np.float32), ("delay", np.uint32),
+             ("index", np.uint32)]
+
 logger = logging.getLogger("pinus_rigida")
+
 
 
 # ------------------------------------------------------------------------------
@@ -27,8 +32,8 @@ class SynapticMatrix(Region):
     IndexBits = 10
     DelayBits = 3
 
-    row_dtype = [("weight", np.float32), ("delay", np.uint32),
-                 ("index", np.uint32)]
+    # How many bits are used to represent (extension) row length
+    LengthBits = 10
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -75,9 +80,6 @@ class SynapticMatrix(Region):
         float_to_weight = NumpyFloatToFixConverter(False, 32,
                                                    weight_fixed_point)
 
-        # How much should we shift weights to be above index and delay
-        weight_shift = self.IndexBits + self.DelayBits
-
         # Loop through sub matrices
         assert fp.tell() == 0
         for matrix, placement in zip(sub_matrices, matrix_placements):
@@ -88,32 +90,37 @@ class SynapticMatrix(Region):
             # **NOTE** placement is in WORDS
             fp.seek(placement * 4, 0)
 
-            # Build matrix large enough for entire ragged matrix
-            matrix_words = np.empty((len(matrix.rows), matrix.max_cols + 1),
+            # Build matrix large enough for entire ragged matri
+            num_matrix_words = len(matrix.rows) * (3 + matrix.max_cols)
+            matrix_words = np.empty((len(matrix.rows), 3 + matrix.max_cols),
                                     dtype=np.uint32)
 
+            # Calculate the number of extension words required and build
+            # Second numpy array to contain concatenated extension rows
+            extension_words = np.empty(matrix.size_words - num_matrix_words,
+                                       dtype=np.uint32)
+
             # Loop through matrix rows
+            e = 0
             for i, row in enumerate(matrix.rows):
-                # Convert row to numpy record array
-                row = np.asarray(row, dtype=self.row_dtype)
+                # Write base row to matrix
+                next_row = None if len(row) == 1 else row[1]
+                self._write_spinnaker_row(row[0], next_row,
+                                          e, float_to_weight, matrix_words[i])
 
-                # Quantise delays
-                # **TODO** take timestep into account
-                delay_quantised = np.empty(len(row), dtype=np.uint32)
-                np.round(row["delay"], out=delay_quantised)
+                # Loop through extension rows
+                for i, extension_row in enumerate(row[1:], start=1):
+                    row_length = 3 + len(extension_row[1])
+                    next_row = None if len(row) == (i + 1) else row[i + 1]
+                    self._write_spinnaker_row(extension_row, next_row,
+                                              e + row_length, float_to_weight,
+                                              extension_words[e:])
 
-                # Convert weight to fixed point
-                weight_fixed = float_to_weight(row["weight"])
-
-                # Combine together into synaptic words
-                matrix_words[i, 0] = len(row)
-                matrix_words[i, 1:1 + len(row)] = (
-                    row["index"]
-                    | (delay_quantised << self.IndexBits)
-                    | (weight_fixed << weight_shift))
+                    e += row_length
 
             # Write matrix
             fp.write(matrix_words.tostring())
+            fp.write(extension_words.tostring())
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -141,6 +148,8 @@ class SynapticMatrix(Region):
                     # Connecting this pre-neuron vertex to this vertexs-lice
                     sub_rows = np.empty(len(rows), dtype=object)
                     max_cols = 0
+                    num_extension_words = 0
+                    any_connections = False
                     for i, row in enumerate(rows):
                         # Extract indices
                         row_idxs = [s.index for s in row]
@@ -154,23 +163,45 @@ class SynapticMatrix(Region):
                         sub_row = [(w, d, j - vertex_slice.start)
                                    for (w, d, j) in row[row_start:row_end]]
 
-                        # Sort sub-row by delay
-                        print sub_row
-                        sub_row.sort(key=itemgetter(1))
-                        print sub_row
-                        sub_rows[i] = [list(delay_group)
-                                       for _, delay_group in itertools.groupby(sub_row, delay_grouper)]
-                        print sub_rows[i]
-                        assert False
-                        # Update maximum columns
-                        max_cols = max(max_cols, row_end - row_start)
+                        # If sub-row has any elements
+                        if len(sub_row) != 0:
+                            # Set flag indicating this sub-matrix
+                            # should actually be processed
+                            any_connections = True
 
-                    # If there any columns in sub-matrix
-                    if max_cols > 0:
-                        # Calculate matrix size in words
-                        # **TODO* extend to different formats
+                            # Sort sub-row by delay
+                            sub_row.sort(key=itemgetter(1))
+
+                            # Group sub-row into delay groups
+                            delay_row_iter = itertools.groupby(sub_row,
+                                                               delay_grouper)
+                            sub_rows[i] = [(e * 8, list(delay_row))
+                                           for e, delay_row in delay_row_iter]
+
+                            # If the first delay group of this sub-row
+                            # isn't extended, add new empty sub-row
+                            if sub_rows[i][0][0] != 0:
+                                sub_rows[i].insert(0, (0, []))
+
+                            # Count number of words in extension rows
+                            for e in sub_rows[i][1:]:
+                                num_extension_words += (3 + len(e[1]))
+
+                            # Update maximum number of columns
+                            max_cols = max(max_cols, len(sub_rows[i][0][1]))
+                        # Otherwise, add empty row
+                        else:
+                            sub_rows[i] = [(0, [])]
+
+                    # If there any connections within this sub-matrix
+                    if any_connections:
+                        print "max_cols:%u, num_extension_words:%u" % (max_cols, num_extension_words)
+
+                        # Calculate matrix size in words - size of square
+                        # matrix added to number of extension words
                         # **NOTE** single header word required
-                        size_words = (len(sub_rows) * (1 + max_cols))
+                        size_words = num_extension_words +\
+                            (len(sub_rows) * (3 + max_cols))
 
                         # Add sub matrix to list
                         sub_matrices.append(
@@ -179,3 +210,43 @@ class SynapticMatrix(Region):
                                       size_words, max_cols, sub_rows))
 
         return sub_matrices
+
+    def _write_spinnaker_row(self, row, next_row, next_row_offset,
+                             float_to_weight, destination):
+        # Write actual length of row
+        destination[0] = len(row[1])
+
+        # If there is no next row, write zeros to next two words
+        if next_row is None:
+            destination[1] = 0
+            destination[2] = 0
+        # Otherwise
+        else:
+            print next_row_offset, len(next_row[1]), self.LengthBits
+            # Write relative delay of next_row from row
+            destination[1] = (next_row[0] - row[0])
+
+            # Write word containing the offset to the next row and its length
+            destination[2] = get_row_offset_length(next_row_offset,
+                                                len(next_row[1]),
+                                                self.LengthBits)
+
+        # Convert row to numpy record array
+        row = np.asarray(row[1], dtype=row_dtype)
+
+        # Extract the DTCM component of delay
+        # **TODO** use synapse_type.max_dtcm_delay_slots
+        dtcm_delay = row["delay"] % 8
+
+        # Convert weight to fixed point
+        weight_fixed = float_to_weight(row["weight"])
+
+        # How much should we shift weights to be above index and delay
+        weight_shift = self.IndexBits + self.DelayBits
+
+        # Write row
+        destination[3:3 + len(row)] = (row["index"]
+                                    | (dtcm_delay << self.IndexBits)
+                                    | (weight_fixed << weight_shift))
+
+        print destination[:3 + len(row)]
