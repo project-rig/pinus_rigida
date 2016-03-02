@@ -8,6 +8,9 @@
 #include "../common/log.h"
 #include "../common/utils.h"
 
+// Synapse processor includes
+#include "row_offset_length.h"
+
 // Namespaces
 using namespace Common::ARMIntrinsics;
 using namespace Common::Utils;
@@ -42,9 +45,8 @@ public:
       if ((key & lookupEntry.m_Mask) == lookupEntry.m_Key)
       {
         // Extract number of synapses and word offset from lookup entry
-        // **NOTE** add one as 0 is not a valid number
-        const unsigned int rowSynapses = GetNumSynapses(lookupEntry.m_WordOffsetRowSynapses);
-        const unsigned int wordOffset = GetWordOffset(lookupEntry.m_WordOffsetRowSynapses);
+        const unsigned int rowSynapses = lookupEntry.m_WordOffsetRowSynapses.GetNumSynapses();
+        const unsigned int wordOffset = lookupEntry.m_WordOffsetRowSynapses.GetWordOffset();
         
         // Extract neuron ID from key
         // **NOTE** assumed to be at bottom of mask
@@ -97,8 +99,8 @@ public:
     const auto &lookupEntry = m_LookupEntries[i];
     LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Key:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
       i, lookupEntry.m_Key, lookupEntry.m_Mask,
-      GetNumSynapses(lookupEntry.m_WordOffsetRowSynapses),
-      GetWordOffset(lookupEntry.m_WordOffsetRowSynapses));
+      lookupEntry.m_WordOffsetRowSynapses.GetNumSynapses(),
+      lookupEntry.m_WordOffsetRowSynapses.GetWordOffset());
   }
 #endif
 
@@ -106,24 +108,6 @@ public:
   }
 
 private:
-  //-----------------------------------------------------------------------------
-  // Constants
-  //-----------------------------------------------------------------------------
-  static const uint32_t RowSynapsesMask = (1 << S) - 1;
-
-  //-----------------------------------------------------------------------------
-  // Static methods
-  //-----------------------------------------------------------------------------
-  static uint32_t GetNumSynapses(uint32_t word)
-  {
-    return (word & RowSynapsesMask) + 1;
-  }
-
-  static uint32_t GetWordOffset(uint32_t word)
-  {
-    return (word >> S);
-  }
-
   //-----------------------------------------------------------------------------
   // KeyLookupEntry
   //-----------------------------------------------------------------------------
@@ -133,7 +117,7 @@ private:
   {
     uint32_t m_Key;
     uint32_t m_Mask;
-    uint32_t m_WordOffsetRowSynapses;
+    RowOffsetLength<S> m_WordOffsetRowSynapses;
   };
 
   //-----------------------------------------------------------------------------
