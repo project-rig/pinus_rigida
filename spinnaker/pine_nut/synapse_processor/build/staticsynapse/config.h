@@ -27,3 +27,9 @@ namespace SynapseProcessor
 {
   typedef RingBufferBase<uint32_t, 3, 10> RingBuffer;
 }
+
+#include "../../delay_buffer.h"
+namespace SynapseProcessor
+{
+  typedef DelayBufferBase<10> DelayBuffer;
+}

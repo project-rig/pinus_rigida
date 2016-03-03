@@ -26,6 +26,7 @@ enum DMATag
   DMATagRowRead,
   DMATagRowWrite,
   DMATagOutputWrite,
+  DMATagDelayBufferRead,
 };
 
 typedef uint32_t DMABuffer[SynapseType::MaxRowWords];
@@ -35,6 +36,7 @@ typedef uint32_t DMABuffer[SynapseType::MaxRowWords];
 //----------------------------------------------------------------------------
 Config g_Config;
 RingBuffer g_RingBuffer;
+DelayBuffer g_DelayBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
 
@@ -44,8 +46,10 @@ uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
 const uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
-uint g_Tick = 0;
+uint g_CurrentDelayRowIndex = 0;
+bool g_DelayRowBufferFetched = false;
 
+uint g_Tick = 0;
 
 bool g_DMABusy = false;
 DMABuffer g_DMABuffers[2];
@@ -67,6 +71,25 @@ inline DMABuffer &DMACurrentRowBuffer()
 inline DMABuffer &DMANextRowBuffer()
 {
   return g_DMABuffers[g_DMARowBufferIndex ^ 1];
+}
+//-----------------------------------------------------------------------------
+inline void DMAStartRowFetchPipeline()
+{
+  // If we're not already processing synaptic dmas,
+  // flag pipeline as busy and trigger a user event
+  if(!g_DMABusy)
+  {
+    LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike");
+
+    if(spin1_trigger_user_event(0, 0))
+    {
+      g_DMABusy = true;
+    }
+    else
+    {
+      LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event");
+    }
+  }
 }
 
 //-----------------------------------------------------------------------------
@@ -146,6 +169,13 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  if(!g_DelayBuffer.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionDelayBuffer),
+    flags))
+  {
+    return false;
+  }
+
   // Read profiler region
   if(!Profiler::ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionProfiler),
@@ -184,13 +214,38 @@ void SetupNextDMARowRead()
                 rowWords, rowAddress);
       
       // Start a DMA transfer to fetch this synaptic row into current buffer
-      spin1_dma_transfer(DMATagRowRead, const_cast<uint32_t*>(rowAddress), DMACurrentRowBuffer(), DMA_READ, rowWords * sizeof(uint32_t));
+      spin1_dma_transfer(DMATagRowRead,
+                         const_cast<uint32_t*>(rowAddress), DMACurrentRowBuffer(),
+                         DMA_READ, rowWords * sizeof(uint32_t));
 
       // Flip DMA buffers
       DMASwapRowBuffers();
 
       return;
     }
+  }
+  // Otherwise, if a delay row buffer is present for this tick and all rows in it haven't been processed
+  else if(g_DelayRowBufferFetched && g_CurrentDelayRowIndex < g_DelayBuffer.GetRowCount(g_Tick))
+  {
+    // Get next delay row from buffer
+    auto delayRow = g_DelayBuffer.GetRow(g_CurrentDelayRowIndex++);
+
+    // Convert number of synapses to words and get address from synaptic matrix base
+    unsigned int delayRowWords = SynapseType::GetRowWords(delayRow.GetNumSynapses());
+    const uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
+
+    LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row index:%u, synapse:%u, words:%u, address:%08x",
+              g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
+
+    // Start a DMA transfer to fetch this synaptic row into current buffer
+    spin1_dma_transfer(DMATagRowRead,
+                       const_cast<uint32_t*>(delayRowAddress), DMACurrentRowBuffer(),
+                       DMA_READ, delayRowWords * sizeof(uint32_t));
+
+    // Flip DMA buffers
+    DMASwapRowBuffers();
+
+    return;
   }
 
   g_DMABusy = false;
@@ -206,24 +261,11 @@ void MCPacketReceived(uint key, uint)
   LOG_PRINT(LOG_LEVEL_TRACE, "Received spike %x at tick %u, DMA Busy = %u",
             key, g_Tick, g_DMABusy);
 
-  // If there was space to add spike to incoming spike queue
+  // If there was space to add spike to incoming
+  // spike queue, start DMA row fetch pipeline
   if(g_SpikeInputBuffer.AddSpike(key))
   {
-    // If we're not already processing synaptic dmas,  
-    // flag pipeline as busy and trigger a user event
-    if(!g_DMABusy)
-    {
-      LOG_PRINT(LOG_LEVEL_TRACE, "Triggering user event for new spike");
-
-      if(spin1_trigger_user_event(0, 0))
-      {
-        g_DMABusy = true;
-      }
-      else
-      {
-        LOG_PRINT(LOG_LEVEL_WARN, "Could not trigger user event");
-      }
-    }
+    DMAStartRowFetchPipeline();
   }
   else
   {
@@ -258,6 +300,18 @@ void DMATransferDone(uint, uint tag)
     // This timesteps output has been written from
     // the ring-buffer so we can now zero it
     g_RingBuffer.ClearOutputBuffer(g_Tick);
+
+    // Fetch delay buffer for this timestep
+    g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
+  }
+  else if(tag == DMATagDelayBufferRead)
+  {
+    LOG_PRINT(LOG_LEVEL_TRACE, "DMA read of delay buffer for tick %u complete", g_Tick);
+
+    // Set flag to show that row buffer has been
+    // fetched and start DMA row fetch pipeline
+    g_DelayRowBufferFetched = true;
+    DMAStartRowFetchPipeline();
   }
   else if(tag != DMATagRowWrite)
   {
@@ -274,7 +328,20 @@ void UserEvent(uint, uint)
 void TimerTick(uint tick, uint)
 {
   Profiler::TagDisableIRQFIQ<ProfilerTagTimerTick> p;
-  
+
+  // If all delay rows weren't processed last timer tick
+  if(g_CurrentDelayRowIndex != g_DelayBuffer.GetRowCount(g_Tick))
+  {
+    LOG_PRINT(LOG_LEVEL_WARN, "Not all delay rows were processed last timer tick");
+  }
+
+  // Clear the delay buffer for the last tick
+  g_DelayBuffer.Clear(g_Tick);
+
+  // Reset delay rows counter and fetched flag
+  g_DelayRowBufferFetched = false;
+  g_CurrentDelayRowIndex = 0;
+
   // Cache tick
   // **NOTE** ticks start at 1
   g_Tick = (tick - 1);
@@ -311,6 +378,7 @@ void TimerTick(uint tick, uint)
     spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[g_Tick % 2],
                       const_cast<RingBuffer::Type*>(outputBuffer), DMA_WRITE,
                       g_AppWords[AppWordNumPostNeurons] * sizeof(uint32_t));
+
   }
 }
 } // anonymous namespace

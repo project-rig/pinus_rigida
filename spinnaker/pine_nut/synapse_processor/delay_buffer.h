@@ -3,36 +3,96 @@
 // Standard includes
 #include <cstdint>
 
-// Common includes
+// Common include
+#include "../common/log.h"
 #include "../common/spinnaker.h"
 
+// Synapse processor includes
+#include "row_offset_length.h"
+
 //-----------------------------------------------------------------------------
-// SynapseProcessor::DelayBuffer
+// SynapseProcessor::DelayBufferBase
 //-----------------------------------------------------------------------------
 namespace SynapseProcessor
 {
-class DelayBuffer
+template<unsigned int S>
+class DelayBufferBase
 {
 public:
-  DelayBuffer() : m_DelayMask(0), m_BufferSize(0), m_SDRAMDelayBuffers(NULL), m_DelayBufferCount(NULL)
+  //-----------------------------------------------------------------------------
+  // Typedefines
+  //-----------------------------------------------------------------------------
+  typedef RowOffsetLength<S> R;
+
+  DelayBufferBase() : m_DelayMask(0), m_BufferSize(0), m_SDRAMRowBuffers(NULL),
+    m_RowCount(NULL), m_DMABuffer(NULL)
   {
   }
 
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool ReadSDRAMData(uint32_t *region, uint32_t);
+  bool ReadSDRAMData(uint32_t *region, uint32_t)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "DelayBuffer::ReadSDRAMData");
 
-  bool AddRow(unsigned int tick, uint32_t *row)
+    // Read number of delay slots and use to calculate mask
+    const unsigned int numDelaySlots = (unsigned int)region[0];
+    m_BufferSize = (unsigned int)region[1];
+    m_DelayMask = numDelaySlots - 1;
+    LOG_PRINT(LOG_LEVEL_INFO, "\tNum delay slots:%u, Delay mask:%x, Buffer size:%u",
+              numDelaySlots, m_DelayMask, m_BufferSize);
+
+    // Allocate SDRAM delay buffer pointers
+    m_SDRAMRowBuffers = (R**)spin1_malloc(sizeof(R*) * numDelaySlots);
+    if(m_SDRAMRowBuffers == NULL)
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate pointers to SDRAM delay buffer");
+      return false;
+    }
+
+    // Allocate delay buffer counts
+    m_RowCount = (uint8_t*)spin1_malloc(sizeof(uint8_t) * numDelaySlots);
+    if(m_RowCount == NULL)
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to row counts");
+      return false;
+    }
+
+    // Allocate DMA buffer
+    m_DMABuffer = (R*)spin1_malloc(sizeof(R) * m_BufferSize);
+    if(m_DMABuffer == NULL)
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate DMA buffer");
+      return false;
+    }
+
+    // Loop through delay slots
+    R *delayBuffer = (R*)&region[2];
+    for(unsigned int d = 0; d < numDelaySlots; d++, delayBuffer += m_BufferSize)
+    {
+      // Point this delay buffer
+      m_SDRAMRowBuffers[d] = delayBuffer;
+      LOG_PRINT(LOG_LEVEL_TRACE, "Delay buffer %u at %08x",
+                d, m_SDRAMRowBuffers[d] );
+
+      // Zero entry counter
+      m_RowCount[d] = 0;
+    }
+
+    return true;
+  }
+
+  bool AddRow(unsigned int tick, R rowOffsetLength)
   {
     // Calculate index of buffer to use
     const unsigned int d = tick & m_DelayMask;
 
     // If there is space in this delay buffer, add row
-    // pointer to SDRAM delay buffer and increment counter
-    if(m_DelayBufferCount[d] < m_BufferSize)
+    // offset length to SDRAM delay buffer and increment counter
+    if(m_RowCount[d] < m_BufferSize)
     {
-      m_SDRAMDelayBuffers[d][m_DelayBufferCount[d]++] = row;
+      m_SDRAMRowBuffers[d][m_RowCount[d]++] = rowOffsetLength;
       return true;
     }
     // Otherwise
@@ -42,20 +102,36 @@ public:
     }
   }
 
-  uint32_t **GetDelayBuffer(unsigned int tick) const
+  void Fetch(unsigned int tick, uint tag)
   {
-    return m_SDRAMDelayBuffers[tick & m_DelayMask];
+    // If there are any rows in this tick's buffer
+    unsigned int rowCount = GetRowCount(tick);
+    if(rowCount > 0)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "DMA reading %u entry delay row buffer for tick %u",
+                rowCount, tick);
+
+      // Start DMA of current tick's delay buffer into DMA buffer
+      spin1_dma_transfer(tag,
+                        m_SDRAMRowBuffers[tick & m_DelayMask], m_DMABuffer,
+                        DMA_READ, rowCount * sizeof(R));
+    }
   }
 
-  unsigned int GetDelayBufferCount(unsigned int tick) const
-  {
-    return (unsigned int)m_DelayBufferCount[tick & m_DelayMask];
-  }
-
-  void ClearDelayBuffer(unsigned int tick)
+  void Clear(unsigned int tick)
   {
     // Reset count for this delay slot
-    m_DelayBufferCount[tick & m_DelayMask] = 0;
+    m_RowCount[tick & m_DelayMask] = 0;
+  }
+
+  R GetRow(unsigned int index) const
+  {
+    return m_DMABuffer[index];
+  }
+
+  unsigned int GetRowCount(unsigned int tick) const
+  {
+    return (unsigned int)m_RowCount[tick & m_DelayMask];
   }
 
 private:
@@ -68,10 +144,13 @@ private:
   // How big is each delay buffer
   unsigned int m_BufferSize;
 
-  // Pointers to heads of delay buffers for each slot
-  uint32_t ***m_SDRAMDelayBuffers;
+  // Pointers to heads of row buffers for each slot
+  R **m_SDRAMRowBuffers;
 
-  // Number of entries present in each delay buffer
-  uint8_t *m_DelayBufferCount;
+  // Number of rows present in each delay buffer
+  uint8_t *m_RowCount;
+
+  // Buffer used to hold current timesteps buffer
+  R *m_DMABuffer;
 };
 } // SynapseProcessor

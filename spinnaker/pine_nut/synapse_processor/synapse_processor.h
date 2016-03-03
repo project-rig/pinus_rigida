@@ -13,6 +13,7 @@ enum Region
   RegionSynapticMatrix,
   RegionPlasticity,
   RegionOutputBuffer,
+  RegionDelayBuffer,
   RegionProfiler,
 };
 
