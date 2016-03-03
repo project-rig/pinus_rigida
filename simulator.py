@@ -139,7 +139,7 @@ class State(common.control.BaseState):
 
             # Create spinnaker neural cluster
             pop_neuron_clusters[pop] = pop._create_neural_cluster(
-                pop_id, self.dt, hardware_timestep_us, duration_timesteps,
+                pop_id, hardware_timestep_us, duration_timesteps,
                 vertex_applications, vertex_resources, keyspace)
 
         return pop_neuron_clusters
@@ -193,7 +193,7 @@ class State(common.control.BaseState):
 
             # Create cluster
             c = proj._create_current_input_cluster(
-                self.dt, hardware_timestep_us, duration_timesteps,
+                hardware_timestep_us, duration_timesteps,
                 vertex_applications, vertex_resources)
 
             # Add cluster to data structures

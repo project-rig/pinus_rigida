@@ -1,4 +1,5 @@
 from analogue_recording import AnalogueRecording
+from delay_buffer import DelayBuffer
 from input_buffer import InputBuffer
 from key_lookup_binary_search import KeyLookupBinarySearch
 from neuron import Neuron

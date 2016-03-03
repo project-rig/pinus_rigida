@@ -101,14 +101,14 @@ class SynapticMatrix(Region):
                          "matrix words:%u, num extension words:%u",
                          placement, matrix.max_cols, num_matrix_words,
                          matrix.size_words - num_matrix_words)
-            
+
             # Loop through matrix rows
             next_row_offset = 0
             for i, row in enumerate(matrix.rows):
                 # Write base row to matrix
                 next_row = None if len(row) == 1 else row[1]
                 self._write_spinnaker_row(row[0], next_row,
-                                          next_row_offset + num_matrix_words,
+                                          placement + next_row_offset + num_matrix_words,
                                           float_to_weight, matrix_words[i])
 
                 # Loop through extension rows
@@ -117,7 +117,7 @@ class SynapticMatrix(Region):
                     next_row = None if len(row) == (i + 1) else row[i + 1]
                     self._write_spinnaker_row(
                         ext_row, next_row,
-                        next_row_offset + row_length + num_matrix_words,
+                        placement + next_row_offset + row_length + num_matrix_words,
                         float_to_weight, ext_words[next_row_offset:])
 
                     next_row_offset += row_length

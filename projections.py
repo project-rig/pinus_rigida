@@ -79,8 +79,7 @@ class Projection(common.Projection, ContextMixin):
         with self.get_new_context(**context_kwargs):
             self._connector.connect(self)
 
-    def _create_current_input_cluster(self, simulation_timestep_us,
-                                      timer_period_us, simulation_ticks,
+    def _create_current_input_cluster(self, timer_period_us, simulation_ticks,
                                       vertex_applications, vertex_resources):
         # Assert that this projection can be directly connected
         assert self._directly_connectable
@@ -99,7 +98,7 @@ class Projection(common.Projection, ContextMixin):
         # Create current input cluster
         return CurrentInputCluster(
             self.pre.celltype, pre_parameters, self.pre.initial_values,
-            simulation_timestep_us, timer_period_us, simulation_ticks,
+            self._simulator.state.dt, timer_period_us, simulation_ticks,
             self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
             receptor_index, vertex_applications, vertex_resources,
             self.current_input_j_constraint)

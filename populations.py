@@ -359,10 +359,9 @@ class Population(common.Population):
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
 
-    def _create_neural_cluster(self, pop_id, simulation_timestep_us,
-                               timer_period_us, simulation_ticks,
-                               vertex_applications, vertex_resources,
-                               keyspace):
+    def _create_neural_cluster(self, pop_id, timer_period_us,
+                               simulation_ticks, vertex_applications,
+                               vertex_resources, keyspace):
         # Extract parameter lazy array
         if isinstance(self.celltype, StandardCellType):
             parameters = self.celltype.native_parameters
@@ -372,7 +371,7 @@ class Population(common.Population):
 
         # Create neural cluster
         return NeuralCluster(pop_id, self.celltype, parameters,
-                             self.initial_values, simulation_timestep_us,
+                             self.initial_values, self._simulator.state.dt,
                              timer_period_us, simulation_ticks,
                              self.recorder.indices_to_record,
                              self.spinnaker_config, vertex_applications,
@@ -382,7 +381,6 @@ class Population(common.Population):
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
                                  vertex_applications, vertex_resources):
         # Get neuron clusters dictionary from simulator
-        # **THINK** is it better to get this as ANOTHER parameter
         pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
 
         # Loop through newly partioned incoming projections_load_synapse_verts
@@ -401,7 +399,9 @@ class Population(common.Population):
                     synapse_type[1])
 
                 # Create synapse cluster
-                c = SynapseCluster(timer_period_us, simulation_ticks,
+                c = SynapseCluster(self._simulator.state.dt, timer_period_us,
+                                   simulation_ticks,
+                                   self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
                                    synapse_type[0], receptor_index,
                                    synaptic_projections, pop_neuron_clusters,

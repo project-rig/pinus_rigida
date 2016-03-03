@@ -27,7 +27,8 @@ class Regions(enum.IntEnum):
     synaptic_matrix = 2
     plasticity = 3
     output_buffer = 4
-    profiler = 5
+    delay_buffer = 5
+    profiler = 6
 
 
 # ----------------------------------------------------------------------------
@@ -56,10 +57,10 @@ class SynapseCluster(object):
         3:  "Process row",
     }
 
-    def __init__(self, timer_period_us, sim_ticks, config, post_pop_size,
-                 synapse_model, receptor_index, synaptic_projections,
-                 pop_neuron_clusters, vertex_applications, vertex_resources,
-                 post_synaptic_width):
+    def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
+                 max_delay_ms, config, post_pop_size, synapse_model,
+                 receptor_index, synaptic_projections, pop_neuron_clusters,
+                 vertex_applications, vertex_resources, post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(timer_period_us,
@@ -67,6 +68,9 @@ class SynapseCluster(object):
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
         self.regions[Regions.synaptic_matrix] = regions.SynapticMatrix()
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
+        self.regions[Regions.delay_buffer] = regions.DelayBuffer(
+            synapse_model.max_synaptic_event_rate,
+            sim_timestep_ms, max_delay_ms)
 
         # Create start of filename for the executable to use for this cluster
         filename = "synapse_" + synapse_model.__name__.lower()
@@ -236,5 +240,8 @@ class SynapseCluster(object):
 
         region_arguments[Regions.output_buffer].kwargs["out_buffers"] =\
             out_buffers
+
+        region_arguments[Regions.delay_buffer].kwargs["sub_matrices"] =\
+            sub_matrices
 
         return region_arguments
