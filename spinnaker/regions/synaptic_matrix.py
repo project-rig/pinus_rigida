@@ -83,9 +83,6 @@ class SynapticMatrix(Region):
         # Loop through sub matrices
         assert fp.tell() == 0
         for matrix, placement in zip(sub_matrices, matrix_placements):
-            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u",
-                         placement, matrix.max_cols)
-
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
             fp.seek(placement * 4, 0)
@@ -97,30 +94,37 @@ class SynapticMatrix(Region):
 
             # Calculate the number of extension words required and build
             # Second numpy array to contain concatenated extension rows
-            extension_words = np.empty(matrix.size_words - num_matrix_words,
-                                       dtype=np.uint32)
+            num_ext_words = matrix.size_words - num_matrix_words
+            ext_words = np.empty(num_ext_words, dtype=np.uint32)
 
+            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u, "
+                         "matrix words:%u, num extension words:%u",
+                         placement, matrix.max_cols, num_matrix_words,
+                         matrix.size_words - num_matrix_words)
+            
             # Loop through matrix rows
-            e = 0
+            next_row_offset = 0
             for i, row in enumerate(matrix.rows):
                 # Write base row to matrix
                 next_row = None if len(row) == 1 else row[1]
                 self._write_spinnaker_row(row[0], next_row,
-                                          e, float_to_weight, matrix_words[i])
+                                          next_row_offset + num_matrix_words,
+                                          float_to_weight, matrix_words[i])
 
                 # Loop through extension rows
-                for i, extension_row in enumerate(row[1:], start=1):
-                    row_length = 3 + len(extension_row[1])
+                for i, ext_row in enumerate(row[1:], start=1):
+                    row_length = 3 + len(ext_row[1])
                     next_row = None if len(row) == (i + 1) else row[i + 1]
-                    self._write_spinnaker_row(extension_row, next_row,
-                                              e + row_length, float_to_weight,
-                                              extension_words[e:])
+                    self._write_spinnaker_row(
+                        ext_row, next_row,
+                        next_row_offset + row_length + num_matrix_words,
+                        float_to_weight, ext_words[next_row_offset:])
 
-                    e += row_length
+                    next_row_offset += row_length
 
-            # Write matrix
+            # Write matrix followed by extension words
             fp.write(matrix_words.tostring())
-            fp.write(extension_words.tostring())
+            fp.write(ext_words.tostring())
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -195,8 +199,6 @@ class SynapticMatrix(Region):
 
                     # If there any connections within this sub-matrix
                     if any_connections:
-                        print "max_cols:%u, num_extension_words:%u" % (max_cols, num_extension_words)
-
                         # Calculate matrix size in words - size of square
                         # matrix added to number of extension words
                         # **NOTE** single header word required
@@ -213,7 +215,7 @@ class SynapticMatrix(Region):
 
     def _write_spinnaker_row(self, row, next_row, next_row_offset,
                              float_to_weight, destination):
-        # Write actual length of row
+        # Write actual length of row (in synapses)
         destination[0] = len(row[1])
 
         # If there is no next row, write zeros to next two words
@@ -222,14 +224,15 @@ class SynapticMatrix(Region):
             destination[2] = 0
         # Otherwise
         else:
-            print next_row_offset, len(next_row[1]), self.LengthBits
+            #print next_row_offset, len(next_row[1]), self.LengthBits
             # Write relative delay of next_row from row
             destination[1] = (next_row[0] - row[0])
 
-            # Write word containing the offset to the next row and its length
+            # Write word containing the offset to the
+            # next row and its length (in synapses)
             destination[2] = get_row_offset_length(next_row_offset,
-                                                len(next_row[1]),
-                                                self.LengthBits)
+                                                   len(next_row[1]),
+                                                   self.LengthBits)
 
         # Convert row to numpy record array
         row = np.asarray(row[1], dtype=row_dtype)
@@ -246,7 +249,5 @@ class SynapticMatrix(Region):
 
         # Write row
         destination[3:3 + len(row)] = (row["index"]
-                                    | (dtcm_delay << self.IndexBits)
-                                    | (weight_fixed << weight_shift))
-
-        print destination[:3 + len(row)]
+                                       | (dtcm_delay << self.IndexBits)
+                                       | (weight_fixed << weight_shift))
