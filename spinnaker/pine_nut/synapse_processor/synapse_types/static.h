@@ -36,9 +36,9 @@ public:
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing row with %u synapses", count);
 
     // If this row has a delay extension, call function to add it
-    if(dmaBuffer[0] != 0)
+    if(dmaBuffer[1] != 0)
     {
-      addDelayRowFunction(dmaBuffer[0] + tick, dmaBuffer[1]);
+      addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
     }
     
     for(; count > 0; count--)
