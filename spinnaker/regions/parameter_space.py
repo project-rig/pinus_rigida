@@ -49,7 +49,10 @@ class ParameterSpace(Region):
             self.immutable_params[vertex_slice.python_slice])
 
         # Add size of unique parameter count and mutable parameters slice
-        return 4 + (len(vertex_slice) * 2) + unique_immutable.nbytes +\
+        num_index_bytes = len(vertex_slice) * 2
+        if len(vertex_slice) % 2 != 0:
+            num_index_bytes += 2
+        return 4 + num_index_bytes + unique_immutable.nbytes +\
             self.mutable_params[vertex_slice.python_slice].nbytes
 
     def write_subregion_to_file(self, fp, vertex_slice):
@@ -78,9 +81,9 @@ class ParameterSpace(Region):
         # Write indices into unique_immutable array,
         # adding a padding word to word-align
         indices = unique_immutable[1].astype(np.uint16)
-        if len(indices) % 2 != 0:
-            indices = np.append(indices, 0)
         fp.write(indices.tostring())
-
+        if len(indices) % 2 != 0:
+            fp.write(b"\x00\x00")
+        
         # Write unique immutable parameters
         fp.write(unique_immutable[0].tostring())
