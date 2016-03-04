@@ -35,6 +35,9 @@ class SynapticMatrix(Region):
     # How many bits are used to represent (extension) row length
     LengthBits = 10
 
+    def __init__(self, max_dtcm_delay_slots):
+        self.max_dtcm_delay_slots = max_dtcm_delay_slots
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
@@ -130,9 +133,9 @@ class SynapticMatrix(Region):
     # Public methods
     # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
-        # Create lambda function to group delays into DTCM
-        # **TODO** use synapse_type.max_dtcm_delay_slots
-        delay_grouper = lambda d: d[1] // 8
+        # Create lambda function to group delays into groups
+        # that can be handled by the DTCM delay buffer
+        delay_grouper = lambda d: d[1] // self.max_dtcm_delay_slots
 
         # Loop through all incoming connections
         sub_matrices = []
@@ -179,7 +182,8 @@ class SynapticMatrix(Region):
                             # Group sub-row into delay groups
                             delay_row_iter = itertools.groupby(sub_row,
                                                                delay_grouper)
-                            sub_rows[i] = [(e * 8, list(delay_row))
+                            sub_rows[i] = [(e * self.max_dtcm_delay_slots,
+                                            list(delay_row))
                                            for e, delay_row in delay_row_iter]
 
                             # If the first delay group of this sub-row
@@ -237,8 +241,7 @@ class SynapticMatrix(Region):
         row = np.asarray(row[1], dtype=row_dtype)
 
         # Extract the DTCM component of delay
-        # **TODO** use synapse_type.max_dtcm_delay_slots
-        dtcm_delay = row["delay"] % 8
+        dtcm_delay = row["delay"] % self.max_dtcm_delay_slots
 
         # Convert weight to fixed point
         weight_fixed = float_to_weight(row["weight"])
