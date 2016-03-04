@@ -68,16 +68,16 @@ namespace BitField
 {
 //! \brief This function tests a particular bit of a bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
-//! \param[in] n The size of the bit_field.
+//! \param[in] n The index of the bit.
 //! \return The function returns true if the bit is set or false otherwise.
-inline bool TestBit(uint32_t *b, unsigned int n)
+inline bool TestBit(uint32_t *b, unsigned int i)
 {
-  return ((b [n >> 5] & (1 << (n & 0x1F))) != 0);
+  return ((b [i >> 5] & (1 << (i & 0x1F))) != 0);
 }
 
 //! \brief This function clears a particular bit of a bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
-//! \param[in] n The size of the bit_field.
+//! \param[in] n The index of the bit.
 inline void ClearBit(uint32_t *b, unsigned int n)
 {
   b [n >> 5] &= ~(1 << (n & 0x1F));
@@ -85,7 +85,7 @@ inline void ClearBit(uint32_t *b, unsigned int n)
 
 //! \brief This function sets a particular bit of a bit_field.
 //! \param[in] b The sequence of words representing a bit_field.
-//! \param[in] n The bit in the bit_field of interest.
+//! \param[in] n The index of the bit.
 inline void SetBit(uint32_t *b, unsigned int n)
 {
   b [n >> 5] |= (1 << (n & 0x1F));

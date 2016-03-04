@@ -53,7 +53,7 @@ public:
         for(unsigned int s = 0; s < numNeurons; s++)
         {
           // If this source has spiked
-          bool spiked = BitField::TestBit(&m_DMABuffer[1], m_SpikeBlockSizeWords - 1);
+          bool spiked = BitField::TestBit(&m_DMABuffer[1], s);
           if(spiked)
           {
             // Emit a spike
