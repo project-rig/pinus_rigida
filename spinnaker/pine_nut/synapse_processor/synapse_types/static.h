@@ -26,14 +26,20 @@ public:
   //-----------------------------------------------------------------------------
   // Public static methods
   //-----------------------------------------------------------------------------
-  template<typename F>
+  template<typename F, typename E>
   static bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords],
-                         F applyInputFunction)
+                         F applyInputFunction, E addDelayRowFunction)
   {
     register T *synapticWords = (T*)&dmaBuffer[3];
     register uint32_t count = dmaBuffer[0];
-    
+
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing row with %u synapses", count);
+
+    // If this row has a delay extension, call function to add it
+    if(dmaBuffer[0] != 0)
+    {
+      addDelayRowFunction(dmaBuffer[0] + tick, dmaBuffer[1]);
+    }
     
     for(; count > 0; count--)
     {

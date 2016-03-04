@@ -286,10 +286,21 @@ void DMATransferDone(uint, uint tag)
                   weight, index, tick);
         g_RingBuffer.AddWeight(tick, index, weight);
       };
+
+    // Create lambda function to add a delay extension to the delay buffer
+    auto addDelayRowLambda =
+      [](unsigned int tick, uint32_t word)
+      {
+        auto rowOffsetLength = DelayBuffer::R(word);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding delay extension row for tick %u, num synapses:%u, offset word:%u",
+          tick, rowOffsetLength.GetNumSynapses(), rowOffsetLength.GetWordOffset());
+        g_DelayBuffer.AddRow(tick, rowOffsetLength);
+      };
     
     // Process the next row in the DMA buffer, using this function to apply
     Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessRow);
-    SynapseType::ProcessRow(g_Tick, DMANextRowBuffer(), addWeightLambda);
+    SynapseType::ProcessRow(g_Tick, DMANextRowBuffer(),
+                            addWeightLambda, addDelayRowLambda);
     Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
 
     // Setup next row read
@@ -302,6 +313,7 @@ void DMATransferDone(uint, uint tag)
     g_RingBuffer.ClearOutputBuffer(g_Tick);
 
     // Fetch delay buffer for this timestep
+    // **NOTE** this will only cause a DMA if the buffer has any entries
     g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
   }
   else if(tag == DMATagDelayBufferRead)

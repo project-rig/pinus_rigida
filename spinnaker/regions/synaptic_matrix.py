@@ -224,7 +224,6 @@ class SynapticMatrix(Region):
             destination[2] = 0
         # Otherwise
         else:
-            #print next_row_offset, len(next_row[1]), self.LengthBits
             # Write relative delay of next_row from row
             destination[1] = (next_row[0] - row[0])
 
