@@ -75,8 +75,12 @@ class ParameterSpace(Region):
         # Write number of unique immutable parameters
         fp.write(struct.pack("I", len(unique_immutable[0])))
 
-        # Write indices into unique_immutable array
-        fp.write(unique_immutable[1].astype(np.uint16).tostring())
+        # Write indices into unique_immutable array,
+        # adding a padding word to word-align
+        indices = unique_immutable[1].astype(np.uint16)
+        if len(indices) % 2 != 0:
+            indices = np.append(indices, 0)
+        fp.write(indices.tostring())
 
         # Write unique immutable parameters
         fp.write(unique_immutable[0].tostring())
