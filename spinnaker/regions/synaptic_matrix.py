@@ -135,7 +135,7 @@ class SynapticMatrix(Region):
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
         # Create lambda function to group delays into groups
         # that can be handled by the DTCM delay buffer
-        delay_grouper = lambda d: d[1] // self.max_dtcm_delay_slots
+        delay_grouper = lambda d: (d[1] - 1) // self.max_dtcm_delay_slots
 
         # Loop through all incoming connections
         sub_matrices = []
@@ -241,7 +241,7 @@ class SynapticMatrix(Region):
         row = np.asarray(row[1], dtype=row_dtype)
 
         # Extract the DTCM component of delay
-        dtcm_delay = row["delay"] % self.max_dtcm_delay_slots
+        dtcm_delay = 1 + ((row["delay"] - 1) % self.max_dtcm_delay_slots)
 
         # Convert weight to fixed point
         weight_fixed = float_to_weight(row["weight"])

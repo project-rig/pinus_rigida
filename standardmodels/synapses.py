@@ -21,7 +21,9 @@ class StaticSynapse(synapses.StaticSynapse):
     max_synaptic_event_rate = 5E6
 
     # How many timesteps of delay can DTCM ring-buffer handle
-    max_dtcm_delay_slots = 8
+    # **NOTE** only 7 timesteps worth of delay can be handled by
+    # 8 element delay buffer - The last element is purely for output
+    max_dtcm_delay_slots = 7
 
     def _get_minimum_delay(self):
         d = state.min_delay
