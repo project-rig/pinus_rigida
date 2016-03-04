@@ -7,7 +7,7 @@ import sys
 from pyNN import common
 
 # Import classes
-from collections import defaultdict, namedtuple
+from collections import defaultdict, Iterable, namedtuple
 from operator import itemgetter
 from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace
@@ -39,17 +39,26 @@ class WeightRange(object):
         self.min = min(self.min, weight)
         self.max = max(self.max, weight)
 
+    def update_iter(self, weight):
+        self.min = min(self.min, np.amin(weight))
+        self.max = max(self.max, np.amax(weight))
+
     @property
     def fixed_point(self):
-        # Get MSB of minimum and maximum weight and
-        min_msb = math.floor(math.log(self.min, 2)) + 1
+        # Get MSB for maximum weight
         max_msb = math.floor(math.log(self.max, 2)) + 1
 
-        # Check there's enough bits to represent this range in 16 bits
-        assert (max_msb - min_msb) < 16
+        # If minimum weight isn't zero
+        if self.min != 0.0:
+            # Get MSB of minimum weight
+            min_msb = math.floor(math.log(self.min, 2)) + 1
+
+            # Check there's enough bits to represent this range in 16 bits
+            assert (max_msb - min_msb) < 16
 
         # Calculate where the weight format fixed-point lies
         return (16 - int(max_msb))
+
 
 
 # Round a j constraint to the lowest power-of-two
@@ -451,20 +460,33 @@ class Population(common.Population):
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             matrix_rows, weight_range,
                             **connection_parameters):
-        # Extract connection parameters
-        weight = abs(connection_parameters["weight"])
-        delay_ms = connection_parameters["delay"]
+        # Make weight absolute
+        weight =  np.abs(connection_parameters["weight"])
 
         # Convert delay into timesteps and round
-        delay_timesteps = int(round(float(delay_ms) /
-                                    float(self._simulator.state.dt)))
+        delay_timesteps = np.around(
+            connection_parameters["delay"] / float(self._simulator.state.dt))
+        delay_timesteps = delay_timesteps.astype(int)
 
-        # Update incoming weight range
-        weight_range.update(weight)
+        # If delay is not iterable, make it so using repeat
+        if not isinstance(delay_timesteps, Iterable):
+            delay_timesteps = itertools.repeat(delay_timesteps)
+
+        # If weight is an iterable, update weight range
+        if isinstance(weight, Iterable):
+            weight_range.update_iter(weight)
+        # Otherwise
+        else:
+            # Update weight range
+            weight_range.update(weight)
+
+            # Make weight iterable using repeat
+            weight = itertools.repeat(weight)
 
         # Add synapse to each row
-        for p in matrix_rows[presynaptic_indices]:
-            p.append(Synapse(weight, delay_timesteps, postsynaptic_index))
+        presynaptic_rows = matrix_rows[presynaptic_indices]
+        for p, w, d in zip(presynaptic_rows, weight, delay_timesteps):
+            p.append(Synapse(w, d, postsynaptic_index))
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
