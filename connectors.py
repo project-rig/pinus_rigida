@@ -1,5 +1,5 @@
 """
-Connection method classes for pinus_rigida
+Connection method classes for PyNN SpiNNaker
 
 :copyright: Copyright 2006-2015 by the PyNN team, see AUTHORS.
 :license: CeCILL, see LICENSE for details.

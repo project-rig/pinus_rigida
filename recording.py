@@ -11,7 +11,7 @@ from rig.utils.contexts import ContextMixin
 
 from . import simulator
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 
 # ----------------------------------------------------------------------------

@@ -8,7 +8,7 @@ from region import Region
 
 MS_SCALE = (1.0 / 200032.4)
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 
 # ------------------------------------------------------------------------------

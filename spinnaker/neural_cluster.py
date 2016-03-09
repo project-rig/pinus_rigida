@@ -15,7 +15,7 @@ from six import iteritems
 from utils import (create_app_ptr_and_region_files_named, split_slice,
                    model_binaries, sizeof_regions_named)
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 
 # ----------------------------------------------------------------------------

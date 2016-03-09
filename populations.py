@@ -22,7 +22,7 @@ from spinnaker.utils import UnitStrideSlice
 from pyNN.parameters import simplify
 from six import iteritems, itervalues
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 

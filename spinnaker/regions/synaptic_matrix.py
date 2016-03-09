@@ -20,7 +20,7 @@ SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
 row_dtype = [("weight", np.float32), ("delay", np.uint32),
              ("index", np.uint32)]
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 
 

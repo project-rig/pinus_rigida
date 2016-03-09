@@ -16,7 +16,7 @@ from rig.utils.contexts import ContextMixin
 
 from spinnaker.current_input_cluster import CurrentInputCluster
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 
 class Projection(common.Projection, ContextMixin):

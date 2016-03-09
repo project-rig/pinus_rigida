@@ -18,7 +18,7 @@ from rig.netlist import Net
 from rig.place_and_route import place_and_route_wrapper
 from six import iteritems, itervalues
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 name = "SpiNNaker"
 

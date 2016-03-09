@@ -9,7 +9,7 @@ from region import Region
 # Import functions
 from ..utils import calc_slice_bitfield_words
 
-logger = logging.getLogger("pinus_rigida")
+logger = logging.getLogger("pynn_spinnaker")
 
 
 # ----------------------------------------------------------------------------
