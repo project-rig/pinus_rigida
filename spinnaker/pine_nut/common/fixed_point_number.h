@@ -15,11 +15,13 @@ namespace FixedPointNumber
   //-----------------------------------------------------------------------------
   typedef int32_t S1615;
   typedef uint32_t U032;
+  typedef int16_t S511;
 
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
   static const S1615 S1615One = (1 << 15);
+  static const S511 S511One = (1 << 11);
 
   //-----------------------------------------------------------------------------
   // Functions
@@ -40,5 +42,14 @@ namespace FixedPointNumber
   {
     return Mul<uint32_t, uint64_t, 32>(a, b);
   }
+
+  inline int32_t MulS511(S511 a, S511 b)
+  {
+    // Multiply lower 16-bits of a and b together
+    int32_t mul = __smulbb(a, b);
+
+    // Shift down
+    return (mul >> 11);
+}
 }
 };  // namespace Common
