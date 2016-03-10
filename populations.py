@@ -19,6 +19,7 @@ from spinnaker.spinnaker_population_config import SpinnakerPopulationConfig
 from spinnaker.utils import UnitStrideSlice
 
 # Import functions
+from copy import deepcopy
 from pyNN.parameters import simplify
 from six import iteritems, itervalues
 
@@ -98,7 +99,12 @@ class PopulationView(common.PopulationView):
         return ParameterSpace(parameter_dict, shape=(self.size,))
 
     def _set_parameters(self, parameter_space):
-        raise NotImplementedError()
+        # Loop through parameters we're setting, evaluate the value we're
+        # Setting and assign it to the masked section of
+        # parent's parameters this view represents
+        for name, value in parameter_space.items():
+            evaluated_value = value.evaluate(simplify=True)
+            self.parent._parameters[name][self.mask] = evaluated_value
 
     def _set_initial_value_array(self, variable, initial_values):
         # Initial values are handled by common.Population
@@ -192,6 +198,15 @@ class Population(common.Population):
             id.parent = self
         simulator.state.id_counter += self.size
 
+        # Take a deep copy of cell type parameters
+        if isinstance(self.celltype, StandardCellType):
+            self._parameters = deepcopy(self.celltype.native_parameters)
+        else:
+            self._parameters = deepcopy(self.celltype.parameter_space)
+
+        # Set shape
+        self._parameters.shape = (self.size,)
+
     def _set_initial_value_array(self, variable, initial_values):
         # Initial values are handled by common.Population
         # so we can evaluate them at build-time
@@ -210,7 +225,10 @@ class Population(common.Population):
         return ParameterSpace(parameter_dict, shape=(self.local_size,))
 
     def _set_parameters(self, parameter_space):
-        raise NotImplementedError()
+        # Loop through values we're setting and
+        # deep copy into our parameter space
+        for name, value in parameter_space.items():
+            self._parameters[name] = deepcopy(value)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -371,15 +389,8 @@ class Population(common.Population):
     def _create_neural_cluster(self, pop_id, timer_period_us,
                                simulation_ticks, vertex_applications,
                                vertex_resources, keyspace):
-        # Extract parameter lazy array
-        if isinstance(self.celltype, StandardCellType):
-            parameters = self.celltype.native_parameters
-        else:
-            parameters = self.celltype.parameter_space
-        parameters.shape = (self.size,)
-
         # Create neural cluster
-        return NeuralCluster(pop_id, self.celltype, parameters,
+        return NeuralCluster(pop_id, self.celltype, self._parameters,
                              self.initial_values, self._simulator.state.dt,
                              timer_period_us, simulation_ticks,
                              self.recorder.indices_to_record,
