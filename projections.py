@@ -84,20 +84,13 @@ class Projection(common.Projection, ContextMixin):
         # Assert that this projection can be directly connected
         assert self._directly_connectable
 
-        # Extract parameter lazy array for pre-synaptic population
-        if isinstance(self.pre.celltype, StandardCellType):
-            pre_parameters = self.pre.celltype.native_parameters
-        else:
-            pre_parameters = self.pre.celltype.parameter_space
-        pre_parameters.shape = (self.pre.size,)
-
         # Find index of receptor type
         receptor_index =\
             self.post.celltype.receptor_types.index(self.receptor_type)
 
         # Create current input cluster
         return CurrentInputCluster(
-            self.pre.celltype, pre_parameters, self.pre.initial_values,
+            self.pre.celltype, self.pre._parameters, self.pre.initial_values,
             self._simulator.state.dt, timer_period_us, simulation_ticks,
             self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
             receptor_index, vertex_applications, vertex_resources,
