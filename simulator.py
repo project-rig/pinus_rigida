@@ -242,7 +242,7 @@ class State(common.control.BaseState):
         logger.info("Loading synapse vertices")
 
         # Loop through populations
-        for pop in self.populations]:
+        for pop in self.populations:
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
                 logger.debug("\tPopulation label:%s, synapse type:%s",
@@ -366,7 +366,7 @@ class State(common.control.BaseState):
         logger.info("Loading neuron vertices")
 
         # Build neural populations
-        for pop in self.population:
+        for pop in self.populations:
             logger.debug("\tPopulation label:%s", pop.label)
 
             # Loop through vertices
@@ -436,11 +436,16 @@ class State(common.control.BaseState):
         vertex_applications = {}
         vertex_resources = {}
 
-        # Allocate clusters
+        # Allocate synapse clusters
         for pop_id, pop in enumerate(self.populations):
             logger.debug("\tPopulation:%s", pop.label)
-            pop._create_clusters(pop_id, hardware_timestep_us, duration_timesteps,
-                                 vertex_applications, vertex_resources, keyspace)
+            pop._create_neural_cluster(pop_id, hardware_timestep_us, duration_timesteps,
+                                       vertex_applications, vertex_resources, keyspace)
+
+        for pop in self.populations:
+            logger.debug("\tPopulation:%s", pop.label)
+            pop._create_synapse_clusters(hardware_timestep_us, duration_timesteps,
+                                       vertex_applications, vertex_resources)
 
         self.proj_current_input_clusters, self.post_pop_current_input_clusters =\
             self._allocate_current_input_clusters(

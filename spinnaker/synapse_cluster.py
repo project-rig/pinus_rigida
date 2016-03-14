@@ -59,7 +59,7 @@ class SynapseCluster(object):
 
     def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
                  max_delay_ms, config, post_pop_size, synapse_model,
-                 receptor_index, synaptic_projections, pop_neuron_clusters,
+                 receptor_index, synaptic_projections,
                  vertex_applications, vertex_resources, post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
@@ -105,7 +105,7 @@ class SynapseCluster(object):
             for proj in synaptic_projections:
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
-                for pre_vertex in pop_neuron_clusters[proj.pre].verts:
+                for pre_vertex in proj.pre._neural_cluster.verts:
                     logger.debug("\t\t\t\tPre slice:%s",
                                  str(pre_vertex.neuron_slice))
 

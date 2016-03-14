@@ -386,10 +386,10 @@ class Population(common.Population):
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
 
-    def _create_clusters(self, pop_id, timer_period_us, simulation_ticks,
-                         vertex_applications, vertex_resources, keyspace):
+    def _create_neural_cluster(self, pop_id, timer_period_us, simulation_ticks,
+                               vertex_applications, vertex_resources, keyspace):
         # Create neural cluster
-        if self._entirely_directly_connectable:
+        if not self._entirely_directly_connectable:
             self._neural_cluster = NeuralCluster(
                 pop_id, self.celltype, self._parameters, self.initial_values,
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
@@ -399,9 +399,8 @@ class Population(common.Population):
         else:
             self._neural_cluster = None
 
-        # Get neuron clusters dictionary from simulator
-        pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
-
+    def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
+                                 vertex_applications, vertex_resources):
         # Loop through newly partioned incoming projections_load_synapse_verts
         self._synapse_clusters = {}
         for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
@@ -423,7 +422,7 @@ class Population(common.Population):
                                    self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
                                    synapse_type[0], receptor_index,
-                                   synaptic_projections, pop_neuron_clusters,
+                                   synaptic_projections,
                                    vertex_applications, vertex_resources,
                                    self.synapse_j_constraints[synapse_type])
 
