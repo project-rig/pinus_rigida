@@ -286,7 +286,7 @@ class State(common.control.BaseState):
                             for _ in range(2)]
 
                         # Calculate required memory size
-                        size = s_cluster.get_size(
+                        size, allocs = s_cluster.get_size(
                             v.post_neuron_slice, sub_matrices,
                             matrix_placements, weight_fixed_point,
                             v.out_buffers)
@@ -344,8 +344,9 @@ class State(common.control.BaseState):
                         for _ in range(2)]
 
                     # Calculate required memory size
-                    size = c_cluster.get_size(v.post_neuron_slice,
-                                              direct_weights, v.out_buffers)
+                    size, allocs = c_cluster.get_size(v.post_neuron_slice,
+                                                      direct_weights,
+                                                      v.out_buffers)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
@@ -391,8 +392,9 @@ class State(common.control.BaseState):
                         for s in v.input_verts]
 
                     # Calculate required memory size
-                    size = pop._neural_cluster.get_size(v.key, v.neuron_slice,
-                                                        in_buffers)
+                    size, allocs = pop._neural_cluster.get_size(v.key,
+                                                                v.neuron_slice,
+                                                                in_buffers)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io

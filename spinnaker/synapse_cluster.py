@@ -177,11 +177,11 @@ class SynapseCluster(object):
             weight_fixed_point, out_buffers)
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions_named(self.regions,
-                                                 region_arguments)
+        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
+                                                           region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
-        return vertex_size_bytes
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
+        return vertex_bytes, vertex_allocs
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
                       weight_fixed_point, out_buffers, fp):

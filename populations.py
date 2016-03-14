@@ -403,31 +403,29 @@ class Population(common.Population):
                                  vertex_applications, vertex_resources):
         # Loop through newly partioned incoming projections_load_synapse_verts
         self._synapse_clusters = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projs in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
-            projections = list(itertools.chain.from_iterable(
-                itervalues(pre_pop_projections)))
-            synaptic_projections = [p for p in projections
-                                    if not p._directly_connectable]
+            projs = list(itertools.chain.from_iterable(
+                itervalues(pre_pop_projs)))
+            synaptic_projs = [p for p in projs if not p._directly_connectable]
 
             # If there are any synaptic projections
-            if len(synaptic_projections) > 0:
+            if len(synaptic_projs) > 0:
                 # Find index of receptor type
-                receptor_index = self.celltype.receptor_types.index(
-                    synapse_type[1])
+                receptor_index = self.celltype.receptor_types.index(s_type[1])
 
                 # Create synapse cluster
                 c = SynapseCluster(self._simulator.state.dt, timer_period_us,
                                    simulation_ticks,
                                    self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
-                                   synapse_type[0], receptor_index,
-                                   synaptic_projections,
-                                   vertex_applications, vertex_resources,
-                                   self.synapse_j_constraints[synapse_type])
+                                   s_type[0], receptor_index,
+                                   synaptic_projs, vertex_applications,
+                                   vertex_resources,
+                                   self.synapse_j_constraints[s_type])
 
                 # Add cluster to dictionary
-                self._synapse_clusters[synapse_type] = c
+                self._synapse_clusters[s_type] = c
 
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of
