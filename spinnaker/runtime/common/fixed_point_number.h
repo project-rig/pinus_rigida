@@ -15,13 +15,13 @@ namespace FixedPointNumber
   //-----------------------------------------------------------------------------
   typedef int32_t S1615;
   typedef uint32_t U032;
-  typedef int16_t S511;
+  typedef int32_t S2011;
 
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
   static const S1615 S1615One = (1 << 15);
-  static const S511 S511One = (1 << 11);
+  static const S2011 S2011One = (1 << 11);
 
   //-----------------------------------------------------------------------------
   // Functions
@@ -31,6 +31,16 @@ namespace FixedPointNumber
   {
     IntermediateType m = (IntermediateType)a * (IntermediateType)b;
     return (Type)(m >> FractionalBits);
+  }
+
+  template<unsigned int FractionalBits>
+  inline int32_t Mul16(int32_t a, int32_t b)
+  {
+    // Multiply lower 16-bits of a and b together
+    int32_t mul = __smulbb(a, b);
+
+    // Shift down
+    return (mul >> FractionalBits);
   }
 
   inline S1615 MulS1615(S1615 a, S1615 b)
@@ -43,13 +53,9 @@ namespace FixedPointNumber
     return Mul<uint32_t, uint64_t, 32>(a, b);
   }
 
-  inline int32_t MulS511(S511 a, S511 b)
+  inline S2011 Mul16S2011(S2011 a, S2011 b)
   {
-    // Multiply lower 16-bits of a and b together
-    int32_t mul = __smulbb(a, b);
-
-    // Shift down
-    return (mul >> 11);
-}
+    return Mul16<11>(a, b);
+  }
 }
 };  // namespace Common

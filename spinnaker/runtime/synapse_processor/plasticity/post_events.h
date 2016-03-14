@@ -5,78 +5,80 @@ namespace SynapseProcessor
 namespace Plasticity
 {
 //-----------------------------------------------------------------------------
-// SynapseProcessor::Plasticity::PostEventWindow
-//-----------------------------------------------------------------------------
-template<T>
-class PostEventWindow
-{
-public:
-  PostEventWindow(T prevTrace, uint32_t prevTime, const T *nextTrace, const uint32_t *nextTime, unsigned int numEvents)
-    : m_PrevTrace(prevTrace), m_PrevTime(prevTime), m_NextTrace(nextTrace), m_NextTime(nextTime), m_NumEvents(numEvents)
-  {
-  }
-
-  //-----------------------------------------------------------------------------
-  // Public API
-  //-----------------------------------------------------------------------------
-  void Next(uint32_t delayed_time)
-  {
-    // Update previous time and increment next time
-    m_PrevTime = delayed_time;
-    m_PrevTrace = *m_NextTrace++;
-
-    // Go onto next event
-    m_NextTime++;
-
-    // Decrement remining events
-    m_NumEvents--;
-  }
-
-  T GetPrevTrace() const
-  {
-    return m_PrevTrace;
-  }
-
-  uint32_t GetPrevTime() const
-  {
-    return m_PrevTime;
-  }
-
-  T GetNextTrace() const
-  {
-    return *m_NextTrace;
-  }
-
-  uint32_t GetNextTime() const
-  {
-    return m_NextTime;
-  }
-
-  unsigned int GetNumEvents() const
-  {
-    return m_NumEvents;
-  }
-
-private:
-  //-----------------------------------------------------------------------------
-  // Members
-  //-----------------------------------------------------------------------------
-  T m_PrevTrace;
-  uint32_t m_PrevTime;
-  const T *m_NextTrace;
-  const uint32_t *m_NextTime;
-  unsigned int m_NumEvents;
-};
-
-//-----------------------------------------------------------------------------
 // SynapseProcessor::Plasticity::PostEventHistory
 //-----------------------------------------------------------------------------
 template<T, N>
 class PostEventHistory
 {
 public:
+  //-----------------------------------------------------------------------------
+  // Window
+  //-----------------------------------------------------------------------------
+  template<T>
+  class Window
+  {
+  private:
+    Window(T prevTrace, uint32_t prevTime, const T *nextTrace, const uint32_t *nextTime, unsigned int numEvents)
+      : m_PrevTrace(prevTrace), m_PrevTime(prevTime), m_NextTrace(nextTrace), m_NextTime(nextTime), m_NumEvents(numEvents)
+    {
+    }
+  public:
+    //-----------------------------------------------------------------------------
+    // Public API
+    //-----------------------------------------------------------------------------
+    void Next(uint32_t delayed_time)
+    {
+      // Update previous time and increment next time
+      m_PrevTime = delayed_time;
+      m_PrevTrace = *m_NextTrace++;
 
-  PostEventWindow<T> GetWindow(uint32_t beginTime, uint32_t endTime)
+      // Go onto next event
+      m_NextTime++;
+
+      // Decrement remining events
+      m_NumEvents--;
+    }
+
+    T GetPrevTrace() const
+    {
+      return m_PrevTrace;
+    }
+
+    uint32_t GetPrevTime() const
+    {
+      return m_PrevTime;
+    }
+
+    T GetNextTrace() const
+    {
+      return *m_NextTrace;
+    }
+
+    uint32_t GetNextTime() const
+    {
+      return m_NextTime;
+    }
+
+    unsigned int GetNumEvents() const
+    {
+      return m_NumEvents;
+    }
+
+  private:
+    //-----------------------------------------------------------------------------
+    // Members
+    //-----------------------------------------------------------------------------
+    T m_PrevTrace;
+    uint32_t m_PrevTime;
+    const T *m_NextTrace;
+    const uint32_t *m_NextTime;
+    unsigned int m_NumEvents;
+  };
+
+  //-----------------------------------------------------------------------------
+  // Public methods
+  //-----------------------------------------------------------------------------
+  Window<T> GetWindow(uint32_t beginTime, uint32_t endTime)
   {
     // Start at end event - beyond end of post-event history
     const uint32_t count = m_CountMinusOne + 1;
@@ -103,9 +105,9 @@ public:
 
     // Calculate number of events
     unsigned int numEvents = (endEventTime - nextTime);
-    return PostEventWindow(*(window.next_trace - 1), *eventTime,
-                           (end_event_trace - numEvents),
-                           nextTime, numEvents);
+    return Window<T>(*(window.next_trace - 1), *eventTime,
+                     (end_event_trace - numEvents),
+                     nextTime, numEvents);
   }
 
   void Add(uint32_t time, T trace)

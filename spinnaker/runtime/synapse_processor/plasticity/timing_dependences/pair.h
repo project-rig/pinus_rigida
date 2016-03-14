@@ -33,13 +33,13 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  PostTrace UpdatePostTrace(uint32_t time, uint32_t lastTime, PostTrace lastTrace) const
+  PostTrace UpdatePostTrace(PostTrace lastTrace, uint32_t time, uint32_t lastTime) const
   {
     // Get time since last spike
     uint32_t deltaTime = time - lastTime;
 
     // Decay previous trace
-    int32_t newTrace = MulS511(lastTrace, m_TauMinusLUT.Get(deltaTime));
+    int32_t newTrace = Mul16S2011(lastTrace, m_TauMinusLUT.Get(deltaTime));
 
     // Add energy caused by new spike to trace
     newTrace += S511One;
@@ -50,13 +50,14 @@ public:
     return (PostTrace)newTrace;
   }
 
-  PreTrace UpdatePreTrace(uint32_t time, uint32_t last_time, PreTrace lastTrace, bool flush) const
+  PreTrace UpdatePreTrace(PreTrace lastTrace, uint32_t time, uint32_t last_time,
+                          bool flush) const
   {
     // Get time since last spike
     uint32_t deltaTime = time - lastTime;
 
     // Decay previous trace
-    int32_t newTrace = MulS511(lastTrace, m_TauPlusLUT.Get(deltaTime));
+    int32_t newTrace = Mul16S2011(lastTrace, m_TauPlusLUT.Get(deltaTime));
 
     // If this isn't a flush, add energy caused by new spike to trace
     if(!flush)
@@ -69,6 +70,30 @@ public:
     // Return new trace_value
     return (PreTrace)newTrace;
   }
+
+  update_state_t ApplyPreSpike(update_state_t previousState,
+                               uint32_t time, PreTrace preTrace,
+                               uint32_t lastPreTime, PreTrace lastPreTrace,
+                               uint32_t lastPostTime, PostTrace lastPostTrace)
+  {
+    // Get time of event relative to last post-synaptic event
+    uint32_t timeSinceLastPost = time - lastPostTime;
+    if (timeSinceLastPost > 0)
+    {
+        int32_t decayedPostTrace = Mul16S2011(
+          lastPostTrace, m_TauMinusLUT.Get(timeSinceLastPost));
+
+        //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
+        //          time_since_last_post, decayed_o1);
+
+        // Apply depression to state (which is a weight_state)
+        return weight_one_term_apply_depression(previous_state, decayed_o1);
+    }
+    else
+    {
+        return previous_state;
+    }
+}
 
 private:
   //-----------------------------------------------------------------------------

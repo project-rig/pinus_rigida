@@ -20,7 +20,7 @@ public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  // One word for a synapse-count and 1024 synapses
+  // Three word for a synapse-count and delay extension data; and 1024 synapses
   static const unsigned int MaxRowWords = 1025;
     
   //-----------------------------------------------------------------------------
@@ -30,17 +30,17 @@ public:
   static bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords],
                          F applyInputFunction, E addDelayRowFunction)
   {
-    register T *synapticWords = (T*)&dmaBuffer[3];
-    register uint32_t count = dmaBuffer[0];
-
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing row with %u synapses", count);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing static row with %u synapses",
+              dmaBuffer[0]);
 
     // If this row has a delay extension, call function to add it
     if(dmaBuffer[1] != 0)
     {
       addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
     }
-    
+
+    register T *synapticWords = (T*)&dmaBuffer[3];
+    register uint32_t count = dmaBuffer[0];
     for(; count > 0; count--)
     {
       // Get the next 32 bit word from the synaptic_row

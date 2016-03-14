@@ -26,6 +26,10 @@ public:
   //-----------------------------------------------------------------------------
   struct WeightState
   {
+    int32_t m_InitialWeight;
+
+    int32_t m_Potentiation;
+    int32_t m_Depression;
   };
 
 private:
