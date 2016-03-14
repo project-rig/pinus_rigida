@@ -132,7 +132,7 @@ class Population(common.Population):
 
         # Create a spinnaker config
         self.spinnaker_config = SpinnakerPopulationConfig()
-
+        
         # Dictionary mapping pre-synaptic populations to
         # incoming projections, subdivided by synapse type
         # {synapse_cluster_type: {pynn_population: [pynn_projection]}}
@@ -386,25 +386,24 @@ class Population(common.Population):
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
 
-    def _create_neural_cluster(self, pop_id, timer_period_us,
-                               simulation_ticks, vertex_applications,
-                               vertex_resources, keyspace):
+    def _create_clusters(self, pop_id, timer_period_us, simulation_ticks,
+                         vertex_applications, vertex_resources, keyspace):
         # Create neural cluster
-        return NeuralCluster(pop_id, self.celltype, self._parameters,
-                             self.initial_values, self._simulator.state.dt,
-                             timer_period_us, simulation_ticks,
-                             self.recorder.indices_to_record,
-                             self.spinnaker_config, vertex_applications,
-                             vertex_resources, keyspace,
-                             self.neuron_j_constraint)
+        if self._entirely_directly_connectable:
+            self._neural_cluster = NeuralCluster(
+                pop_id, self.celltype, self._parameters, self.initial_values,
+                self._simulator.state.dt, timer_period_us, simulation_ticks,
+                self.recorder.indices_to_record, self.spinnaker_config,
+                vertex_applications, vertex_resources, keyspace,
+                self.neuron_j_constraint)
+        else:
+            self._neural_cluster = None
 
-    def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
-                                 vertex_applications, vertex_resources):
         # Get neuron clusters dictionary from simulator
         pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
 
         # Loop through newly partioned incoming projections_load_synapse_verts
-        synapse_clusters = {}
+        self._synapse_clusters = {}
         for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
             projections = list(itertools.chain.from_iterable(
@@ -429,10 +428,7 @@ class Population(common.Population):
                                    self.synapse_j_constraints[synapse_type])
 
                 # Add cluster to dictionary
-                synapse_clusters[synapse_type] = c
-
-        # Return synapse clusters
-        return synapse_clusters
+                self._synapse_clusters[synapse_type] = c
 
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of

@@ -38,7 +38,7 @@ class ID(int, common.IDMixin):
 # ----------------------------------------------------------------------------
 class State(common.control.BaseState):
     # These are required to be present for various
-    # bits of PyNN, but not really relevant for P.R.
+    # bits of PyNN, but not really relevant for SpiNNaker
     mpi_rank = 0
     num_processes = 1
 
@@ -121,52 +121,6 @@ class State(common.control.BaseState):
             logger.debug("\tPopulation:%s", pop.label)
             pop._estimate_constraints(hardware_timestep_us)
 
-    def _allocate_neuron_clusters(self, vertex_applications, vertex_resources,
-                                  keyspace, hardware_timestep_us,
-                                  duration_timesteps):
-        logger.info("Allocating neuron clusters")
-
-        # Mapping from PyNN populations to neuron clusters
-        # {pynn_population: neuron_cluster}
-        pop_neuron_clusters = {}
-
-        # Loop through populations whose output can't be
-        # entirely be replaced by direct connections
-        populations = [p for p in self.populations
-                       if not p._entirely_directly_connectable]
-        for pop_id, pop in enumerate(populations):
-            logger.debug("\tPopulation:%s", pop.label)
-
-            # Create spinnaker neural cluster
-            pop_neuron_clusters[pop] = pop._create_neural_cluster(
-                pop_id, hardware_timestep_us, duration_timesteps,
-                vertex_applications, vertex_resources, keyspace)
-
-        return pop_neuron_clusters
-
-    def _allocate_synapse_clusters(self, vertex_applications, vertex_resources,
-                                   hardware_timestep_us, duration_timesteps):
-        logger.info("Allocating synapse clusters")
-
-        # Mapping from PyNN populations to list of synapse clusters
-        # {pynn_population: [synapse_cluster]}
-        pop_synapse_clusters = {}
-
-        # Now all neuron vertices are partioned,
-        # loop through populations again
-        # **TODO** make this process iterative so if result of
-        # there are more than 15 synapse processors for each
-        # neuron processor, split more and try again
-        for pop in self.populations:
-            logger.debug("\tPopulation:%s", pop.label)
-
-            # Create neural clusters for this population
-            pop_synapse_clusters[pop] = pop._create_synapse_clusters(
-                hardware_timestep_us, duration_timesteps,
-                vertex_applications, vertex_resources)
-
-        return pop_synapse_clusters
-
     def _allocate_current_input_clusters(self, vertex_applications,
                                          vertex_resources,
                                          hardware_timestep_us,
@@ -208,22 +162,24 @@ class State(common.control.BaseState):
         # Loop through all neuron clusters
         nets = []
         net_keys = {}
-        for pop, n_cluster in iteritems(self.pop_neuron_clusters):
+        for pop in self.populations:
             # If population has outgoing projections
-            if len(pop.outgoing_projections) > 0:
+            if (len(pop.outgoing_projections) > 0 and
+                pop._neural_cluster is not None):
+
                 logger.debug("\tPopulation label:%s", pop.label)
 
                 # Get synapse vertices associated
                 # with post-synaptic population
                 post_s_verts = list(itertools.chain.from_iterable(
-                    [self.pop_synapse_clusters[o.post][o._synapse_cluster_type].verts
+                    [o.post._synapse_clusters[o._synapse_cluster_type].verts
                     for o in pop.outgoing_projections]))
 
                 logger.debug("\t\t%u post-synaptic vertices",
                              len(post_s_verts))
 
                 # Loop through each neuron vertex that makes up population
-                for n_vert in n_cluster.verts:
+                for n_vert in pop._neural_cluster.verts:
                     # Get subset of the synapse vertices that need
                     # to be connected to this neuron vertex
                     filtered_post_s_verts = [
@@ -251,23 +207,22 @@ class State(common.control.BaseState):
         constraints = []
         for pop in self.populations:
             # If population has no neuron cluster, skip
-            if pop not in self.pop_neuron_clusters:
+            if pop._neural_cluster is None:
                 continue
 
             # Get lists of synapse, neuron and current input
             # vertices associated with this PyNN population
             s_verts = list(itertools.chain.from_iterable(
-                c.verts for c in itervalues(self.pop_synapse_clusters[pop])))
+                c.verts for c in itervalues(pop._synapse_clusters)))
             c_verts = list(itertools.chain.from_iterable(
                 c.verts for c in self.post_pop_current_input_clusters[pop]))
-            n_verts = self.pop_neuron_clusters[pop].verts
 
             # If there are any synapse vertices
             if len(s_verts) > 0 or len(c_verts) > 0:
                 logger.debug("\tPopulation:%s", pop.label)
 
                 # Loop through neuron vertices
-                for n in n_verts:
+                for n in pop._neural_cluster.verts:
                     # Find synapse and current vertices
                     # with overlapping slices
                     n.input_verts = [
@@ -287,9 +242,9 @@ class State(common.control.BaseState):
         logger.info("Loading synapse vertices")
 
         # Loop through populations
-        for pop, synapse_types in iteritems(self.pop_synapse_clusters):
+        for pop in self.populations]:
             # Loop through synapse types and associated cluster
-            for s_type, s_cluster in iteritems(synapse_types):
+            for s_type, s_cluster in iteritems(pop._synapse_clusters):
                 logger.debug("\tPopulation label:%s, synapse type:%s",
                              pop.label, str(s_type))
 
@@ -411,11 +366,11 @@ class State(common.control.BaseState):
         logger.info("Loading neuron vertices")
 
         # Build neural populations
-        for pop, n_cluster in iteritems(self.pop_neuron_clusters):
+        for pop in self.population:
             logger.debug("\tPopulation label:%s", pop.label)
 
             # Loop through vertices
-            for v in n_cluster.verts:
+            for v in pop._neural_cluster.verts:
                 logger.debug("\t\tVertex %s", v)
 
                 # Get placement and allocation
@@ -436,8 +391,8 @@ class State(common.control.BaseState):
                         for s in v.input_verts]
 
                     # Calculate required memory size
-                    size = n_cluster.get_size(v.key, v.neuron_slice,
-                                              in_buffers)
+                    size = pop._neural_cluster.get_size(v.key, v.neuron_slice,
+                                                        in_buffers)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
@@ -449,7 +404,7 @@ class State(common.control.BaseState):
                                  core.start, memory_io.address)
 
                     # Write the vertex to file
-                    v.region_memory = n_cluster.write_to_file(
+                    v.region_memory = pop._neural_cluster.write_to_file(
                         v.key, v.neuron_slice, in_buffers, memory_io)
 
     def _build(self, duration_ms):
@@ -482,13 +437,10 @@ class State(common.control.BaseState):
         vertex_resources = {}
 
         # Allocate clusters
-        self.pop_neuron_clusters = self._allocate_neuron_clusters(
-            vertex_applications, vertex_resources, keyspace,
-            hardware_timestep_us, duration_timesteps)
-
-        self.pop_synapse_clusters = self._allocate_synapse_clusters(
-            vertex_applications, vertex_resources,
-            hardware_timestep_us, duration_timesteps)
+        for pop_id, pop in enumerate(self.populations):
+            logger.debug("\tPopulation:%s", pop.label)
+            pop._create_clusters(pop_id, hardware_timestep_us, duration_timesteps,
+                                 vertex_applications, vertex_resources, keyspace)
 
         self.proj_current_input_clusters, self.post_pop_current_input_clusters =\
             self._allocate_current_input_clusters(
