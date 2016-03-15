@@ -154,7 +154,8 @@ class Projection(common.Projection, ContextMixin):
         return direct_weights
 
     def _estimate_num_synapses(self, pre_slice, post_slice):
-        return self._connector.estimate_num_synapses(pre_slice, post_slice)
+        return self._connector.estimate_num_synapses(
+            pre_slice, post_slice, self.pre.size, self.post.size)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
