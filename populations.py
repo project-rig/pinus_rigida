@@ -156,7 +156,7 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from neuron cluster
-        return self._simulator.state.pop_neuron_clusters[self].read_profile()
+        return self._neural_cluster.read_profile()
 
     def get_synapse_profile_data(self):
         logger.info("Downloading synapse profile for population %s",
@@ -166,8 +166,8 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from each synapse cluster
-        s_clusters = self._simulator.state.pop_synapse_clusters[self]
-        return {t: c.read_profile() for t, c in iteritems(s_clusters)}
+        return {t: c.read_profile()
+                for t, c in iteritems(self._synapse_clusters)}
 
     def get_current_input_profile_data(self):
         logger.info("Downloading current input profile for population %s",
