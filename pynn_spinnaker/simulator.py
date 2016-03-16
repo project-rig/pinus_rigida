@@ -9,7 +9,7 @@ from rig import machine
 from collections import defaultdict
 from pyNN import common
 from rig.bitfield import BitField
-from rig.machine_control.consts import AppState
+from rig.machine_control.consts import AppState, signal_types, AppSignal, MessageType
 from rig.machine_control.machine_controller import MachineController
 from rig.place_and_route.constraints import SameChipConstraint
 from rig.netlist import Net
@@ -466,6 +466,10 @@ class State(common.control.BaseState):
         nets, net_keys = self._build_nets()
 
         logger.info("Connecting to SpiNNaker")
+
+        # **HACK**
+        signal_types[AppSignal.sync0] = MessageType.nearest_neighbour
+        signal_types[AppSignal.sync1] = MessageType.nearest_neighbour
 
         # Get machine controller from connected SpiNNaker board and boot
         self.machine_controller = MachineController(self.spinnaker_hostname)
