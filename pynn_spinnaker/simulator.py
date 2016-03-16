@@ -419,7 +419,7 @@ class State(common.control.BaseState):
         duration_timesteps =\
             int(math.ceil(float(duration_ms) / float(self.dt)))
 
-        logger.info("Simulating for %u %ums timesteps "
+        logger.info("Simulating for %u %fms timesteps "
                     "using a hardware timestep of %uus",
                     duration_timesteps, self.dt, hardware_timestep_us)
 
