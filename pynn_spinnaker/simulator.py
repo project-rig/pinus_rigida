@@ -164,40 +164,42 @@ class State(common.control.BaseState):
         nets = []
         net_keys = {}
         for pop in self.populations:
-            # If population has outgoing projections
-            if (len(pop.outgoing_projections) > 0 and
-                pop._neural_cluster is not None):
+            # If population has no outgoing projections
+            # or no neural cluster, skip
+            if (len(pop.outgoing_projections) == 0 or
+                pop._neural_cluster is None):
+                continue
 
-                logger.debug("\tPopulation label:%s", pop.label)
+            logger.debug("\tPopulation label:%s", pop.label)
 
-                # Get synapse vertices associated
-                # with post-synaptic population
-                post_s_verts = list(itertools.chain.from_iterable(
-                    [o.post._synapse_clusters[o._synapse_cluster_type].verts
-                    for o in pop.outgoing_projections]))
+            # Get synapse vertices associated
+            # with post-synaptic population
+            post_s_verts = list(itertools.chain.from_iterable(
+                [o.post._synapse_clusters[o._synapse_cluster_type].verts
+                for o in pop.outgoing_projections]))
 
-                logger.debug("\t\t%u post-synaptic vertices",
-                             len(post_s_verts))
+            logger.debug("\t\t%u post-synaptic vertices",
+                            len(post_s_verts))
 
-                # Loop through each neuron vertex that makes up population
-                for n_vert in pop._neural_cluster.verts:
-                    # Get subset of the synapse vertices that need
-                    # to be connected to this neuron vertex
-                    filtered_post_s_verts = [
-                        s for s in post_s_verts
-                        if n_vert in s.incoming_connections[pop]]
+            # Loop through each neuron vertex that makes up population
+            for n_vert in pop._neural_cluster.verts:
+                # Get subset of the synapse vertices that need
+                # to be connected to this neuron vertex
+                filtered_post_s_verts = [
+                    s for s in post_s_verts
+                    if n_vert in s.incoming_connections[pop]]
 
-                    # Create a key for this source neuron vertex
-                    net_key = (n_vert.key, n_vert.mask)
+                # Create a key for this source neuron vertex
+                net_key = (n_vert.key, n_vert.mask)
 
-                    # Create a net connecting neuron vertex to synapse vertices
-                    mean_firing_rate = pop.spinnaker_config.mean_firing_rate
-                    net = Net(n_vert, filtered_post_s_verts,
-                              mean_firing_rate * len(n_vert.neuron_slice))
+                # Create a net connecting neuron vertex to synapse vertices
+                mean_firing_rate = pop.spinnaker_config.mean_firing_rate
+                net = Net(n_vert, filtered_post_s_verts,
+                            mean_firing_rate * len(n_vert.neuron_slice))
 
-                    # Add net to list and associate with key
-                    nets.append(net)
-                    net_keys[net] = net_key
+                # Add net to list and associate with key
+                nets.append(net)
+                net_keys[net] = net_key
 
         return nets, net_keys
 
@@ -246,8 +248,8 @@ class State(common.control.BaseState):
         for pop in self.populations:
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
-                logger.debug("\tPopulation label:%s, synapse type:%s",
-                             pop.label, str(s_type))
+                logger.info("\tPopulation label:%s, synapse type:%s",
+                            pop.label, str(s_type))
 
                 # Expand any incoming connections
                 matrices, weight_fixed_point =\
@@ -313,7 +315,7 @@ class State(common.control.BaseState):
 
         # Build current input populations
         for proj, c_cluster in iteritems(self.proj_current_input_clusters):
-            logger.debug("\tProjection label:%s from population label:%s",
+            logger.info("\tProjection label:%s from population label:%s",
                          proj.label, proj.pre.label)
 
             # Build direct connection for projection
@@ -369,7 +371,11 @@ class State(common.control.BaseState):
 
         # Build neural populations
         for pop in self.populations:
-            logger.debug("\tPopulation label:%s", pop.label)
+            # If population has no neuron cluster, skip
+            if pop._neural_cluster is None:
+                continue
+
+            logger.info("\tPopulation label:%s", pop.label)
 
             # Loop through vertices
             for v in pop._neural_cluster.verts:
