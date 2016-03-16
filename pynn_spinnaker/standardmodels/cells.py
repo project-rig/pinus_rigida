@@ -52,7 +52,7 @@ if_curr_neuron_immutable_param_map = [
     ("i_offset",    "i4", lazy_param_map.s1615),
     ("r_membrane",  "i4", lazy_param_map.s1615),
     ("tau_m",       "i4", lazy_param_map.s1615_exp_decay),
-    ("tau_refrac",  "I4", lazy_param_map.integer_time_divide),
+    ("tau_refrac",  "u4", lazy_param_map.integer_time_divide),
 ]
 
 if_curr_neuron_mutable_param_map = [
@@ -138,17 +138,17 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     )
 
     slow_immutable_param_map = [
-        (None, "I4"),
-        ("start_time", "I4", lazy_param_map.integer_time_divide),
-        ("end_time", "I4", lazy_param_map.integer_time_divide),
+        (None, "u4"),
+        ("start_time", "u4", lazy_param_map.integer_time_divide),
+        ("end_time", "u4", lazy_param_map.integer_time_divide),
         ("rate", "i4", lazy_param_map.s1615_rate_isi),
     ]
 
     fast_immutable_param_map = [
-        (None, "I4"),
-        ("start_time", "I4", lazy_param_map.integer_time_divide),
-        ("end_time", "I4", lazy_param_map.integer_time_divide),
-        ("rate", "I4", lazy_param_map.u032_rate_exp_minus_lambda),
+        (None, "u4"),
+        ("start_time", "u4", lazy_param_map.integer_time_divide),
+        ("end_time", "u4", lazy_param_map.integer_time_divide),
+        ("rate", "u4", lazy_param_map.u032_rate_exp_minus_lambda),
     ]
 
 
