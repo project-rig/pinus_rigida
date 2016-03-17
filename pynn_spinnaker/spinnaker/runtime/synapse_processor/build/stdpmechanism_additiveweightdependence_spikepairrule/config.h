@@ -45,11 +45,11 @@ namespace SynapseProcessor
                              TimingDependence, WeightDependence, SynapseStructure, 16> SynapseType;
 }
 
-
+// Ring buffer with 32-bit unsigned entries, large enough for 512 neurons
 #include "../../ring_buffer.h"
 namespace SynapseProcessor
 {
-  typedef RingBufferBase<uint32_t, 3, 10> RingBuffer;
+  typedef RingBufferBase<uint32_t, 3, 9> RingBuffer;
 }
 
 #include "../../delay_buffer.h"

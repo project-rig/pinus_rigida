@@ -32,8 +32,8 @@ public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  // One word for a synapse-count and 1024 synapses
-  static const unsigned int MaxRowWords = 1028 + PreTraceWords;
+  // One word for a synapse-count and 512 synapses
+  static const unsigned int MaxRowWords = 516 + PreTraceWords;
 
   //-----------------------------------------------------------------------------
   // Public methods
