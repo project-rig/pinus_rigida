@@ -71,10 +71,10 @@ public:
     return (PreTrace)newTrace;
   }
 
-  update_state_t ApplyPreSpike(update_state_t previousState,
-                               uint32_t time, PreTrace preTrace,
-                               uint32_t lastPreTime, PreTrace lastPreTrace,
-                               uint32_t lastPostTime, PostTrace lastPostTrace)
+  void ApplyPreSpike(UpdateState &previousState,
+                     uint32_t time, PreTrace preTrace,
+                     uint32_t lastPreTime, PreTrace lastPreTrace,
+                     uint32_t lastPostTime, PostTrace lastPostTrace)
   {
     // Get time of event relative to last post-synaptic event
     uint32_t timeSinceLastPost = time - lastPostTime;
@@ -86,12 +86,8 @@ public:
         //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
         //          time_since_last_post, decayed_o1);
 
-        // Apply depression to state (which is a weight_state)
-        return weight_one_term_apply_depression(previous_state, decayed_o1);
-    }
-    else
-    {
-        return previous_state;
+        // Apply depression to state
+        previousState.ApplyDepression(decayedPostTrace);
     }
 }
 
