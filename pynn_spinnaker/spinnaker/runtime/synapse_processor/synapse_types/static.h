@@ -71,9 +71,9 @@ private:
   //-----------------------------------------------------------------------------
   // Private static methods
   //-----------------------------------------------------------------------------
-   static T GetIndex(T word){ return (word & IndexMask); }
-   static T GetDelay(T word){ return ((word >> I) & DelayMask); }
-   static W GetWeight(T word){ return (W)(word >> (D + I)); }
+  static T GetIndex(T word){ return (word & IndexMask); }
+  static T GetDelay(T word){ return ((word >> I) & DelayMask); }
+  static W GetWeight(T word){ return (W)(word >> (D + I)); }
 };
 } // SynapseTypes
 } // SynapseProcessor

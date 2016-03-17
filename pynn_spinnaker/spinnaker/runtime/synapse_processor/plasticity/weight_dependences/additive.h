@@ -23,41 +23,42 @@ class Additive
 {
 public:
   //-----------------------------------------------------------------------------
+  // Typedefines
+  //-----------------------------------------------------------------------------
+  typedef W Weight;
+
+  //-----------------------------------------------------------------------------
   // WeightState
   //-----------------------------------------------------------------------------
   class WeightState
   {
   public:
-    WeightState(W weight) : m_InitialWeight(weight), m_Potentiation(0), m_Depression(0)
+    WeightState(Weight weight) : m_InitialWeight(weight), m_Potentiation(0), m_Depression(0)
     {
     }
 
     //-----------------------------------------------------------------------------
     // Public API
     //-----------------------------------------------------------------------------
-    void ApplyDepression(int32_t depression)
+    void ApplyDepression(int32_t depression, const Additive<Weight> &)
     {
       m_Depression += depression;
     }
 
-    void ApplyPotentiation(int32_t potentiation)
+    void ApplyPotentiation(int32_t potentiation, const Additive<Weight> &)
     {
       m_Potentiation += potentiation;
     }
 
-    W CalculateFinalWeight() const
+    Weight CalculateFinalWeight(const Additive<Weight> &weightDependence) const
     {
       // Scale potentiation and depression and combine together
-      int32_t weightChange = __smulbb(m_Potentiation, Additive<Weight>::m_A2Plus);
-      weightChange = __smlabb(m_Depression, Additive<Weight>::m_MinusA2Minus, weightChange);
+      int32_t weightChange = __smulbb(m_Potentiation, weightDependence.m_A2Plus);
+      weightChange = __smlabb(m_Depression, weightDependence.m_MinusA2Minus, weightChange);
       weightChange >>= 11;
 
-      return (W)(m_InitialWeight + weightChange);
+      return (Weight)(m_InitialWeight + weightChange);
     }
-
-    //-----------------------------------------------------------------------------
-    // Static API
-    //-----------------------------------------------------------------------------
 
   private:
     //-----------------------------------------------------------------------------
@@ -73,11 +74,11 @@ private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  static int32_t m_MinWeight;
-  static int32_t m_MaxWeight;
+  int32_t m_MinWeight;
+  int32_t m_MaxWeight;
 
-  static int32_t m_A2Plus;
-  static int32_t m_MinusA2Minus;
+  int32_t m_A2Plus;
+  int32_t m_MinusA2Minus;
 };
 } // WeightDependences
 } // Plasticity

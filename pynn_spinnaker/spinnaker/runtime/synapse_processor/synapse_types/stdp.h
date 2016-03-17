@@ -13,8 +13,8 @@ namespace SynapseProcessor
 {
 namespace SynapseTypes
 {
-template<typename C, typename W, unsigned int D, unsigned int I,
-         typename Timing, typename Weight, typename SynapseStructure,
+template<typename C, unsigned int D, unsigned int I,
+         typename TimingDependence, typename WeightDependence, typename SynapseStructure,
          unsigned int T>
 class STDP
 {
@@ -43,11 +43,11 @@ public:
 
     // Get last pre-synaptic event from event history
     const uint32_t lastPreTick = dmaBuffer[3];
-    const Timing::PreTrace lastPreTrace = dmaBuffer[4];
+    const TimingDependence::PreTrace lastPreTrace = dmaBuffer[4];
 
     // Calculate new pre-trace
-    const auto newPreTrace = m_Timing.UpdatePreTrace(tick, lastPreTrace,
-                                                     lastPreTick, flush);
+    const auto newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
+                                                               lastPreTick, flush);
 
     const C *controlWords = //(T*)&dmaBuffer[3];
     SynapseStructure::PlasticSynapse *plasticWords = //(
@@ -126,7 +126,7 @@ public:
           index, finalState.GetWeight());
 
       }
-      
+
       // Write back updated synaptic word to plastic region
       *plasticWords++ = finalState.GetPlasticSynapse();
     }
@@ -144,7 +144,7 @@ private:
   //-----------------------------------------------------------------------------
   // Typedefines
   //-----------------------------------------------------------------------------
-  typedef PostEventHistoryBase<Timing::PostTrace, T> PostEventHistory;
+  typedef PostEventHistoryBase<TimingDependence::PostTrace, T> PostEventHistory;
 
   //-----------------------------------------------------------------------------
   // Constants
@@ -164,7 +164,7 @@ private:
   Timing m_Timing;
   Weight m_Weight;
 
-  PostEventHistory<Timing::PostTrace, T> m_PostEventHistory[MaxNeurons];
+  PostEventHistory m_PostEventHistory[MaxNeurons];
 };
 } // SynapseTypes
 } // SynapseProcessor
