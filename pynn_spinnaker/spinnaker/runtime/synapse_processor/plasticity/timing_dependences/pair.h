@@ -33,16 +33,16 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  PostTrace UpdatePostTrace(PostTrace lastTrace, uint32_t time, uint32_t lastTime) const
+  PostTrace UpdatePostTrace(uint32_t tick, PostTrace lastTrace, uint32_t lastTick) const
   {
     // Get time since last spike
-    uint32_t deltaTime = time - lastTime;
+    uint32_t elapsedTicks = tick - lastTick;
 
     // Decay previous trace
-    int32_t newTrace = Mul16S2011(lastTrace, m_TauMinusLUT.Get(deltaTime));
+    int32_t newTrace = Mul16S2011(lastTrace, m_TauMinusLUT.Get(elapsedTicks));
 
     // Add energy caused by new spike to trace
-    newTrace += S511One;
+    newTrace += S2011;
 
     //log_debug("\tdelta_time=%d, o1=%d\n", deltaTime, newTrace);
 
@@ -50,19 +50,19 @@ public:
     return (PostTrace)newTrace;
   }
 
-  PreTrace UpdatePreTrace(PreTrace lastTrace, uint32_t time, uint32_t last_time,
+  PreTrace UpdatePreTrace(uint32_t tick, PreTrace lastTrace, uint32_t lastTick,
                           bool flush) const
   {
     // Get time since last spike
-    uint32_t deltaTime = time - lastTime;
+    uint32_t elapsedTicks = tick - lastTick;
 
     // Decay previous trace
-    int32_t newTrace = Mul16S2011(lastTrace, m_TauPlusLUT.Get(deltaTime));
+    int32_t newTrace = Mul16S2011(lastTrace, m_TauPlusLUT.Get(elapsedTicks));
 
     // If this isn't a flush, add energy caused by new spike to trace
     if(!flush)
     {
-      newTrace += S511One;
+      newTrace += S2011;
     }
 
     //log_debug("\tdelta_time=%d, o1=%d\n", deltaTime, newTrace);
@@ -72,16 +72,16 @@ public:
   }
 
   void ApplyPreSpike(UpdateState &previousState,
-                     uint32_t time, PreTrace preTrace,
-                     uint32_t lastPreTime, PreTrace lastPreTrace,
+                     uint32_t time, PreTrace,
+                     uint32_t, PreTrace,
                      uint32_t lastPostTime, PostTrace lastPostTrace)
   {
     // Get time of event relative to last post-synaptic event
-    uint32_t timeSinceLastPost = time - lastPostTime;
-    if (timeSinceLastPost > 0)
+    uint32_t elapsedTicksSinceLastPost = time - lastPostTime;
+    if (elapsedTicksSinceLastPost > 0)
     {
         int32_t decayedPostTrace = Mul16S2011(
-          lastPostTrace, m_TauMinusLUT.Get(timeSinceLastPost));
+          lastPostTrace, m_TauMinusLUT.Get(elapsedTicksSinceLastPost));
 
         //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
         //          time_since_last_post, decayed_o1);
@@ -89,7 +89,27 @@ public:
         // Apply depression to state
         previousState.ApplyDepression(decayedPostTrace);
     }
-}
+  }
+
+  void ApplyPostSpike(UpdateState &previousState,
+                     uint32_t time, PostTrace,
+                     uint32_t lastPreTime, PreTrace lastPreTrace,
+                     uint32_t, PostTrace)
+  {
+    // Get time of event relative to last pre-synaptic event
+    uint32_t elapsedTicksSinceLastPre = time - lastPreTime;
+    if (elapsedTicksSinceLastPre > 0)
+    {
+        int32_t decayedPreTrace = Mul16S2011(
+          lastPreTrace, m_TauPlusLUT.Get(elapsedTicksSinceLastPre));
+
+        //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
+        //          time_since_last_post, decayed_o1);
+
+        // Apply potentiation to state
+        previousState.ApplyPotentation(decayedPreTrace);
+    }
+  }
 
 private:
   //-----------------------------------------------------------------------------

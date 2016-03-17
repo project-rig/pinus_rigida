@@ -5,16 +5,15 @@ namespace SynapseProcessor
 namespace Plasticity
 {
 //-----------------------------------------------------------------------------
-// SynapseProcessor::Plasticity::PostEventHistory
+// SynapseProcessor::Plasticity::PostEventHistoryBase
 //-----------------------------------------------------------------------------
 template<T, N>
-class PostEventHistory
+class PostEventHistoryBase
 {
 public:
   //-----------------------------------------------------------------------------
   // Window
   //-----------------------------------------------------------------------------
-  template<T>
   class Window
   {
   private:
@@ -56,7 +55,7 @@ public:
 
     uint32_t GetNextTime() const
     {
-      return m_NextTime;
+      return *m_NextTime;
     }
 
     unsigned int GetNumEvents() const
@@ -78,7 +77,7 @@ public:
   //-----------------------------------------------------------------------------
   // Public methods
   //-----------------------------------------------------------------------------
-  Window<T> GetWindow(uint32_t beginTime, uint32_t endTime)
+  Window GetWindow(uint32_t beginTime, uint32_t endTime)
   {
     // Start at end event - beyond end of post-event history
     const uint32_t count = m_CountMinusOne + 1;
