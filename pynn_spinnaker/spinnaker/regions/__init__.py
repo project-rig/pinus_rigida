@@ -9,6 +9,7 @@ from profiler import Profiler
 from spike_recording import SpikeRecording
 from spike_source_array import SpikeSourceArray
 from spike_source_poisson import SpikeSourcePoisson
+from statistics import Statistics
 from synapse import Synapse
 from synaptic_matrix import SynapticMatrix
 from system import System

@@ -1,6 +1,7 @@
 # Import modules
 import enum
 import logging
+import numpy as np
 import regions
 from os import path
 from rig import machine
@@ -29,6 +30,7 @@ class Regions(enum.IntEnum):
     output_buffer = 4
     delay_buffer = 5
     profiler = 6
+    statistics = 7
 
 
 # ----------------------------------------------------------------------------
@@ -57,6 +59,12 @@ class SynapseCluster(object):
         3:  "Process row",
     }
 
+    # Names of statistics
+    statistic_names = (
+        "DelayBuffersNotProcessed"
+        "InputBufferOverflows"
+    )
+
     def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
                  max_delay_ms, config, post_pop_size, synapse_model,
                  receptor_index, synaptic_projections,
@@ -72,6 +80,7 @@ class SynapseCluster(object):
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
+        self.regions[Regions.statistics] = regions.Statistics(len(statistic_names))
 
         # Create start of filename for the executable to use for this cluster
         filename = "synapse_" + synapse_model.__name__.lower()
@@ -206,7 +215,7 @@ class SynapseCluster(object):
         return region_memory
 
     def read_profile(self):
-        # Get the profile recording region and
+        # Get the profile recording region
         region = self.regions[Regions.profiler]
 
         # Return profile data for each vertex that makes up population
@@ -214,6 +223,15 @@ class SynapseCluster(object):
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
                 for v in self.verts]
+
+    def read_statistics(self):
+        # Get the statistics recording region
+        region = self.regions[Regions.statistics]
+
+         # Return statistics for each vertex that makes up population
+         # **TODO** copy into record array with names from statistic_names
+         return np.asarray([region.read_stats(v.region_memory[Regions.profiler])
+                           for v in self.verts])
 
     # --------------------------------------------------------------------------
     # Private methods

@@ -55,6 +55,9 @@ bool g_DMABusy = false;
 DMABuffer g_DMABuffers[2];
 unsigned int g_DMARowBufferIndex = 0;
 
+uint32_t *g_StatisticsBaseAddress = NULL;
+uint32_t g_Statistics[StatWordMax];
+
 //-----------------------------------------------------------------------------
 // Module inline functions
 //-----------------------------------------------------------------------------
@@ -104,6 +107,19 @@ bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
 
   LOG_PRINT(LOG_LEVEL_INFO, "\tSynaptic matrix base address:%08x",
             g_SynapticMatrixBaseAddress);
+
+  return true;
+}
+//-----------------------------------------------------------------------------
+bool ReadStatisticsRegion(uint32_t *region, uint32_t)
+{
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadStatisticsRegion");
+
+  // Cache pointer to region as base address for statistics
+  g_StatisticsBaseAddress = region;
+
+  LOG_PRINT(LOG_LEVEL_INFO, "\tStatistics base address:%08x",
+            g_StatisticsBaseAddress);
 
   return true;
 }
@@ -179,6 +195,13 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   // Read profiler region
   if(!Profiler::ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionProfiler),
+    flags))
+  {
+    return false;
+  }
+
+  if(!ReadStatisticsRegion(
+    Config::GetRegionStart(baseAddress, RegionStatistics),
     flags))
   {
     return false;
@@ -269,7 +292,8 @@ void MCPacketReceived(uint key, uint)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Cannot add spike to input buffer");
+    LOG_PRINT(LOG_LEVEL_TRACE, "Cannot add spike to input buffer");
+    g_Statistics[StatWordInputBufferOverflows]++;
   }
 
 }
@@ -342,9 +366,12 @@ void TimerTick(uint tick, uint)
   Profiler::TagDisableIRQFIQ<ProfilerTagTimerTick> p;
 
   // If all delay rows weren't processed last timer tick
-  if(g_CurrentDelayRowIndex != g_DelayBuffer.GetRowCount(g_Tick))
+  const unsigned int nonProcessedRows = g_DelayBuffer.GetRowCount(g_Tick) - g_CurrentDelayRowIndex;
+  if(nonProcessedRows != 0)
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Not all delay rows were processed last timer tick");
+    LOG_PRINT(LOG_LEVEL_TRACE, "%u delay rows were processed last timer tick",
+              nonProcessedRows);
+    g_Statistics[StatWordDelayBuffersNotProcessed] += nonProcessedRows;
   }
 
   // Clear the delay buffer for the last tick
@@ -366,6 +393,13 @@ void TimerTick(uint tick, uint)
 
     // Finalise profiling
     Profiler::Finalise();
+
+    // Copy all stats to SDRAM
+    uint32_t *statistics = g_StatisticsBaseAddress;
+    for(unsigned int s; s < StatWordMax; s++)
+    {
+      *statistics++ = g_Statistics[s];
+    }
 
     // Exit
     spin1_exit(0);
@@ -415,8 +449,11 @@ extern "C" void c_main()
   g_DMABusy = false;
   g_DMARowBufferIndex = 0;
 
-  // Initialize modules
-  //ring_buffer_init();
+  // Reset all stats
+  for(unsigned int s; s < StatWordMax; s++)
+  {
+    g_Statistics[s] = 0;
+  }
 
   // Set timer tick (in microseconds) in both timer and
   spin1_set_timer_tick(g_Config.GetTimerPeriod());

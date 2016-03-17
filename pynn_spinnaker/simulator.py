@@ -409,6 +409,16 @@ class State(common.control.BaseState):
                     v.region_memory = pop._neural_cluster.write_to_file(
                         v.key, v.neuron_slice, in_buffers, memory_io)
 
+    def _read_stats(self):
+        logger.info("Reading stats")
+
+        # Loop through populations
+        for pop in self.populations:
+            # Loop through synapse types and associated cluster
+            for s_type, s_cluster in iteritems(pop._synapse_clusters):
+                logger.info("\tPopulation label:%s, synapse type:%s",
+                             pop.label, str(s_type))
+
     def _build(self, duration_ms):
         # Convert dt into microseconds and divide by
         # realtime proportion to get hardware timestep
@@ -524,4 +534,6 @@ class State(common.control.BaseState):
         self._wait_for_transition(placements, allocations,
                                   AppState.run, AppState.exit,
                                   num_verts)
+
+        self._read_stats()
 state = State()
