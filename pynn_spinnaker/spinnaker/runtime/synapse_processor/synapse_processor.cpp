@@ -39,6 +39,7 @@ RingBuffer g_RingBuffer;
 DelayBuffer g_DelayBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
+SynapseType g_Synapse;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -201,7 +202,7 @@ void SetupNextDMARowRead()
     auto getRowWordsLambda = 
       [](unsigned int rowSynapses) 
       { 
-        return SynapseType::GetRowWords(rowSynapses);
+        return g_Synapse.GetRowWords(rowSynapses);
       };
     
     // Decode key to get address and length of destination synaptic row
@@ -231,7 +232,7 @@ void SetupNextDMARowRead()
     auto delayRow = g_DelayBuffer.GetRow(g_CurrentDelayRowIndex++);
 
     // Convert number of synapses to words and get address from synaptic matrix base
-    unsigned int delayRowWords = SynapseType::GetRowWords(delayRow.GetNumSynapses());
+    unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
     const uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
 
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row index:%u, synapse:%u, words:%u, address:%08x",
@@ -298,9 +299,10 @@ void DMATransferDone(uint, uint tag)
       };
     
     // Process the next row in the DMA buffer, using this function to apply
+    bool flush = false;
     Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessRow);
-    SynapseType::ProcessRow(g_Tick, DMANextRowBuffer(),
-                            addWeightLambda, addDelayRowLambda);
+    g_Synapse.ProcessRow(g_Tick, DMANextRowBuffer(), flush,
+                         addWeightLambda, addDelayRowLambda);
     Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
 
     // Setup next row read

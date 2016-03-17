@@ -10,16 +10,17 @@ namespace SynapseProcessor
 {
 namespace Plasticity
 {
-namespace SynapseStructure
+namespace SynapseStructures
 {
-template<typename W, typename WeightState>
+template<typename W>
 class Weight
 {
 public:
   //-----------------------------------------------------------------------------
   // Typedefines
   //-----------------------------------------------------------------------------
-  typedef W PlasticSynapse;
+  typedef W WeightDependence;
+  typedef typename WeightDependence::Weight PlasticSynapse;
 
   //-----------------------------------------------------------------------------
   // FinalState
@@ -27,10 +28,14 @@ public:
   class FinalState
   {
   public:
+    FinalState(typename WeightDependence::Weight weight) : m_Weight(weight)
+    {
+    }
+
     //-----------------------------------------------------------------------------
     // Public API
     //-----------------------------------------------------------------------------
-    W GetWeight() const
+    typename WeightDependence::Weight GetWeight() const
     {
       return m_Weight;
     }
@@ -41,14 +46,10 @@ public:
     }
 
   private:
-    FinalState(W weight) : m_Weight(weight)
-    {
-    }
-
     //-----------------------------------------------------------------------------
     // Members
     //-----------------------------------------------------------------------------
-    W m_Weight;
+    typename WeightDependence::Weight m_Weight;
   };
 
   Weight(PlasticSynapse plasticSynapse) : m_WeightState(plasticSynapse)
@@ -58,26 +59,26 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  void ApplyDepression(int32_t depression, const Additive<W> &weightDependence)
+  void ApplyDepression(int32_t depression, const WeightDependence &weightDependence)
   {
     m_WeightState.ApplyDepression(depression, weightDependence);
   }
 
-  void ApplyPotentiation(int32_t potentiation, const Additive<W> &weightDependence)
+  void ApplyPotentiation(int32_t potentiation, const WeightDependence &weightDependence)
   {
-    m_WeightState.ApplyPotentiation(depression, weightDependence);
+    m_WeightState.ApplyPotentiation(potentiation, weightDependence);
   }
 
-  FinalState CalculateFinalState(const Additive<W> &weightDependence) const
+  FinalState CalculateFinalState(const WeightDependence &weightDependence) const
   {
     return FinalState(m_WeightState.CalculateFinalWeight(weightDependence));
   }
-  
+
 private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  WeightState m_WeightState;
+  typename WeightDependence::WeightState m_WeightState;
 };
 } // SynapseStructure
 } // Plasticity

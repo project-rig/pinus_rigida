@@ -5,10 +5,10 @@ namespace SynapseProcessor
 namespace Plasticity
 {
 //-----------------------------------------------------------------------------
-// SynapseProcessor::Plasticity::PostEventHistoryBase
+// SynapseProcessor::Plasticity::PostEventHistory
 //-----------------------------------------------------------------------------
-template<T, N>
-class PostEventHistoryBase
+template<typename Trace, unsigned int NumEntries>
+class PostEventHistory
 {
 public:
   //-----------------------------------------------------------------------------
@@ -16,12 +16,14 @@ public:
   //-----------------------------------------------------------------------------
   class Window
   {
-  private:
-    Window(T prevTrace, uint32_t prevTime, const T *nextTrace, const uint32_t *nextTime, unsigned int numEvents)
+  public:
+    Window(Trace prevTrace, uint32_t prevTime,
+           const Trace *nextTrace, const uint32_t *nextTime,
+           unsigned int numEvents)
       : m_PrevTrace(prevTrace), m_PrevTime(prevTime), m_NextTrace(nextTrace), m_NextTime(nextTime), m_NumEvents(numEvents)
     {
     }
-  public:
+
     //-----------------------------------------------------------------------------
     // Public API
     //-----------------------------------------------------------------------------
@@ -38,7 +40,7 @@ public:
       m_NumEvents--;
     }
 
-    T GetPrevTrace() const
+    Trace GetPrevTrace() const
     {
       return m_PrevTrace;
     }
@@ -48,7 +50,7 @@ public:
       return m_PrevTime;
     }
 
-    T GetNextTrace() const
+    Trace GetNextTrace() const
     {
       return *m_NextTrace;
     }
@@ -67,9 +69,9 @@ public:
     //-----------------------------------------------------------------------------
     // Members
     //-----------------------------------------------------------------------------
-    T m_PrevTrace;
+    Trace m_PrevTrace;
     uint32_t m_PrevTime;
-    const T *m_NextTrace;
+    const Trace *m_NextTrace;
     const uint32_t *m_NextTime;
     unsigned int m_NumEvents;
   };
@@ -104,14 +106,17 @@ public:
 
     // Calculate number of events
     unsigned int numEvents = (endEventTime - nextTime);
-    return Window<T>(*(window.next_trace - 1), *eventTime,
-                     (end_event_trace - numEvents),
-                     nextTime, numEvents);
+    const Trace *endEventTrace = m_Traces + count;
+    const Trace *nextTrace = endEventTrace - numEvents;
+    return Window(*(nextTrace - 1), *eventTime,
+                  nextTrace, nextTime,
+                  numEvents);
   }
 
-  void Add(uint32_t time, T trace)
+  void Add(uint32_t time, Trace trace)
   {
-    if (m_CountMinusOne < (N - 1))
+    // If there is space in the history
+    if (m_CountMinusOne < (NumEntries - 1))
     {
       // If there's still space, store time at current end
       // and increment count minus 1
@@ -123,15 +128,15 @@ public:
     {
         // Otherwise Shuffle down elements
         // **NOTE** 1st element is always an entry at time 0
-        for (uint32_t e = 2; e < N; e++)
+        for (uint32_t e = 2; e < NumEntries; e++)
         {
             m_Times[e - 1] = m_Times[e];
             m_Traces[e - 1] = m_Traces[e];
         }
 
         // Stick new time at end
-        m_Times[N - 1] = time;
-        m_Traces[N - 1] = trace;
+        m_Times[NumEntries - 1] = time;
+        m_Traces[NumEntries - 1] = trace;
     }
   }
 private:
@@ -139,8 +144,8 @@ private:
   // Members
   //-----------------------------------------------------------------------------
   uint32_t m_CountMinusOne;
-  uint32_t m_Times[N];
-  T m_Traces[N];
+  uint32_t m_Times[NumEntries];
+  Trace m_Traces[NumEntries];
 };
 }
 }

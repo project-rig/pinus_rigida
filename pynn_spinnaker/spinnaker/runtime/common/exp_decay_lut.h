@@ -30,7 +30,7 @@ public:
     inputPointer += numWords;
   }
 
-  int32_t Get(unsigned int t) const;
+  int32_t Get(unsigned int t) const
   {
     // Calculate lut index
     unsigned int index = t >> Shift;

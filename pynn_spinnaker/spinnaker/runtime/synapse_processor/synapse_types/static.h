@@ -21,13 +21,13 @@ public:
   // Constants
   //-----------------------------------------------------------------------------
   // Three word for a synapse-count and delay extension data; and 1024 synapses
-  static const unsigned int MaxRowWords = 1025;
+  static const unsigned int MaxRowWords = 1027;
     
   //-----------------------------------------------------------------------------
-  // Public static methods
+  // Public methods
   //-----------------------------------------------------------------------------
   template<typename F, typename E>
-  static bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords],
+  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], bool,
                          F applyInputFunction, E addDelayRowFunction)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing static row with %u synapses",
@@ -55,7 +55,7 @@ public:
     return true;
   }
   
-  static unsigned int GetRowWords(unsigned int rowSynapses)
+  unsigned int GetRowWords(unsigned int rowSynapses) const
   {
     // Three header word and a synapse
     return 3 + ((rowSynapses * sizeof(T)) / 4);

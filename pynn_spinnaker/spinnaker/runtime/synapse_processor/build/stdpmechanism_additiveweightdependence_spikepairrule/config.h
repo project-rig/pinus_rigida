@@ -29,10 +29,10 @@ namespace SynapseProcessor
 }
 
 // Pair-based STDP rule with 256 entry lookup tables for potentiation and depression function
-#include "../../plasticity/timing_dependences/additive.h"
+#include "../../plasticity/timing_dependences/pair.h"
 namespace SynapseProcessor
 {
-  typedef Plasticity::TimingDependences::Pair<256, 0, 256, 0> TimingDependence;
+  typedef Plasticity::TimingDependences::Pair<256, 0, 256, 0, SynapseStructure> TimingDependence;
 }
 
 // STDP synapses using 16-bit control words with 3 delay bits and 10 index bits;

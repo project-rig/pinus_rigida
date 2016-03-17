@@ -20,7 +20,8 @@ namespace Plasticity
 namespace TimingDependences
 {
 template<unsigned int TauPlusLUTNumEntries, unsigned int TauPlusLUTShift,
-         unsigned int TauMinusLUTNumEntries, unsigned int TauMinusLUTShift>
+         unsigned int TauMinusLUTNumEntries, unsigned int TauMinusLUTShift,
+         typename SynapseStructure>
 class Pair
 {
 public:
@@ -42,7 +43,7 @@ public:
     int32_t newTrace = Mul16S2011(lastTrace, m_TauMinusLUT.Get(elapsedTicks));
 
     // Add energy caused by new spike to trace
-    newTrace += S2011;
+    newTrace += S2011One;
 
     //log_debug("\tdelta_time=%d, o1=%d\n", deltaTime, newTrace);
 
@@ -62,7 +63,7 @@ public:
     // If this isn't a flush, add energy caused by new spike to trace
     if(!flush)
     {
-      newTrace += S2011;
+      newTrace += S2011One;
     }
 
     //log_debug("\tdelta_time=%d, o1=%d\n", deltaTime, newTrace);
@@ -71,7 +72,7 @@ public:
     return (PreTrace)newTrace;
   }
 
-  void ApplyPreSpike(UpdateState &previousState,
+  void ApplyPreSpike(SynapseStructure &synapse, const WeightDependence &weightDependence,
                      uint32_t time, PreTrace,
                      uint32_t, PreTrace,
                      uint32_t lastPostTime, PostTrace lastPostTrace)
@@ -87,11 +88,11 @@ public:
         //          time_since_last_post, decayed_o1);
 
         // Apply depression to state
-        previousState.ApplyDepression(decayedPostTrace);
+        synapse.ApplyDepression(decayedPostTrace, weightDependence);
     }
   }
 
-  void ApplyPostSpike(UpdateState &previousState,
+  void ApplyPostSpike(SynapseStructure &synapse, const WeightDependence &weightDependence,
                      uint32_t time, PostTrace,
                      uint32_t lastPreTime, PreTrace lastPreTrace,
                      uint32_t, PostTrace)
@@ -107,11 +108,16 @@ public:
         //          time_since_last_post, decayed_o1);
 
         // Apply potentiation to state
-        previousState.ApplyPotentation(decayedPreTrace);
+        synapse.ApplyPotentiation(decayedPreTrace, weightDependence);
     }
   }
 
 private:
+  //-----------------------------------------------------------------------------
+  // Typedefines
+  //-----------------------------------------------------------------------------
+  typedef typename SynapseStructure::WeightDependence WeightDependence;
+
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------

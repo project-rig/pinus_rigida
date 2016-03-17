@@ -6,6 +6,9 @@
 // Common includes
 #include "../../common/log.h"
 
+// Synapse processor includes
+#include "../plasticity/post_events.h"
+
 //-----------------------------------------------------------------------------
 // SynapseProcessor::SynapseTypes::STDP
 //-----------------------------------------------------------------------------
@@ -18,12 +21,19 @@ template<typename C, unsigned int D, unsigned int I,
          unsigned int T>
 class STDP
 {
+private:
+  typedef typename SynapseStructure::PlasticSynapse PlasticSynapse;
+  typedef typename TimingDependence::PreTrace PreTrace;
+  typedef typename TimingDependence::PostTrace PostTrace;
+
+  static const unsigned int PreTraceWords = (sizeof(PreTrace) / 4) + (((sizeof(PreTrace) % 4) == 0) ? 0 : 1);
+
 public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
   // One word for a synapse-count and 1024 synapses
-  static const unsigned int MaxRowWords = 1025;
+  static const unsigned int MaxRowWords = 1028 + PreTraceWords;
 
   //-----------------------------------------------------------------------------
   // Public methods
@@ -41,17 +51,19 @@ public:
       addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
     }
 
-    // Get last pre-synaptic event from event history
+    // Get last pre-synaptic event from event history and write back current time
     const uint32_t lastPreTick = dmaBuffer[3];
-    const TimingDependence::PreTrace lastPreTrace = dmaBuffer[4];
+    dmaBuffer[3] = tick;
 
     // Calculate new pre-trace
-    const auto newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
-                                                               lastPreTick, flush);
+    const PreTrace lastPreTrace = *GetPreTrace(dmaBuffer);
+    const PreTrace newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
+                                                                   lastPreTick, flush);
 
-    const C *controlWords = //(T*)&dmaBuffer[3];
-    SynapseStructure::PlasticSynapse *plasticWords = //(
-    const uint32_t count = dmaBuffer[0];
+    // Extract first plastic and control words; and loop through synapses
+    uint32_t count = dmaBuffer[0];
+    PlasticSynapse *plasticWords = GetPlasticWords(dmaBuffer);
+    const C *controlWords = GetControlWords(dmaBuffer, count);
     for(; count > 0; count--)
     {
       // Get the next control word from the synaptic_row
@@ -92,10 +104,10 @@ public:
         //     delayed_post_time);
 
         // Apply post-synaptic spike to state
-        m_Timing.ApplyPostSpike(updateState,
-                                delayedPostTick, postWindow.GetNextTrace(),
-                                delayedLastPreTick, lastPreTrace,
-                                postWindow.GetPrevTime(), postWindow.GetPrevTrace());
+        m_TimingDependence.ApplyPostSpike(updateState, m_WeightDependence,
+                                          delayedPostTick, postWindow.GetNextTrace(),
+                                          delayedLastPreTick, lastPreTrace,
+                                          postWindow.GetPrevTime(), postWindow.GetPrevTrace());
 
         // Go onto next event
         postWindow.Next(delayedPostTick);
@@ -109,21 +121,21 @@ public:
           //          delayed_pre_time, post_window.prev_time);
 
           // Apply pre-synaptic spike to state
-          m_Timing.ApplyPreSpike(updateState,
-                                 delayedPreTick, newPreTrace,
-                                 delayedLastPreTick, lastPreTrace,
-                                 postWindow.GetPrevTime(), postWindow.GetPrevTrace());
+          m_TimingDependence.ApplyPreSpike(updateState, m_WeightDependence,
+                                           delayedPreTick, newPreTrace,
+                                           delayedLastPreTick, lastPreTrace,
+                                           postWindow.GetPrevTime(), postWindow.GetPrevTrace());
       }
 
 
       // Calculate final state after all updates
-      auto finalState = updateState.CalculateFinalState(m_Weight);
+      auto finalState = updateState.CalculateFinalState(m_WeightDependence);
 
       // If this isn't a flush, add weight to ring-buffer
       if(!flush)
       {
-        applyInputFunction(delay + tick,
-          index, finalState.GetWeight());
+        applyInputFunction(delayDendritic + delayAxonal + tick,
+          postIndex, finalState.GetWeight());
 
       }
 
@@ -134,17 +146,17 @@ public:
     return true;
   }
 
-  unsigned int GetRowWords(unsigned int rowSynapses)
+  unsigned int GetRowWords(unsigned int rowSynapses) const
   {
     // Three header word and a synapse
-    //return 3 + ((rowSynapses * sizeof(T)) / 4);
+    return 4 + PreTraceWords + GetNumPlasticWords(rowSynapses) + GetNumControlWords(rowSynapses);
   }
 
 private:
   //-----------------------------------------------------------------------------
   // Typedefines
   //-----------------------------------------------------------------------------
-  typedef PostEventHistoryBase<TimingDependence::PostTrace, T> PostEventHistory;
+  typedef Plasticity::PostEventHistory<PostTrace, T> PostEventHistory;
 
   //-----------------------------------------------------------------------------
   // Constants
@@ -155,16 +167,50 @@ private:
   //-----------------------------------------------------------------------------
   // Private static methods
   //-----------------------------------------------------------------------------
-  static C GetIndex(C word){ return (word & IndexMask); }
-  static C GetDelay(C word){ return ((word >> I) & DelayMask); }
+  static C GetIndex(C word)
+  {
+    return (word & IndexMask);
+  }
+
+  static C GetDelay(C word)
+  {
+    return ((word >> I) & DelayMask);
+  }
+
+  static unsigned int GetNumPlasticWords(unsigned int numSynapses)
+  {
+    const unsigned int plasticBytes = numSynapses * sizeof(PlasticSynapse);
+    return (plasticBytes / 4) + (((plasticBytes % 4) == 0) ? 0 : 1);
+  }
+
+  static unsigned int GetNumControlWords(unsigned int numSynapses)
+  {
+    const unsigned int controlBytes = numSynapses * sizeof(C);
+    return (controlBytes / 4) + (((controlBytes % 4) == 0) ? 0 : 1);
+  }
+
+  static PreTrace *GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
+  {
+    return reinterpret_cast<PreTrace*>(&dmaBuffer[4]);
+  }
+
+  static PlasticSynapse *GetPlasticWords(uint32_t (&dmaBuffer)[MaxRowWords])
+  {
+    return reinterpret_cast<PlasticSynapse*>(&dmaBuffer[4 + PreTraceWords]);
+  }
+
+  static const C *GetControlWords(uint32_t (&dmaBuffer)[MaxRowWords], unsigned int numSynapses)
+  {
+    return reinterpret_cast<C*>(&dmaBuffer[4 + PreTraceWords + GetNumPlasticWords(numSynapses)]);
+  }
 
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  Timing m_Timing;
-  Weight m_Weight;
+  TimingDependence m_TimingDependence;
+  WeightDependence m_WeightDependence;
 
-  PostEventHistory m_PostEventHistory[MaxNeurons];
+  PostEventHistory m_PostEventHistory[512];
 };
 } // SynapseTypes
 } // SynapseProcessor
