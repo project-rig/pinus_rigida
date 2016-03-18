@@ -96,10 +96,10 @@ class State(common.control.BaseState):
             # Wait a bit
             time.sleep(1.0)
 
-        # Check if any cores haven't reached to_state
-	cores_in_to_state = self.machine_controller.wait_for_cores_to_reach_state(to_state, num_verts, timeout=5.0)
-        #cores_in_to_state =\
-        #    self.machine_controller.count_cores_in_state(to_state)
+        # Wait for all cores to reach to_state
+        cores_in_to_state =\
+            self.machine_controller.wait_for_cores_to_reach_state(
+                to_state, num_verts, timeout=5.0)
         if cores_in_to_state != num_verts:
             # Loop through all placed vertices
             for vertex, (x, y) in iteritems(placements):
