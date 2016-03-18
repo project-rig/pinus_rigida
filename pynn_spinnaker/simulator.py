@@ -97,8 +97,9 @@ class State(common.control.BaseState):
             time.sleep(1.0)
 
         # Check if any cores haven't reached to_state
-        cores_in_to_state =\
-            self.machine_controller.count_cores_in_state(to_state)
+	cores_in_to_state = self.machine_controller.wait_for_cores_to_reach_state(to_state, num_verts, timeout=5.0)
+        #cores_in_to_state =\
+        #    self.machine_controller.count_cores_in_state(to_state)
         if cores_in_to_state != num_verts:
             # Loop through all placed vertices
             for vertex, (x, y) in iteritems(placements):
@@ -109,7 +110,7 @@ class State(common.control.BaseState):
                         x, y, p, status.cpu_state))
                     print self.machine_controller.get_iobuf(p, x, y)
             raise Exception("Unexpected core failures "
-                            "before reaching %s state." % to_state)
+                            "before reaching %s state (%u/%u)." % (to_state, cores_in_to_state, num_verts))
 
     def _estimate_constraints(self, hardware_timestep_us):
         logger.info("Estimating constraints")
