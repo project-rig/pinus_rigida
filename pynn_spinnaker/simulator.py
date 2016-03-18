@@ -2,6 +2,7 @@
 import itertools
 import logging
 import math
+import numpy as np
 import time
 from rig import machine
 
@@ -409,14 +410,28 @@ class State(common.control.BaseState):
                     v.region_memory = pop._neural_cluster.write_to_file(
                         v.key, v.neuron_slice, in_buffers, memory_io)
 
-    def _read_stats(self):
+    def _read_stats(self, duration_ms):
         logger.info("Reading stats")
 
         # Loop through populations
+        duration_s = float(duration_ms) / 1000.0
         for pop in self.populations:
-            stats = pop.get_synapse_statistics()
+            logger.info("\tPopulation label:%s", pop.label)
 
-            
+            for s_type, stats in iteritems(pop.get_synapse_statistics()):
+                logger.info("\tSynapse type:%s receptor:%s",
+                            s_type[0].__name__, s_type[1])
+                logger.info("\t\tRows requested per vertex per second:%f",
+                            np.mean(stats["row_requested"]) / duration_s)
+                logger.info("\t\tDelay rows requested per vertex per second:%f",
+                            np.mean(stats["delay_row_requested"]) / duration_s)
+                logger.info("\t\tDelay buffers not processed:%u",
+                            np.sum(stats["delay_buffers_not_processed"]))
+                logger.info("\t\tInput buffer overflows:%u",
+                            np.sum(stats["input_buffer_overflows"]))
+                logger.info("\t\tKey lookup failures:%u",
+                            np.sum(stats["key_lookup_fails"]))
+
 
     def _build(self, duration_ms):
         # Convert dt into microseconds and divide by
@@ -534,5 +549,5 @@ class State(common.control.BaseState):
                                   AppState.run, AppState.exit,
                                   num_verts)
 
-        self._read_stats()
+        self._read_stats(duration_ms)
 state = State()

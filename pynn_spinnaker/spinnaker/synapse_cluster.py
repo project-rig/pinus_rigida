@@ -84,7 +84,8 @@ class SynapseCluster(object):
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
-        self.regions[Regions.statistics] = regions.Statistics(len(statistic_names))
+        self.regions[Regions.statistics] = regions.Statistics(
+            len(self.statistic_names))
 
         # Create start of filename for the executable to use for this cluster
         filename = "synapse_" + synapse_model.__name__.lower()
@@ -232,11 +233,9 @@ class SynapseCluster(object):
         # Get the statistics recording region
         region = self.regions[Regions.statistics]
 
-         # Return statistics for each vertex that makes up population
-         # **TODO** copy into record array with names from statistic_names
-         np_stats = np.asarray([region.read_stats(v.region_memory[Regions.profiler])
-                                for v in self.verts])
-
+        # Convert stats to numpy array
+        np_stats = np.asarray([region.read_stats(v.region_memory[Regions.statistics])
+                            for v in self.verts])
         # Convert stats into record array
         stat_names = ",".join(self.statistic_names)
         stat_format = ",".join(
