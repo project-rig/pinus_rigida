@@ -414,10 +414,9 @@ class State(common.control.BaseState):
 
         # Loop through populations
         for pop in self.populations:
-            # Loop through synapse types and associated cluster
-            for s_type, s_cluster in iteritems(pop._synapse_clusters):
-                logger.info("\tPopulation label:%s, synapse type:%s",
-                             pop.label, str(s_type))
+            stats = pop.get_synapse_statistics()
+
+            
 
     def _build(self, duration_ms):
         # Convert dt into microseconds and divide by

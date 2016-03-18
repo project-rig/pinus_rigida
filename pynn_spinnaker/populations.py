@@ -182,6 +182,14 @@ class Population(common.Population):
                 for p in self.outgoing_projections
                 if p._directly_connectable}
 
+    def get_synapse_statistics(self):
+        logger.info("Downloading synapse statistics for population %s",
+                    self.label)
+
+        # Read statistics from each synapse cluster
+        return {t: c.read_statistics()
+                for t, c in iteritems(self._synapse_clusters)}
+
     # --------------------------------------------------------------------------
     # Internal PyNN methods
     # --------------------------------------------------------------------------

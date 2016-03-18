@@ -1,5 +1,6 @@
 # Import modules
 import enum
+import itertools
 import logging
 import numpy as np
 import regions
@@ -61,8 +62,11 @@ class SynapseCluster(object):
 
     # Names of statistics
     statistic_names = (
-        "DelayBuffersNotProcessed"
-        "InputBufferOverflows"
+        "row_requested",
+        "delay_row_requested",
+        "delay_buffers_not_processed",
+        "input_buffer_overflows",
+        "key_lookup_fails",
     )
 
     def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
@@ -230,8 +234,15 @@ class SynapseCluster(object):
 
          # Return statistics for each vertex that makes up population
          # **TODO** copy into record array with names from statistic_names
-         return np.asarray([region.read_stats(v.region_memory[Regions.profiler])
-                           for v in self.verts])
+         np_stats = np.asarray([region.read_stats(v.region_memory[Regions.profiler])
+                                for v in self.verts])
+
+        # Convert stats into record array
+        stat_names = ",".join(self.statistic_names)
+        stat_format = ",".join(
+            itertools.repeat("u4", len(self.statistic_names)))
+        return np.core.records.fromarrays(np_stats.T, names=stat_names,
+                                          formats=stat_format)
 
     # --------------------------------------------------------------------------
     # Private methods

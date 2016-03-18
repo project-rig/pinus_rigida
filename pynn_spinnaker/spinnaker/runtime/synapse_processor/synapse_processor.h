@@ -38,8 +38,11 @@ enum ProfilerTag
 // Indices of statistic words
 enum StatWord
 {
+  StatRowRequested,
+  StatDelayRowRequested,
   StatWordDelayBuffersNotProcessed,
   StatWordInputBufferOverflows,
+  StatWordKeyLookupFail,
   StatWordMax,
 };
 

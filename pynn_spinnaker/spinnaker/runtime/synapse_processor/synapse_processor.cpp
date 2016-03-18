@@ -5,6 +5,7 @@
 #include "../common/log.h"
 #include "../common/profiler.h"
 #include "../common/spinnaker.h"
+#include "../common/statistics.h"
 
 // Configuration include
 #include "config.h"
@@ -39,6 +40,7 @@ RingBuffer g_RingBuffer;
 DelayBuffer g_DelayBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
+Statistics<StatWordMax> g_Statistics;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -54,9 +56,6 @@ uint g_Tick = 0;
 bool g_DMABusy = false;
 DMABuffer g_DMABuffers[2];
 unsigned int g_DMARowBufferIndex = 0;
-
-uint32_t *g_StatisticsBaseAddress = NULL;
-uint32_t g_Statistics[StatWordMax];
 
 //-----------------------------------------------------------------------------
 // Module inline functions
@@ -107,19 +106,6 @@ bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
 
   LOG_PRINT(LOG_LEVEL_INFO, "\tSynaptic matrix base address:%08x",
             g_SynapticMatrixBaseAddress);
-
-  return true;
-}
-//-----------------------------------------------------------------------------
-bool ReadStatisticsRegion(uint32_t *region, uint32_t)
-{
-  LOG_PRINT(LOG_LEVEL_INFO, "ReadStatisticsRegion");
-
-  // Cache pointer to region as base address for statistics
-  g_StatisticsBaseAddress = region;
-
-  LOG_PRINT(LOG_LEVEL_INFO, "\tStatistics base address:%08x",
-            g_StatisticsBaseAddress);
 
   return true;
 }
@@ -200,7 +186,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
-  if(!ReadStatisticsRegion(
+  if(!g_Statistics.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionStatistics),
     flags))
   {
@@ -237,6 +223,7 @@ void SetupNextDMARowRead()
                 rowWords, rowAddress);
       
       // Start a DMA transfer to fetch this synaptic row into current buffer
+      g_Statistics[StatRowRequested]++;
       spin1_dma_transfer(DMATagRowRead,
                          const_cast<uint32_t*>(rowAddress), DMACurrentRowBuffer(),
                          DMA_READ, rowWords * sizeof(uint32_t));
@@ -245,6 +232,11 @@ void SetupNextDMARowRead()
       DMASwapRowBuffers();
 
       return;
+    }
+    else
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "Population associated with spike key %08x not found in key lookup", key);
+      g_Statistics[StatWordKeyLookupFail]++;
     }
   }
   // Otherwise, if a delay row buffer is present for this tick and all rows in it haven't been processed
@@ -261,6 +253,7 @@ void SetupNextDMARowRead()
               g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
 
     // Start a DMA transfer to fetch this synaptic row into current buffer
+    g_Statistics[StatDelayRowRequested]++;
     spin1_dma_transfer(DMATagRowRead,
                        const_cast<uint32_t*>(delayRowAddress), DMACurrentRowBuffer(),
                        DMA_READ, delayRowWords * sizeof(uint32_t));
@@ -394,12 +387,8 @@ void TimerTick(uint tick, uint)
     // Finalise profiling
     Profiler::Finalise();
 
-    // Copy all stats to SDRAM
-    uint32_t *statistics = g_StatisticsBaseAddress;
-    for(unsigned int s; s < StatWordMax; s++)
-    {
-      *statistics++ = g_Statistics[s];
-    }
+    // Finalise statistics
+    g_Statistics.Finalise();
 
     // Exit
     spin1_exit(0);
@@ -450,7 +439,7 @@ extern "C" void c_main()
   g_DMARowBufferIndex = 0;
 
   // Reset all stats
-  for(unsigned int s; s < StatWordMax; s++)
+  for(unsigned int s = 0; s < StatWordMax; s++)
   {
     g_Statistics[s] = 0;
   }
