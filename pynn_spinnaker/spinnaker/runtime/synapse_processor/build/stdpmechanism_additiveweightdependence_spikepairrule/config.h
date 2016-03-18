@@ -37,12 +37,12 @@ namespace SynapseProcessor
 
 // STDP synapses using 16-bit control words with 3 delay bits and 10 index bits;
 // previously configured timing dependence, weight dependence and synapse structure;
-// and a post-synaptic event history with 16 entries
+// and a post-synaptic event history with 10 entries
 #include "../../synapse_types/stdp.h"
 namespace SynapseProcessor
 {
   typedef SynapseTypes::STDP<uint16_t, 3, 10,
-                             TimingDependence, WeightDependence, SynapseStructure, 16> SynapseType;
+                             TimingDependence, WeightDependence, SynapseStructure, 10> SynapseType;
 }
 
 // Ring buffer with 32-bit unsigned entries, large enough for 512 neurons
