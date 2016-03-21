@@ -22,7 +22,6 @@ logger = logging.getLogger("pynn_spinnaker")
 # Regions
 # ----------------------------------------------------------------------------
 class Regions(enum.IntEnum):
-    # JK: probably update this and try and use relative enum numbering
     """Region names, corresponding to those defined in `ensemble.h`"""
     system = 0
     neuron = 1
@@ -144,11 +143,11 @@ class NeuralCluster(object):
                                                       in_buffers)
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions_named(self.regions,
-                                                 region_arguments)
+        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
+                                                           region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
-        return vertex_size_bytes
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
+        return vertex_bytes, vertex_allocs
 
     def write_to_file(self, key, vertex_slice, in_buffers, fp):
         region_arguments = self._get_region_arguments(key, vertex_slice,

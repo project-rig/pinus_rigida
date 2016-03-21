@@ -132,7 +132,7 @@ class Population(common.Population):
 
         # Create a spinnaker config
         self.spinnaker_config = SpinnakerPopulationConfig()
-
+        
         # Dictionary mapping pre-synaptic populations to
         # incoming projections, subdivided by synapse type
         # {synapse_cluster_type: {pynn_population: [pynn_projection]}}
@@ -156,7 +156,7 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from neuron cluster
-        return self._simulator.state.pop_neuron_clusters[self].read_profile()
+        return self._neural_cluster.read_profile()
 
     def get_synapse_profile_data(self):
         logger.info("Downloading synapse profile for population %s",
@@ -166,8 +166,8 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from each synapse cluster
-        s_clusters = self._simulator.state.pop_synapse_clusters[self]
-        return {t: c.read_profile() for t, c in iteritems(s_clusters)}
+        return {t: c.read_profile()
+                for t, c in iteritems(self._synapse_clusters)}
 
     def get_current_input_profile_data(self):
         logger.info("Downloading current input profile for population %s",
@@ -181,6 +181,14 @@ class Population(common.Population):
         return {p: c_clusters[p].read_profile()
                 for p in self.outgoing_projections
                 if p._directly_connectable}
+
+    def get_synapse_statistics(self):
+        logger.info("Downloading synapse statistics for population %s",
+                    self.label)
+
+        # Read statistics from each synapse cluster
+        return {t: c.read_statistics()
+                for t, c in iteritems(self._synapse_clusters)}
 
     # --------------------------------------------------------------------------
     # Internal PyNN methods
@@ -386,53 +394,46 @@ class Population(common.Population):
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
 
-    def _create_neural_cluster(self, pop_id, timer_period_us,
-                               simulation_ticks, vertex_applications,
-                               vertex_resources, keyspace):
+    def _create_neural_cluster(self, pop_id, timer_period_us, simulation_ticks,
+                               vertex_applications, vertex_resources, keyspace):
         # Create neural cluster
-        return NeuralCluster(pop_id, self.celltype, self._parameters,
-                             self.initial_values, self._simulator.state.dt,
-                             timer_period_us, simulation_ticks,
-                             self.recorder.indices_to_record,
-                             self.spinnaker_config, vertex_applications,
-                             vertex_resources, keyspace,
-                             self.neuron_j_constraint)
+        if not self._entirely_directly_connectable:
+            self._neural_cluster = NeuralCluster(
+                pop_id, self.celltype, self._parameters, self.initial_values,
+                self._simulator.state.dt, timer_period_us, simulation_ticks,
+                self.recorder.indices_to_record, self.spinnaker_config,
+                vertex_applications, vertex_resources, keyspace,
+                self.neuron_j_constraint)
+        else:
+            self._neural_cluster = None
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
                                  vertex_applications, vertex_resources):
-        # Get neuron clusters dictionary from simulator
-        pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
-
         # Loop through newly partioned incoming projections_load_synapse_verts
-        synapse_clusters = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        self._synapse_clusters = {}
+        for s_type, pre_pop_projs in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
-            projections = list(itertools.chain.from_iterable(
-                itervalues(pre_pop_projections)))
-            synaptic_projections = [p for p in projections
-                                    if not p._directly_connectable]
+            projs = list(itertools.chain.from_iterable(
+                itervalues(pre_pop_projs)))
+            synaptic_projs = [p for p in projs if not p._directly_connectable]
 
             # If there are any synaptic projections
-            if len(synaptic_projections) > 0:
+            if len(synaptic_projs) > 0:
                 # Find index of receptor type
-                receptor_index = self.celltype.receptor_types.index(
-                    synapse_type[1])
+                receptor_index = self.celltype.receptor_types.index(s_type[1])
 
                 # Create synapse cluster
                 c = SynapseCluster(self._simulator.state.dt, timer_period_us,
                                    simulation_ticks,
                                    self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
-                                   synapse_type[0], receptor_index,
-                                   synaptic_projections, pop_neuron_clusters,
-                                   vertex_applications, vertex_resources,
-                                   self.synapse_j_constraints[synapse_type])
+                                   s_type[0], receptor_index,
+                                   synaptic_projs, vertex_applications,
+                                   vertex_resources,
+                                   self.synapse_j_constraints[s_type])
 
                 # Add cluster to dictionary
-                synapse_clusters[synapse_type] = c
-
-        # Return synapse clusters
-        return synapse_clusters
+                self._synapse_clusters[s_type] = c
 
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of

@@ -48,12 +48,11 @@ uint32_t *Config::GetBaseAddressAllocTag()
 {
   // Get core and app ID from sark
   unsigned int coreID = sark_core_id();
-  unsigned int appID = sark_app_id();
 
   // Find tag for this core's base address
-  // **TODO** next SARK will have build in function to do this
-  uint32_t *address = (uint32_t*)sv->alloc_tag[(appID << 8) + coreID];
-  LOG_PRINT(LOG_LEVEL_INFO, "Based on allocated tag, SDRAM for app_id %u running on core %u begins at %08x", appID, coreID, address);
+  uint32_t *address = (uint32_t*)sark_tag_ptr(coreID, 0);
+  LOG_PRINT(LOG_LEVEL_INFO, "Based on allocated tag, SDRAM for core %u begins at %08x",
+            coreID, address);
   return address;
 }
 }; // namespace Common

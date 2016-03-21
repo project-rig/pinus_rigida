@@ -9,7 +9,7 @@ template<unsigned int Size>
 class SpikeInputBufferBase
 {
 public:
-  SpikeInputBufferBase() : m_Input(Size - 1), m_Output(0), m_NumOverflows(0), m_NumUnderflows(0)
+  SpikeInputBufferBase() : m_Input(Size - 1), m_Output(0)
   {
   }
 
@@ -44,10 +44,6 @@ public:
       m_Buffer[m_Input] = key;
       m_Input = (m_Input - 1) % Size;
     }
-    else
-    {
-      m_NumOverflows++;
-    }
 
     return success;
   }
@@ -60,10 +56,6 @@ public:
       m_Output = (m_Output - 1) % Size;
       e = m_Buffer[m_Output];
     }
-    else
-    {
-      m_NumUnderflows++;
-    }
 
     return success;
   }
@@ -75,9 +67,6 @@ private:
   uint32_t m_Buffer[Size];
   unsigned int m_Input;
   unsigned int m_Output;
-
-  unsigned int m_NumOverflows;
-  unsigned int m_NumUnderflows;
 
 };
 } // Common

@@ -7,6 +7,7 @@ Connection method classes for PyNN SpiNNaker
 """
 from pyNN.connectors import (AllToAllConnector,
                              FixedProbabilityConnector,
+                             FixedTotalNumberConnector,
                              OneToOneConnector,
                              FixedNumberPreConnector,
                              FixedNumberPostConnector,
@@ -26,7 +27,8 @@ from pyNN.connectors import (AllToAllConnector,
 class AllToAllConnector(AllToAllConnector):
     directly_connectable = False
 
-    def estimate_num_synapses(self, pre_slice, post_slice):
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
         return len(pre_slice) * len(post_slice)
 
 
@@ -36,7 +38,8 @@ class AllToAllConnector(AllToAllConnector):
 class FixedProbabilityConnector(FixedProbabilityConnector):
     directly_connectable = False
 
-    def estimate_num_synapses(self, pre_slice, post_slice):
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
         return int(round(self.p_connect * float(len(pre_slice)) *
                          float(len(post_slice))))
 
@@ -47,7 +50,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
 class OneToOneConnector(OneToOneConnector):
     directly_connectable = True
 
-    def estimate_num_synapses(self, pre_slice, post_slice):
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
         return min(len(pre_slice), len(post_slice))
 
 
@@ -57,7 +61,8 @@ class OneToOneConnector(OneToOneConnector):
 class FromListConnector(FromListConnector):
     directly_connectable = False
 
-    def estimate_num_synapses(self, pre_slice, post_slice):
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
         # Extract columns of pre and post indices from connection list
         pre_indices = self.conn_list[:, 0]
         post_indices = self.conn_list[:, 0]
@@ -69,3 +74,15 @@ class FromListConnector(FromListConnector):
                 (pre_indices < pre_slice.stop) &
                 (post_indices >= post_slice.start) &
                 (post_indices < post_slice.stop)).sum()
+
+class FixedTotalNumberConnector(FixedTotalNumberConnector):
+    directly_connectable = False
+
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
+        # How large a fraction of the full pre and post populations is this
+        pre_fraction = float(len(pre_slice)) / float(pre_pop.size)
+        post_fraction = float(len(post_slice)) / float(post_pop.size)
+
+        # Multiply these by the total number of synapses
+        return int(pre_fraction * post_fraction * float(self.n))

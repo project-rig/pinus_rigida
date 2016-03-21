@@ -15,9 +15,10 @@ enum Region
   RegionOutputBuffer,
   RegionDelayBuffer,
   RegionProfiler,
+  RegionStatistics,
 };
 
-// Indexes of application words
+// Indices of application words
 enum AppWord
 {
   AppWordWeightFixedPoint,
@@ -32,6 +33,17 @@ enum ProfilerTag
   ProfilerTagSetupNextDMARowRead,
   ProfilerTagProcessRow,
 
+};
+
+// Indices of statistic words
+enum StatWord
+{
+  StatRowRequested,
+  StatDelayRowRequested,
+  StatWordDelayBuffersNotProcessed,
+  StatWordInputBufferOverflows,
+  StatWordKeyLookupFail,
+  StatWordMax,
 };
 
 } // SynapseProcessor

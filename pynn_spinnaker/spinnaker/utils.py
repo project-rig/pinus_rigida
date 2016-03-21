@@ -6,7 +6,7 @@ import struct
 from os import path
 
 # Import classes
-from collections import namedtuple
+from collections import namedtuple, Iterable
 
 # Import functions
 from copy import (copy, deepcopy)
@@ -238,8 +238,9 @@ def create_app_ptr_and_region_files_named(fp, regions, region_args):
 
 
 def sizeof_regions_named(regions, region_args, include_app_ptr=True):
-    """Return the total amount of memory required to represent all regions when
-    padded to a whole number of words each.
+    """Return the total amount of memory required to represent
+    all regions when padded to a whole number of words each
+    and dictionary of any any extra allocations required
 
     Parameters
     ----------
@@ -258,11 +259,19 @@ def sizeof_regions_named(regions, region_args, include_app_ptr=True):
         size = 0
 
     # Get the size of all the regions
+    allocations = {}
     for key, region in iteritems(regions):
         # Get the arguments for the region
         args, kwargs = region_args[key]
 
-        # Add the size of the region
-        size += region.sizeof_padded(*args, **kwargs)
+        # Get size of region and any extra allocations it requires
+        region_size_allocs = region.sizeof_padded(*args, **kwargs)
 
-    return size
+        # Add size to total and include allocations in dictionary
+        if isinstance(region_size_allocs, Iterable):
+            size += region_size_allocs[0]
+            allocations.update(region_size_allocs[1])
+        else:
+            size += region_size_allocs
+
+    return size, allocations

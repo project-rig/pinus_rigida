@@ -74,13 +74,12 @@ public:
       }
     }
 
-    LOG_PRINT(LOG_LEVEL_WARN, "Population associated with spike key %08x not found in key lookup", key);
     return false;
   }
 
   bool ReadSDRAMData(uint32_t *region, uint32_t)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "ReadKeyLookupRegion");
+    LOG_PRINT(LOG_LEVEL_INFO, "KeyLookupBinarySearch::ReadSDRAMData");
 
     // Read base address and num lookup entries from 1st 2 words
     m_NumLookupEntries = *region++;

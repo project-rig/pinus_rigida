@@ -5,6 +5,7 @@
 #include "../common/log.h"
 #include "../common/profiler.h"
 #include "../common/spinnaker.h"
+#include "../common/statistics.h"
 
 // Configuration include
 #include "config.h"
@@ -39,6 +40,7 @@ RingBuffer g_RingBuffer;
 DelayBuffer g_DelayBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
+Statistics<StatWordMax> g_Statistics;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -184,6 +186,13 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  if(!g_Statistics.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionStatistics),
+    flags))
+  {
+    return false;
+  }
+
   return true;
 }
 //-----------------------------------------------------------------------------
@@ -214,6 +223,7 @@ void SetupNextDMARowRead()
                 rowWords, rowAddress);
       
       // Start a DMA transfer to fetch this synaptic row into current buffer
+      g_Statistics[StatRowRequested]++;
       spin1_dma_transfer(DMATagRowRead,
                          const_cast<uint32_t*>(rowAddress), DMACurrentRowBuffer(),
                          DMA_READ, rowWords * sizeof(uint32_t));
@@ -222,6 +232,11 @@ void SetupNextDMARowRead()
       DMASwapRowBuffers();
 
       return;
+    }
+    else
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "Population associated with spike key %08x not found in key lookup", key);
+      g_Statistics[StatWordKeyLookupFail]++;
     }
   }
   // Otherwise, if a delay row buffer is present for this tick and all rows in it haven't been processed
@@ -238,6 +253,7 @@ void SetupNextDMARowRead()
               g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
 
     // Start a DMA transfer to fetch this synaptic row into current buffer
+    g_Statistics[StatDelayRowRequested]++;
     spin1_dma_transfer(DMATagRowRead,
                        const_cast<uint32_t*>(delayRowAddress), DMACurrentRowBuffer(),
                        DMA_READ, delayRowWords * sizeof(uint32_t));
@@ -269,7 +285,8 @@ void MCPacketReceived(uint key, uint)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Cannot add spike to input buffer");
+    LOG_PRINT(LOG_LEVEL_TRACE, "Cannot add spike to input buffer");
+    g_Statistics[StatWordInputBufferOverflows]++;
   }
 
 }
@@ -342,9 +359,12 @@ void TimerTick(uint tick, uint)
   Profiler::TagDisableIRQFIQ<ProfilerTagTimerTick> p;
 
   // If all delay rows weren't processed last timer tick
-  if(g_CurrentDelayRowIndex != g_DelayBuffer.GetRowCount(g_Tick))
+  const unsigned int nonProcessedRows = g_DelayBuffer.GetRowCount(g_Tick) - g_CurrentDelayRowIndex;
+  if(nonProcessedRows != 0)
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Not all delay rows were processed last timer tick");
+    LOG_PRINT(LOG_LEVEL_TRACE, "%u delay rows were processed last timer tick",
+              nonProcessedRows);
+    g_Statistics[StatWordDelayBuffersNotProcessed] += nonProcessedRows;
   }
 
   // Clear the delay buffer for the last tick
@@ -366,6 +386,9 @@ void TimerTick(uint tick, uint)
 
     // Finalise profiling
     Profiler::Finalise();
+
+    // Finalise statistics
+    g_Statistics.Finalise();
 
     // Exit
     spin1_exit(0);
@@ -415,8 +438,11 @@ extern "C" void c_main()
   g_DMABusy = false;
   g_DMARowBufferIndex = 0;
 
-  // Initialize modules
-  //ring_buffer_init();
+  // Reset all stats
+  for(unsigned int s = 0; s < StatWordMax; s++)
+  {
+    g_Statistics[s] = 0;
+  }
 
   // Set timer tick (in microseconds) in both timer and
   spin1_set_timer_tick(g_Config.GetTimerPeriod());

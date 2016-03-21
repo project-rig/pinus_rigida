@@ -94,11 +94,11 @@ class CurrentInputCluster(object):
             post_vertex_slice, weights, out_buffers)
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions_named(self.regions,
-                                                 region_arguments)
+        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
+                                                           region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
-        return vertex_size_bytes
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
+        return vertex_bytes, vertex_allocs
 
     def write_to_file(self, post_vertex_slice, weights, out_buffers, fp):
         region_arguments = self._get_region_arguments(

@@ -1,6 +1,8 @@
 # Import modules
 import enum
+import itertools
 import logging
+import numpy as np
 import regions
 from os import path
 from rig import machine
@@ -29,6 +31,7 @@ class Regions(enum.IntEnum):
     output_buffer = 4
     delay_buffer = 5
     profiler = 6
+    statistics = 7
 
 
 # ----------------------------------------------------------------------------
@@ -57,9 +60,18 @@ class SynapseCluster(object):
         3:  "Process row",
     }
 
+    # Names of statistics
+    statistic_names = (
+        "row_requested",
+        "delay_row_requested",
+        "delay_buffers_not_processed",
+        "input_buffer_overflows",
+        "key_lookup_fails",
+    )
+
     def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
                  max_delay_ms, config, post_pop_size, synapse_model,
-                 receptor_index, synaptic_projections, pop_neuron_clusters,
+                 receptor_index, synaptic_projections,
                  vertex_applications, vertex_resources, post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
@@ -72,6 +84,8 @@ class SynapseCluster(object):
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
+        self.regions[Regions.statistics] = regions.Statistics(
+            len(self.statistic_names))
 
         # Create start of filename for the executable to use for this cluster
         filename = "synapse_" + synapse_model.__name__.lower()
@@ -105,7 +119,7 @@ class SynapseCluster(object):
             for proj in synaptic_projections:
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
-                for pre_vertex in pop_neuron_clusters[proj.pre].verts:
+                for pre_vertex in proj.pre._neural_cluster.verts:
                     logger.debug("\t\t\t\tPre slice:%s",
                                  str(pre_vertex.neuron_slice))
 
@@ -177,11 +191,11 @@ class SynapseCluster(object):
             weight_fixed_point, out_buffers)
 
         # Calculate region size
-        vertex_size_bytes = sizeof_regions_named(self.regions,
-                                                 region_arguments)
+        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
+                                                           region_arguments)
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_size_bytes)
-        return vertex_size_bytes
+        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
+        return vertex_bytes, vertex_allocs
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
                       weight_fixed_point, out_buffers, fp):
@@ -206,7 +220,7 @@ class SynapseCluster(object):
         return region_memory
 
     def read_profile(self):
-        # Get the profile recording region and
+        # Get the profile recording region
         region = self.regions[Regions.profiler]
 
         # Return profile data for each vertex that makes up population
@@ -214,6 +228,20 @@ class SynapseCluster(object):
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
                 for v in self.verts]
+
+    def read_statistics(self):
+        # Get the statistics recording region
+        region = self.regions[Regions.statistics]
+
+        # Convert stats to numpy array
+        np_stats = np.asarray([region.read_stats(v.region_memory[Regions.statistics])
+                            for v in self.verts])
+        # Convert stats into record array
+        stat_names = ",".join(self.statistic_names)
+        stat_format = ",".join(
+            itertools.repeat("u4", len(self.statistic_names)))
+        return np.core.records.fromarrays(np_stats.T, names=stat_names,
+                                          formats=stat_format)
 
     # --------------------------------------------------------------------------
     # Private methods

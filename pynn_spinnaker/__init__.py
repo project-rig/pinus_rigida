@@ -49,8 +49,6 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
     simulator.state.min_delay = min_delay
     simulator.state.max_delay = max_delay
     simulator.state.spinnaker_hostname = extra_params["spinnaker_hostname"]
-    simulator.state.spinnaker_width = extra_params.get("spinnaker_width", 2)
-    simulator.state.spinnaker_height = extra_params.get("spinnaker_height", 2)
     simulator.state.realtime_proportion =\
         extra_params.get("realtime_proportion", 1.0)
     simulator.state.convert_direct_connections =\
