@@ -55,7 +55,10 @@ class WeightRange(object):
             min_msb = math.floor(math.log(self.min, 2)) + 1
 
             # Check there's enough bits to represent this range in 16 bits
-            assert (max_msb - min_msb) < 16
+            if (max_msb - min_msb) >= 16:
+                logger.warn("Insufficient range in 16-bit weight to represent "
+                            "minimum weight:%f and maximum weight:%f",
+                            self.min, self.max)
 
         # Calculate where the weight format fixed-point lies
         return (16 - int(max_msb))
