@@ -32,7 +32,7 @@ namespace SynapseProcessor
 #include "../../plasticity/timing_dependences/pair.h"
 namespace SynapseProcessor
 {
-  typedef Plasticity::TimingDependences::Pair<256, 0, 256, 0, SynapseStructure> TimingDependence;
+  typedef Plasticity::TimingDependences::Pair<256, 0, 256, 0> TimingDependence;
 }
 
 // STDP synapses using 16-bit control words with 3 delay bits and 10 index bits;

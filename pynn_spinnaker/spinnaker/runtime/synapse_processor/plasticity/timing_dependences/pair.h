@@ -20,8 +20,7 @@ namespace Plasticity
 namespace TimingDependences
 {
 template<unsigned int TauPlusLUTNumEntries, unsigned int TauPlusLUTShift,
-         unsigned int TauMinusLUTNumEntries, unsigned int TauMinusLUTShift,
-         typename SynapseStructure>
+         unsigned int TauMinusLUTNumEntries, unsigned int TauMinusLUTShift>
 class Pair
 {
 public:
@@ -72,7 +71,8 @@ public:
     return (PreTrace)newTrace;
   }
 
-  void ApplyPreSpike(SynapseStructure &synapse, const WeightDependence &weightDependence,
+  template<typename D, typename P>
+  void ApplyPreSpike(D applyDepression, P,
                      uint32_t time, PreTrace,
                      uint32_t, PreTrace,
                      uint32_t lastPostTime, PostTrace lastPostTrace)
@@ -87,12 +87,13 @@ public:
         //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
         //          time_since_last_post, decayed_o1);
 
-        // Apply depression to state
-        synapse.ApplyDepression(decayedPostTrace, weightDependence);
+        // Apply depression
+        applyDepression(decayedPostTrace);
     }
   }
 
-  void ApplyPostSpike(SynapseStructure &synapse, const WeightDependence &weightDependence,
+  template<typename D, typename P>
+  void ApplyPostSpike(D, P applyPotentiation,
                      uint32_t time, PostTrace,
                      uint32_t lastPreTime, PreTrace lastPreTrace,
                      uint32_t, PostTrace)
@@ -107,17 +108,12 @@ public:
         //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
         //          time_since_last_post, decayed_o1);
 
-        // Apply potentiation to state
-        synapse.ApplyPotentiation(decayedPreTrace, weightDependence);
+        // Apply potentiation
+        applyPotentiation(decayedPreTrace);
     }
   }
 
 private:
-  //-----------------------------------------------------------------------------
-  // Typedefines
-  //-----------------------------------------------------------------------------
-  typedef typename SynapseStructure::WeightDependence WeightDependence;
-
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------

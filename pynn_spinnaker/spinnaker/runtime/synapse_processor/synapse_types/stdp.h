@@ -90,10 +90,17 @@ public:
       auto postWindow = m_PostEventHistory[postIndex].GetWindow(windowBeginTick,
                                                                 windowEndTick);
 
-      //log_debug("\tPerforming deferred synapse update at time:%u", time);
-      //log_debug("\t\tbegin_time:%u, end_time:%u - prev_time:%u, num_events:%u",
-      //    window_begin_time, window_end_time, post_window.prev_time,
-      //    post_window.num_events);
+      // Create lambda function to add a delay extension to the delay buffer
+      auto applyDepression =
+        [&updateState, this](int32_t depression)
+        {
+          updateState.ApplyDepression(depression, m_WeightDependence);
+        };
+      auto applyPotentiation =
+        [&updateState, this](int32_t applyPotentiation)
+        {
+          updateState.ApplyPotentiation(applyPotentiation, m_WeightDependence);
+        };
 
       // Process events in post-synaptic window
       while (postWindow.GetNumEvents() > 0)
@@ -104,7 +111,7 @@ public:
         //     delayed_post_time);
 
         // Apply post-synaptic spike to state
-        m_TimingDependence.ApplyPostSpike(updateState, m_WeightDependence,
+        m_TimingDependence.ApplyPostSpike(applyDepression, applyPotentiation,
                                           delayedPostTick, postWindow.GetNextTrace(),
                                           delayedLastPreTick, lastPreTrace,
                                           postWindow.GetPrevTime(), postWindow.GetPrevTrace());
@@ -121,7 +128,7 @@ public:
           //          delayed_pre_time, post_window.prev_time);
 
           // Apply pre-synaptic spike to state
-          m_TimingDependence.ApplyPreSpike(updateState, m_WeightDependence,
+          m_TimingDependence.ApplyPreSpike(applyDepression, applyPotentiation,
                                            delayedPreTick, newPreTrace,
                                            delayedLastPreTick, lastPreTrace,
                                            postWindow.GetPrevTime(), postWindow.GetPrevTrace());

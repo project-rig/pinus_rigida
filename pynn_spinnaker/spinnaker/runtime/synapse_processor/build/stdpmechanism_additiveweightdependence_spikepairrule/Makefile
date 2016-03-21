@@ -1,4 +1,4 @@
-PINUS_APP = synapse_staticsynapse
+PINUS_APP = synapse_stdpmechanism_additiveweightdependence_spikepairrule
 
 # Build object list
 SOURCES = ../../../common/config.cpp \
