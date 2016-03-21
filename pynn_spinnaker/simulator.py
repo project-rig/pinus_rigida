@@ -249,8 +249,8 @@ class State(common.control.BaseState):
         for pop in self.populations:
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
-                logger.info("\tPopulation label:%s, synapse type:%s",
-                            pop.label, str(s_type))
+                logger.info("\tPopulation label:%s, synapse type:%s, receptor:%s",
+                            pop.label, s_type[0].__name__, s_type[1])
 
                 # Expand any incoming connections
                 matrices, weight_fixed_point =\
@@ -423,20 +423,18 @@ class State(common.control.BaseState):
         # Loop through populations
         duration_s = float(duration_ms) / 1000.0
         for pop in self.populations:
-            logger.info("\tPopulation label:%s", pop.label)
-
             for s_type, stats in iteritems(pop.get_synapse_statistics()):
-                logger.info("\tSynapse type:%s receptor:%s",
+                logger.info("\t\tSynapse type:%s receptor:%s",
                             s_type[0].__name__, s_type[1])
-                logger.info("\t\tRows requested per vertex per second:%f",
+                logger.info("\t\t\tRows requested per vertex per second:%f",
                             np.mean(stats["row_requested"]) / duration_s)
-                logger.info("\t\tDelay rows requested per vertex per second:%f",
+                logger.info("\t\t\tDelay rows requested per vertex per second:%f",
                             np.mean(stats["delay_row_requested"]) / duration_s)
-                logger.info("\t\tDelay buffers not processed:%u",
+                logger.info("\t\t\tDelay buffers not processed:%u",
                             np.sum(stats["delay_buffers_not_processed"]))
-                logger.info("\t\tInput buffer overflows:%u",
+                logger.info("\t\t\tInput buffer overflows:%u",
                             np.sum(stats["input_buffer_overflows"]))
-                logger.info("\t\tKey lookup failures:%u",
+                logger.info("\t\t\tKey lookup failures:%u",
                             np.sum(stats["key_lookup_fails"]))
 
 

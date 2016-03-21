@@ -186,7 +186,7 @@ class Population(common.Population):
                 if p._directly_connectable}
 
     def get_synapse_statistics(self):
-        logger.info("Downloading synapse statistics for population %s",
+        logger.info("\tDownloading synapse statistics for population %s",
                     self.label)
 
         # Read statistics from each synapse cluster
@@ -262,7 +262,7 @@ class Population(common.Population):
         # Loop through synapse types
         self.synapse_j_constraints = {}
         current_input_j_constraints = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Get list of incoming directly connectable projections
             projections = list(itertools.chain.from_iterable(
                 itervalues(pre_pop_projections)))
@@ -272,15 +272,15 @@ class Population(common.Population):
             # If there's any non-directly connectable projections of this type
             if len(projections) != len(directly_connectable_projections):
                 # Get hard maximum from synapse type
-                synapse_constraint = synapse_type[0].max_post_neurons_per_core
+                synapse_constraint = s_type[0].max_post_neurons_per_core
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
                 synapse_constraint = min(synapse_constraint, self.size)
-                self.synapse_j_constraints[synapse_type] = synapse_constraint
+                self.synapse_j_constraints[s_type] = synapse_constraint
 
-                logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
-                             synapse_type[0], synapse_constraint)
+                logger.debug("\t\tSynapse type:%s, receptor:%s - j constraint:%u",
+                             s_type[0].__name__, s_type[1], synapse_constraint)
 
             # Loop through directly connectable projections
             for p in directly_connectable_projections:
@@ -323,7 +323,7 @@ class Population(common.Population):
 
         # Loop again through incoming synapse types to estimate i_constraints
         synapse_num_i_cores = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Get list of synaptic connections
             projections = itertools.chain.from_iterable(
                 itervalues(pre_pop_projections))
@@ -334,7 +334,7 @@ class Population(common.Population):
             if len(synaptic_projections) > 0:
                  # Build suitable post-slice for
                 post_slice = UnitStrideSlice(
-                    0, self.synapse_j_constraints[synapse_type])
+                    0, self.synapse_j_constraints[s_type])
 
                 # Loop through list of projections
                 total_synaptic_event_rate = 0.0
@@ -352,12 +352,13 @@ class Population(common.Population):
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     total_synaptic_event_rate += total_synapses * pre_mean_rate
 
-                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(synapse_type[0].max_synaptic_event_rate)))
-                logger.debug("\t\tSynapse type:%s - Total synaptic event rate:%f, num cores:%u",
-                            synapse_type[0], total_synaptic_event_rate, num_i_cores)
+                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type[0].max_synaptic_event_rate)))
+                logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
+                            s_type[0].__name__, s_type[1],
+                            total_synaptic_event_rate, num_i_cores)
 
                 # Add number of i cores to dictionary
-                synapse_num_i_cores[synapse_type] = num_i_cores
+                synapse_num_i_cores[s_type] = num_i_cores
 
         # Now determin the maximum constraint i.e. the 'width'
         # that will be constrained together
@@ -387,9 +388,9 @@ class Population(common.Population):
                      num_current_input_cores, num_cores)
 
         logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
-        for synapse_type, constraint in iteritems(self.synapse_j_constraints):
-            logger.debug("\t\tSynapse type:%s - J constraint:%u",
-                         synapse_type, constraint)
+        for s_type, constraint in iteritems(self.synapse_j_constraints):
+            logger.debug("\t\tSynapse type:%s, receptor:%s - J constraint:%u",
+                         s_type[0].__name__, s_type[1], constraint)
         for proj, constraint in iteritems(current_input_j_constraints):
             logger.debug("\t\tDirect input projection:%s - J constraint:%u",
                          proj.label, constraint)

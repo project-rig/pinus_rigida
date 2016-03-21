@@ -100,7 +100,7 @@ class SynapseCluster(object):
         post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
-                     synapse_model, receptor_index)
+                     synapse_model.__name__, receptor_index)
 
         # Get synapse application name
         # **THINK** is there any point in doing anything cleverer than this
