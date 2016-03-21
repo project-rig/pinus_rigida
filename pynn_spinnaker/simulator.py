@@ -491,14 +491,9 @@ class State(common.control.BaseState):
 
         logger.info("Connecting to SpiNNaker")
 
-        # **HACK**
-        signal_types[AppSignal.sync0] = MessageType.nearest_neighbour
-        signal_types[AppSignal.sync1] = MessageType.nearest_neighbour
-
         # Get machine controller from connected SpiNNaker board and boot
         self.machine_controller = MachineController(self.spinnaker_hostname)
-        self.machine_controller.boot(self.spinnaker_width,
-                                     self.spinnaker_height)
+        self.machine_controller.boot()
 
         # Get system info
         system_info = self.machine_controller.get_system_info()
