@@ -1,6 +1,10 @@
 from pyNN.standardmodels import synapses, build_translations
 from ..simulator import state
+from ..spinnaker import lazy_param_map
 import logging
+
+# Import functions
+from functools import partial
 
 logger = logging.getLogger("PyNN")
 
@@ -31,14 +35,26 @@ class StaticSynapse(synapses.StaticSynapse):
             d = state.dt
         return d
 
-'''
 class STDPMechanism(synapses.STDPMechanism):
     __doc__ = synapses.STDPMechanism.__doc__
 
     base_translations = build_translations(
-        ('weight', 'weight'),
-        ('delay', 'delay')
+        ("weight", "weight"),
+        ("delay", "delay")
     )
+
+    # How many post-synaptic neurons per core can a
+    # SpiNNaker synapse_processor of this type handle
+    max_post_neurons_per_core = 512
+
+    # Assuming relatively long row length, at what rate can a SpiNNaker
+    # synapse_processor of this type process synaptic events (hZ)
+    max_synaptic_event_rate = 2E6
+
+    # How many timesteps of delay can DTCM ring-buffer handle
+    # **NOTE** only 7 timesteps worth of delay can be handled by
+    # 8 element delay buffer - The last element is purely for output
+    max_dtcm_delay_slots = 7
 
     def _get_minimum_delay(self):
         d = state.min_delay
@@ -51,42 +67,30 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     __doc__ = synapses.AdditiveWeightDependence.__doc__
 
     translations = build_translations(
-        ('w_max',     'w_max'),
-        ('w_min',     'w_min'),
-        ('A_plus',    'a_plus'),
-        ('A_minus',   'a_minus'),
+        ("w_max",     "w_max"),
+        ("w_min",     "w_min"),
+        ("A_plus",    "a_plus"),
+        ("A_minus",   "minus_a_minus",  "-A_minus", "-minus_a_minus"),
     )
 
-
-class MultiplicativeWeightDependence(synapses.MultiplicativeWeightDependence):
-    __doc__ = synapses.MultiplicativeWeightDependence.__doc__
-
-    translations = build_translations(
-        ('w_max',     'wmax'),
-        ('w_min',     'wmin'),
-        ('A_plus',    'aLTP'),
-        ('A_minus',   'aLTD'),
-    )
-
-class AdditivePotentiationMultiplicativeDepression(
-    synapses.AdditivePotentiationMultiplicativeDepression):
-
-    __doc__ = synapses.AdditivePotentiationMultiplicativeDepression.__doc__
-
-    translations = build_translations(
-        ('w_max',     'wmax'),
-        ('w_min',     'wmin'),
-        ('A_plus',    'aLTP'),
-        ('A_minus',   'aLTD'),
-    )
+    param_map = [
+        ("w_min", "i4", lazy_param_map.unsigned_weight_fixed_point),
+        ("w_max", "i4", lazy_param_map.unsigned_weight_fixed_point),
+        ("a_plus", "i4", lazy_param_map.s2211),
+        ("minus_a_minus", "i4", lazy_param_map.s2211),
+    ]
 
 class SpikePairRule(synapses.SpikePairRule):
     __doc__ = synapses.SpikePairRule.__doc__
 
     translations = build_translations(
-        ('tau_plus',  'tauLTP'),
-        ('tau_minus', 'tauLTD'),
-        ('A_plus',    'aLTP'),
-        ('A_minus',   'aLTD'),
+        ("tau_plus",  "tau_plus"),
+        ("tau_minus", "tau_minus"),
+        ("A_plus",    "a_plus"),
+        ("A_minus",   "a_minus"),
     )
-'''
+
+    param_map = [
+        ("tau_plus", "256i2", partial(lazy_param_map.unsigned_weight_fixed_point, num_entries=256, time_shift=0)),
+        ("tau_minus", "256i2", partial(lazy_param_map.unsigned_weight_fixed_point, num_entries=256, time_shift=0)),
+    ]

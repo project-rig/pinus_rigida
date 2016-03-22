@@ -10,8 +10,9 @@ from copy import deepcopy
 
 # Create a converter function to convert from float to S1615 format
 float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
+float_to_s2211_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
-
+float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
 
 # -----------------------------------------------------------------------------
 # Functions
@@ -84,9 +85,15 @@ def integer_time_divide(values, sim_timestep_ms, **kwargs):
 
 
 def s1615(values, **kwargs):
-    vals = deepcopy(values)
-    return float_to_s1615_no_copy(vals)
+    return float_to_s1615_no_copy(deepcopy(values))
 
+def s2211(values, **kwargs):
+    return float_to_s2211_no_copy(deepcopy(values))
+
+def unsigned_weight_fixed_point(values, weight_fixed_point, **kwargs):
+    float_to_weight_no_copy = LazyArrayFloatToFixConverter(
+        False, 16, weight_fixed_point, False)
+    return float_to_weight_no_copy(deepcopy(values))
 
 def s1615_time_multiply(values, sim_timestep_ms, **kwargs):
     # Copy values and divide by timestep
@@ -135,3 +142,16 @@ def u032_rate_exp_minus_lambda(values, sim_timestep_ms, **kwargs):
 
     # Convert to fixed point and return
     return float_to_u032_no_copy(lambda_vals)
+
+def s411_exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
+                       **kwargs):
+    # Determine the time step of the LUT in milliseconds
+    timestep_ms = sim_timestep_ms * float(2 ** time_shift)
+
+    # Build a lazy array of times to calculate decay values for
+    time_ms = la.larray(
+        np.arange(0.0, -timestep_ms * float(num_entries), -timestep_ms))
+
+    # Calculate exponential decay
+    decay_vals = la.exp(time_ms / values)
+    return float_to_s411_no_copy(decay_vals)
