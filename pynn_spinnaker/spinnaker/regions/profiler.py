@@ -30,7 +30,6 @@ class Profiler(Region):
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        #
         # 2 word counters and 2 words per sample
         return 8 + (8 * self.n_samples)
 
@@ -66,7 +65,7 @@ class Profiler(Region):
         sample_tags_and_flags = data[1::2]
 
         # Further split the tags and flags word
-        # into seperate arrays of tags and flags
+        # into seperate arrays        # of tags and flags
         sample_tags = np.bitwise_and(sample_tags_and_flags, 0x7FFFFFFF)
         sample_flags = np.right_shift(sample_tags_and_flags, 31)
 

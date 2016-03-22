@@ -74,13 +74,12 @@ public:
       }
     }
 
-    LOG_PRINT(LOG_LEVEL_WARN, "Population associated with spike key %08x not found in key lookup", key);
     return false;
   }
 
   bool ReadSDRAMData(uint32_t *region, uint32_t)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "ReadKeyLookupRegion");
+    LOG_PRINT(LOG_LEVEL_INFO, "KeyLookupBinarySearch::ReadSDRAMData");
 
     // Read base address and num lookup entries from 1st 2 words
     m_NumLookupEntries = *region++;
@@ -93,11 +92,11 @@ public:
       return false;
     }
 
-#if LOG_LEVEL <= LOG_LEVEL_INFO
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
   for(unsigned int i = 0; i < m_NumLookupEntries; i++)
   {
     const auto &lookupEntry = m_LookupEntries[i];
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\tEntry:%u, Key:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEntry:%u, Key:%08x, Mask:%08x, Num synapses:%u, Word offset:%u",
       i, lookupEntry.m_Key, lookupEntry.m_Mask,
       lookupEntry.m_WordOffsetRowSynapses.GetNumSynapses(),
       lookupEntry.m_WordOffsetRowSynapses.GetWordOffset());

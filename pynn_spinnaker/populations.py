@@ -55,7 +55,10 @@ class WeightRange(object):
             min_msb = math.floor(math.log(self.min, 2)) + 1
 
             # Check there's enough bits to represent this range in 16 bits
-            assert (max_msb - min_msb) < 16
+            if (max_msb - min_msb) >= 16:
+                logger.warn("Insufficient range in 16-bit weight to represent "
+                            "minimum weight:%f and maximum weight:%f",
+                            self.min, self.max)
 
         # Calculate where the weight format fixed-point lies
         return (16 - int(max_msb))
@@ -132,7 +135,7 @@ class Population(common.Population):
 
         # Create a spinnaker config
         self.spinnaker_config = SpinnakerPopulationConfig()
-
+        
         # Dictionary mapping pre-synaptic populations to
         # incoming projections, subdivided by synapse type
         # {synapse_cluster_type: {pynn_population: [pynn_projection]}}
@@ -156,7 +159,7 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from neuron cluster
-        return self._simulator.state.pop_neuron_clusters[self].read_profile()
+        return self._neural_cluster.read_profile()
 
     def get_synapse_profile_data(self):
         logger.info("Downloading synapse profile for population %s",
@@ -166,8 +169,8 @@ class Population(common.Population):
         assert self.spinnaker_config.num_profile_samples is not None
 
         # Read profile from each synapse cluster
-        s_clusters = self._simulator.state.pop_synapse_clusters[self]
-        return {t: c.read_profile() for t, c in iteritems(s_clusters)}
+        return {t: c.read_profile()
+                for t, c in iteritems(self._synapse_clusters)}
 
     def get_current_input_profile_data(self):
         logger.info("Downloading current input profile for population %s",
@@ -181,6 +184,14 @@ class Population(common.Population):
         return {p: c_clusters[p].read_profile()
                 for p in self.outgoing_projections
                 if p._directly_connectable}
+
+    def get_synapse_statistics(self):
+        logger.info("\tDownloading synapse statistics for population %s",
+                    self.label)
+
+        # Read statistics from each synapse cluster
+        return {t: c.read_statistics()
+                for t, c in iteritems(self._synapse_clusters)}
 
     # --------------------------------------------------------------------------
     # Internal PyNN methods
@@ -251,7 +262,7 @@ class Population(common.Population):
         # Loop through synapse types
         self.synapse_j_constraints = {}
         current_input_j_constraints = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Get list of incoming directly connectable projections
             projections = list(itertools.chain.from_iterable(
                 itervalues(pre_pop_projections)))
@@ -261,15 +272,15 @@ class Population(common.Population):
             # If there's any non-directly connectable projections of this type
             if len(projections) != len(directly_connectable_projections):
                 # Get hard maximum from synapse type
-                synapse_constraint = synapse_type[0].max_post_neurons_per_core
+                synapse_constraint = s_type[0].max_post_neurons_per_core
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
                 synapse_constraint = min(synapse_constraint, self.size)
-                self.synapse_j_constraints[synapse_type] = synapse_constraint
+                self.synapse_j_constraints[s_type] = synapse_constraint
 
-                logger.debug("\t\tSynapse type:%s - Synapse j constraint:%u",
-                             synapse_type[0], synapse_constraint)
+                logger.debug("\t\tSynapse type:%s, receptor:%s - j constraint:%u",
+                             s_type[0].__name__, s_type[1], synapse_constraint)
 
             # Loop through directly connectable projections
             for p in directly_connectable_projections:
@@ -312,7 +323,7 @@ class Population(common.Population):
 
         # Loop again through incoming synapse types to estimate i_constraints
         synapse_num_i_cores = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
             # Get list of synaptic connections
             projections = itertools.chain.from_iterable(
                 itervalues(pre_pop_projections))
@@ -323,7 +334,7 @@ class Population(common.Population):
             if len(synaptic_projections) > 0:
                  # Build suitable post-slice for
                 post_slice = UnitStrideSlice(
-                    0, self.synapse_j_constraints[synapse_type])
+                    0, self.synapse_j_constraints[s_type])
 
                 # Loop through list of projections
                 total_synaptic_event_rate = 0.0
@@ -341,12 +352,13 @@ class Population(common.Population):
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     total_synaptic_event_rate += total_synapses * pre_mean_rate
 
-                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(synapse_type[0].max_synaptic_event_rate)))
-                logger.debug("\t\tSynapse type:%s - Total synaptic event rate:%f, num cores:%u",
-                            synapse_type[0], total_synaptic_event_rate, num_i_cores)
+                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type[0].max_synaptic_event_rate)))
+                logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
+                            s_type[0].__name__, s_type[1],
+                            total_synaptic_event_rate, num_i_cores)
 
                 # Add number of i cores to dictionary
-                synapse_num_i_cores[synapse_type] = num_i_cores
+                synapse_num_i_cores[s_type] = num_i_cores
 
         # Now determin the maximum constraint i.e. the 'width'
         # that will be constrained together
@@ -376,9 +388,9 @@ class Population(common.Population):
                      num_current_input_cores, num_cores)
 
         logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
-        for synapse_type, constraint in iteritems(self.synapse_j_constraints):
-            logger.debug("\t\tSynapse type:%s - J constraint:%u",
-                         synapse_type, constraint)
+        for s_type, constraint in iteritems(self.synapse_j_constraints):
+            logger.debug("\t\tSynapse type:%s, receptor:%s - J constraint:%u",
+                         s_type[0].__name__, s_type[1], constraint)
         for proj, constraint in iteritems(current_input_j_constraints):
             logger.debug("\t\tDirect input projection:%s - J constraint:%u",
                          proj.label, constraint)
@@ -386,53 +398,46 @@ class Population(common.Population):
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
 
-    def _create_neural_cluster(self, pop_id, timer_period_us,
-                               simulation_ticks, vertex_applications,
-                               vertex_resources, keyspace):
+    def _create_neural_cluster(self, pop_id, timer_period_us, simulation_ticks,
+                               vertex_applications, vertex_resources, keyspace):
         # Create neural cluster
-        return NeuralCluster(pop_id, self.celltype, self._parameters,
-                             self.initial_values, self._simulator.state.dt,
-                             timer_period_us, simulation_ticks,
-                             self.recorder.indices_to_record,
-                             self.spinnaker_config, vertex_applications,
-                             vertex_resources, keyspace,
-                             self.neuron_j_constraint)
+        if not self._entirely_directly_connectable:
+            self._neural_cluster = NeuralCluster(
+                pop_id, self.celltype, self._parameters, self.initial_values,
+                self._simulator.state.dt, timer_period_us, simulation_ticks,
+                self.recorder.indices_to_record, self.spinnaker_config,
+                vertex_applications, vertex_resources, keyspace,
+                self.neuron_j_constraint)
+        else:
+            self._neural_cluster = None
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
                                  vertex_applications, vertex_resources):
-        # Get neuron clusters dictionary from simulator
-        pop_neuron_clusters = self._simulator.state.pop_neuron_clusters
-
         # Loop through newly partioned incoming projections_load_synapse_verts
-        synapse_clusters = {}
-        for synapse_type, pre_pop_projections in iteritems(self.incoming_projections):
+        self._synapse_clusters = {}
+        for s_type, pre_pop_projs in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
-            projections = list(itertools.chain.from_iterable(
-                itervalues(pre_pop_projections)))
-            synaptic_projections = [p for p in projections
-                                    if not p._directly_connectable]
+            projs = list(itertools.chain.from_iterable(
+                itervalues(pre_pop_projs)))
+            synaptic_projs = [p for p in projs if not p._directly_connectable]
 
             # If there are any synaptic projections
-            if len(synaptic_projections) > 0:
+            if len(synaptic_projs) > 0:
                 # Find index of receptor type
-                receptor_index = self.celltype.receptor_types.index(
-                    synapse_type[1])
+                receptor_index = self.celltype.receptor_types.index(s_type[1])
 
                 # Create synapse cluster
                 c = SynapseCluster(self._simulator.state.dt, timer_period_us,
                                    simulation_ticks,
                                    self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
-                                   synapse_type[0], receptor_index,
-                                   synaptic_projections, pop_neuron_clusters,
-                                   vertex_applications, vertex_resources,
-                                   self.synapse_j_constraints[synapse_type])
+                                   s_type[0], receptor_index,
+                                   synaptic_projs, vertex_applications,
+                                   vertex_resources,
+                                   self.synapse_j_constraints[s_type])
 
                 # Add cluster to dictionary
-                synapse_clusters[synapse_type] = c
-
-        # Return synapse clusters
-        return synapse_clusters
+                self._synapse_clusters[s_type] = c
 
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of

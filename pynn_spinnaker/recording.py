@@ -78,10 +78,8 @@ class Recorder(recording.Recorder, ContextMixin):
         sim_state = self._simulator.state
         spike_times = {}
         signals = defaultdict(dict)
-        if self.population in sim_state.pop_neuron_clusters:
-            # Get neuron cluster
-            n_cluster = sim_state.pop_neuron_clusters[self.population]
-
+        n_cluster = self.population._neural_cluster
+        if n_cluster is not None:
             # Loop through all neuron vertices and read
             for vertex in n_cluster.verts:
                 self._read_vertex(n_cluster, vertex, vars_to_include,

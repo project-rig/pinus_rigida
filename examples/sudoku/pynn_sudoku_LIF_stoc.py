@@ -18,10 +18,7 @@ logger = logging.getLogger("pynn_spinnaker")
 logger.setLevel(logging.INFO)
 logger.addHandler(logging.StreamHandler())
 
-setup_kwargs = {
-    "spinnaker_hostname": "192.168.1.1",
-    "spinnaker_width": 8,
-    "spinnaker_height": 8}
+setup_kwargs = {"spinnaker_hostname": "192.168.1.1"}
 
 run_time  = 30000       # ms
 fact      = 2.5         # number of neurons per digit/10
@@ -34,9 +31,9 @@ n_N    = n_cell/9       # number of neurons per value in cell
 
 #global distributions & parameters
 weight_cell = RandomDistribution("uniform", low=-0.2/fact, high=-0.0/fact)  # -0.2, 0.0
-weight_stim = RandomDistribution("uniform", low=0.5, high=1.0)              # 0.5, 1.0
+weight_stim = RandomDistribution("uniform", low=0.0, high=0.1)              # 0.0, 0.1
 dur_nois    = RandomDistribution("uniform", low=25000.0, high=30000.0)      # 25000, 30000
-weight_nois = 1.5                                                           # 1.6 for hard problem, 1.0 for dreams
+weight_nois = 1.0                                                           # 1.0
 delay       = 2.0                                                           # 2.0
 
 # Easy problem:
@@ -63,6 +60,24 @@ corr = [[2,9,1,8,7,6,5,3,4],        # solution for reference
         [3,1,4,7,9,8,6,5,2],
         [8,7,2,6,4,5,3,1,9],
         [9,5,6,1,3,2,7,4,8]]
+
+"""
+# Diabolical problem:
+
+init = [[0,0,1,0,0,8,0,7,3],        # initialise non-zeros
+        [0,0,5,6,0,0,0,0,1],        # NB use as init[8-y][x] -> cell[x][y]
+        [7,0,0,0,0,1,0,0,0],
+        [0,9,0,8,1,0,0,0,0],
+        [5,3,0,0,0,0,0,4,6],
+        [0,0,0,0,6,5,0,3,0],
+        [0,0,0,1,0,0,0,0,4],
+        [8,0,0,0,0,9,3,0,0],
+        [9,4,0,5,0,0,7,0,0]]
+
+corr = init
+
+# Dream problem - no input!
+"""
 
 # Dream problem - no input!
 """
