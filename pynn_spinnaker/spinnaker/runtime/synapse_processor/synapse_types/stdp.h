@@ -22,11 +22,20 @@ template<typename C, unsigned int D, unsigned int I,
 class STDP
 {
 private:
+  //-----------------------------------------------------------------------------
+  // Typedefines
+  //-----------------------------------------------------------------------------
   typedef typename SynapseStructure::PlasticSynapse PlasticSynapse;
   typedef typename TimingDependence::PreTrace PreTrace;
   typedef typename TimingDependence::PostTrace PostTrace;
+  typedef Plasticity::PostEventHistory<PostTrace, T> PostEventHistory;
 
+  //-----------------------------------------------------------------------------
+  // Constants
+  //-----------------------------------------------------------------------------
   static const unsigned int PreTraceWords = (sizeof(PreTrace) / 4) + (((sizeof(PreTrace) % 4) == 0) ? 0 : 1);
+  static const C DelayMask = ((1 << D) - 1);
+  static const C IndexMask = ((1 << I) - 1);
 
 public:
   //-----------------------------------------------------------------------------
@@ -90,7 +99,8 @@ public:
       auto postWindow = m_PostEventHistory[postIndex].GetWindow(windowBeginTick,
                                                                 windowEndTick);
 
-      // Create lambda function to add a delay extension to the delay buffer
+      // Create lambda functions to apply depression
+      // and potentiation to the update state
       auto applyDepression =
         [&updateState, this](int32_t depression)
         {
@@ -160,17 +170,6 @@ public:
   }
 
 private:
-  //-----------------------------------------------------------------------------
-  // Typedefines
-  //-----------------------------------------------------------------------------
-  typedef Plasticity::PostEventHistory<PostTrace, T> PostEventHistory;
-
-  //-----------------------------------------------------------------------------
-  // Constants
-  //-----------------------------------------------------------------------------
-  static const C DelayMask = ((1 << D) - 1);
-  static const C IndexMask = ((1 << I) - 1);
-
   //-----------------------------------------------------------------------------
   // Private static methods
   //-----------------------------------------------------------------------------
