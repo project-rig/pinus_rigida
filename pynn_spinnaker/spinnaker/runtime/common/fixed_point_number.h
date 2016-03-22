@@ -3,6 +3,12 @@
 // Standard includes
 #include <cstdint>
 
+// Common includes
+#include "arm_intrinsics.h"
+
+// Namespaces
+using namespace Common::ARMIntrinsics;
+
 //-----------------------------------------------------------------------------
 // Common::FixedPointNumber
 //-----------------------------------------------------------------------------
