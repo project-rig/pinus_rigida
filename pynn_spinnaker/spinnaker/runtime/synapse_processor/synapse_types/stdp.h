@@ -34,8 +34,8 @@ private:
   // Constants
   //-----------------------------------------------------------------------------
   static const unsigned int PreTraceWords = (sizeof(PreTrace) / 4) + (((sizeof(PreTrace) % 4) == 0) ? 0 : 1);
-  static const C DelayMask = ((1 << D) - 1);
-  static const C IndexMask = ((1 << I) - 1);
+  static const uint32_t DelayMask = ((1 << D) - 1);
+  static const uint32_t IndexMask = ((1 << I) - 1);
 
 public:
   //-----------------------------------------------------------------------------
@@ -175,12 +175,12 @@ private:
   //-----------------------------------------------------------------------------
   // Private static methods
   //-----------------------------------------------------------------------------
-  static C GetIndex(C word)
+  static uint32_t GetIndex(uint32_t word)
   {
     return (word & IndexMask);
   }
 
-  static C GetDelay(C word)
+  static uint32_t GetDelay(uint32_t word)
   {
     return ((word >> I) & DelayMask);
   }
