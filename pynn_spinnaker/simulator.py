@@ -112,6 +112,14 @@ class State(common.control.BaseState):
             raise Exception("Unexpected core failures "
                             "before reaching %s state (%u/%u)." % (to_state, cores_in_to_state, num_verts))
 
+    def _configure_software_watchdog(self):
+        # If software watchdog is disabled, write zero to machine's
+        # SV struct, otherwise, write default from sv struct file
+        # **NOTE** x, y and p should already be in context
+        w = (0 if self.disable_software_watchdog
+             else self.machine_controller.structs["sv"]["soft_wdog"].default)
+        self.machine_controller.write_struct_field("sv", "soft_wdog", w)
+
     def _estimate_constraints(self, hardware_timestep_us):
         logger.info("Estimating constraints")
 
@@ -281,6 +289,9 @@ class State(common.control.BaseState):
                     # Select placed chip
                     with self.machine_controller(x=vertex_placement[0],
                                                  y=vertex_placement[1]):
+                        # Configure watchdog for this vertex
+                        self._configure_software_watchdog()
+
                         # Allocate two output buffers
                         # for this synapse population
                         out_buffer_bytes = len(v.post_neuron_slice) * 4
@@ -340,6 +351,9 @@ class State(common.control.BaseState):
                 # Select placed chip
                 with self.machine_controller(x=vertex_placement[0],
                                              y=vertex_placement[1]):
+                    # Configure watchdog for this vertex
+                    self._configure_software_watchdog()
+
                     # Allocate two output buffers for this synapse population
                     out_buffer_bytes = len(v.post_neuron_slice) * 4
                     v.out_buffers = [
@@ -393,6 +407,9 @@ class State(common.control.BaseState):
                 # Select placed chip
                 with self.machine_controller(x=vertex_placement[0],
                                              y=vertex_placement[1]):
+                    # Configure watchdog for this vertex
+                    self._configure_software_watchdog()
+
                     # Get the input buffers from each synapse vertex
                     in_buffers = [
                         (s.get_in_buffer(v.neuron_slice), s.receptor_index,

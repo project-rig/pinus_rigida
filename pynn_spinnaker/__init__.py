@@ -55,6 +55,8 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
         extra_params.get("convert_direct_connections", True)
     simulator.state.stop_on_spinnaker =\
         extra_params.get("stop_on_spinnaker", True)
+    simulator.state.disable_software_watchdog =\
+        extra_params.get("disable_software_watchdog", False)
     return rank()
 
 
