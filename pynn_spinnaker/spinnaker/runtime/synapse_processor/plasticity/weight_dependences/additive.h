@@ -40,12 +40,12 @@ public:
     //-----------------------------------------------------------------------------
     // Public API
     //-----------------------------------------------------------------------------
-    void ApplyDepression(int32_t depression, const Additive<Weight> &)
+    void ApplyDepression(S2011 depression, const Additive<Weight> &)
     {
       m_Depression += depression;
     }
 
-    void ApplyPotentiation(int32_t potentiation, const Additive<Weight> &)
+    void ApplyPotentiation(S2011 potentiation, const Additive<Weight> &)
     {
       m_Potentiation += potentiation;
     }
@@ -66,17 +66,19 @@ public:
     //-----------------------------------------------------------------------------
     int32_t m_InitialWeight;
 
-    int32_t m_Potentiation;
-    int32_t m_Depression;
+    S2011 m_Potentiation;
+    S2011 m_Depression;
   };
 
 private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
+  // Minimum and maximum synaptic weight in runtime weight format
   int32_t m_MinWeight;
   int32_t m_MaxWeight;
 
+  // Potentiation and depression scaling factors in runtime weight format
   int32_t m_A2Plus;
   int32_t m_MinusA2Minus;
 };

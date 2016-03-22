@@ -61,6 +61,8 @@ public:
     }
 
     // Get last pre-synaptic event from event history and write back current time
+    // **IMPORTANT TODO** seperate lastPreTick from last update
+    // Therefore, flushes update later but not former allowing nearest neighbour to be trivially implemented
     const uint32_t lastPreTick = dmaBuffer[3];
     dmaBuffer[3] = tick;
 
@@ -102,12 +104,12 @@ public:
       // Create lambda functions to apply depression
       // and potentiation to the update state
       auto applyDepression =
-        [&updateState, this](int32_t depression)
+        [&updateState, this](S2011 depression)
         {
           updateState.ApplyDepression(depression, m_WeightDependence);
         };
       auto applyPotentiation =
-        [&updateState, this](int32_t applyPotentiation)
+        [&updateState, this](S2011 applyPotentiation)
         {
           updateState.ApplyPotentiation(applyPotentiation, m_WeightDependence);
         };

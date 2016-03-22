@@ -81,7 +81,7 @@ public:
     uint32_t elapsedTicksSinceLastPost = time - lastPostTime;
     if (elapsedTicksSinceLastPost > 0)
     {
-        int32_t decayedPostTrace = Mul16S2011(
+        S2011 decayedPostTrace = Mul16S2011(
           lastPostTrace, m_TauMinusLUT.Get(elapsedTicksSinceLastPost));
 
         //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
@@ -102,7 +102,7 @@ public:
     uint32_t elapsedTicksSinceLastPre = time - lastPreTime;
     if (elapsedTicksSinceLastPre > 0)
     {
-        int32_t decayedPreTrace = Mul16S2011(
+        S2011 decayedPreTrace = Mul16S2011(
           lastPreTrace, m_TauPlusLUT.Get(elapsedTicksSinceLastPre));
 
         //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
