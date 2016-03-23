@@ -512,6 +512,16 @@ class State(common.control.BaseState):
         logger.info("Placed on %u cores", len(placements))
         logger.debug(list(itervalues(placements)))
 
+        # If software watchdog is disabled, write zero to each chip in
+        # placement's SV struct, otherwise, write default from SV struct file
+        wdog = (0 if self.disable_software_watchdog else
+                self.machine_controller.structs["sv"]["soft_wdog"].default)
+        for x, y in set(itervalues(placements)):
+            logger.debug("Setting software watchdog to %u for chip %u, %u",
+                         wdog, x, y)
+            self.machine_controller.write_struct_field("sv", "soft_wdog",
+                                                       wdog, x, y)
+
         # Load vertices
         self._load_synapse_verts(placements, allocations,
                                  hardware_timestep_us, duration_timesteps)
