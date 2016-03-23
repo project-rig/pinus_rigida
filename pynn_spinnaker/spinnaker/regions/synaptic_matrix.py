@@ -101,9 +101,9 @@ class SynapticMatrix(Region):
             ext_words = np.empty(num_ext_words, dtype=np.uint32)
 
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u, "
-                         "matrix words:%u, num extension words:%u",
+                         "matrix words:%u, num extension words:%u, num rows:%u",
                          placement, matrix.max_cols, num_matrix_words,
-                         matrix.size_words - num_matrix_words)
+                         matrix.size_words - num_matrix_words, len(matrix.rows))
 
             # Loop through matrix rows
             next_row_offset = 0
@@ -155,7 +155,7 @@ class SynapticMatrix(Region):
                     # Create a numpy array to hold the rows of the sub-matrix
                     # Connecting this pre-neuron vertex to this vertexs-lice
                     sub_rows = np.empty(len(rows), dtype=object)
-                    max_cols = 0
+                    max_cols = 1
                     num_extension_words = 0
                     any_connections = False
                     for i, row in enumerate(rows):
