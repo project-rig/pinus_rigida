@@ -46,7 +46,7 @@ from collections import defaultdict
 # === Configure the simulator ================================================
 
 spinnaker = True
-profile  = True
+profile  = False
 use_views = False
 use_assembly = False
 benchmark = "CUBA"
@@ -56,13 +56,10 @@ if spinnaker:
     import pynn_spinnaker as sim
 
     logger = logging.getLogger("pynn_spinnaker")
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(logging.INFO)
     logger.addHandler(logging.StreamHandler())
 
-    setup_kwargs = {
-        "spinnaker_hostname": "192.168.1.1",
-        "spinnaker_width": 8,
-        "spinnaker_height": 8}
+    setup_kwargs = {"spinnaker_hostname": "192.168.1.1"}
 else:
     import pyNN.nest as sim
 
