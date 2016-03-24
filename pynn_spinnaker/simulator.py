@@ -392,9 +392,9 @@ class State(common.control.BaseState):
                 core = vertex_allocation[machine.Cores]
                 assert (core.stop - core.start) == 1
 
-                logger.debug("\t\tVertex %s (%u, %u, %u)",
+                logger.debug("\t\tVertex %s (%u, %u, %u): Key:%08x",
                              v, vertex_placement[0], vertex_placement[1],
-                             core.start)
+                             core.start, v.key)
 
                 # Select placed chip
                 with self.machine_controller(x=vertex_placement[0],
