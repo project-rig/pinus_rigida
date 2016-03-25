@@ -3,7 +3,6 @@ import enum
 import itertools
 import logging
 import regions
-from os import path
 from rig import machine
 
 # Import classes
@@ -13,7 +12,7 @@ from utils import Args
 # Import functions
 from six import iteritems
 from utils import (create_app_ptr_and_region_files_named, split_slice,
-                   model_binaries, sizeof_regions_named)
+                   sizeof_regions_named, get_model_executable_filename)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -103,14 +102,10 @@ class NeuralCluster(object):
                 regions.AnalogueRecording(indices_to_record, v,
                                           sim_timestep_ms, sim_ticks)
 
-        # Create start of filename for the executable to use for this cluster
-        filename = "neuron_" + cell_type.__class__.__name__.lower()
-
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config.num_profile_samples)
-            filename += "_profiled"
 
         # Split population slice
         neuron_slices = split_slice(parameters.shape[0], post_synaptic_width)
@@ -120,8 +115,9 @@ class NeuralCluster(object):
         self.verts = [Vertex(keyspace, neuron_slice, pop_id, vert_id)
                       for vert_id, neuron_slice in enumerate(neuron_slices)]
 
-        # Get neuron application name
-        neuron_app = path.join(model_binaries, filename + ".aplx")
+        # Get neuron executable name
+        neuron_app = get_model_executable_filename(
+            "neuron_", cell_type, config.num_profile_samples is not None)
 
         logger.debug("\t\tNeuron application:%s", neuron_app)
         logger.debug("\t\t%u neuron vertices", len(self.verts))

@@ -4,7 +4,6 @@ import itertools
 import logging
 import numpy as np
 import regions
-from os import path
 from rig import machine
 
 # Import classes
@@ -14,7 +13,7 @@ from utils import Args, InputVertex
 # Import functions
 from six import iteritems
 from utils import (create_app_ptr_and_region_files_named, split_slice,
-                   model_binaries, sizeof_regions_named)
+                   get_model_executable_filename, sizeof_regions_named)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -95,14 +94,10 @@ class SynapseCluster(object):
                     synapse_model.plasticity_param_map,
                     synapse_model.native_parameters, sim_timestep_ms)
 
-        # Create start of filename for the executable to use for this cluster
-        filename = "synapse_" + synapse_model.__class__.__name__.lower()
-
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config.num_profile_samples)
-            filename += "_profiled"
 
         # Split population slice
         post_slices = split_slice(post_pop_size, post_synaptic_width)
@@ -111,8 +106,9 @@ class SynapseCluster(object):
                      synapse_model.__class__.__name__, receptor_index)
 
         # Get synapse application name
-        # **THINK** is there any point in doing anything cleverer than this
-        synapse_app = path.join(model_binaries, filename + ".aplx")
+        synapse_app = get_model_executable_filename(
+            "synapse_", synapse_model, config.num_profile_samples is not None)
+        
         logger.debug("\t\t\tSynapse application:%s", synapse_app)
 
         # Loop through the post-slices

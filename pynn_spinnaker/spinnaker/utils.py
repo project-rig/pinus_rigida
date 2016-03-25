@@ -1,4 +1,5 @@
 # Import modules
+import inspect
 import lazyarray as la
 import math
 import numpy as np
@@ -15,7 +16,7 @@ from six import (iteritems, iterkeys)
 
 
 # Determine model binaries path for models in this module
-model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
+#model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
 
 
 # ----------------------------------------------------------------------------
@@ -24,7 +25,6 @@ model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
 class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
-
 
 # ----------------------------------------------------------------------------
 # InputVertex
@@ -184,6 +184,24 @@ def calc_slice_bitfield_words(vertex_slice):
 def get_row_offset_length(offset, length, num_length_bits):
     return (length - 1) | (offset << num_length_bits)
 
+def get_model_executable_filename(prefix, model, profiled):
+    # Find directory in which model class is located
+    model_directory = path.dirname(inspect.getfile(model.__class__))
+
+    # Start filename with prefix
+    filename = prefix
+
+    # If executable filename is specified, use it
+    filename += (model.executable_filename
+                 if hasattr(model, "executable_filename")
+                 else model.__class__.__name__.lower())
+
+    # If profiling is enabled, add prefix
+    if profiled:
+        filename += "_profiled"
+
+    # Join filename to path and add extension
+    return path.join(model_directory, "binaries", filename + ".aplx")
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
 # to the start, this is common with Nengo SpiNNaker

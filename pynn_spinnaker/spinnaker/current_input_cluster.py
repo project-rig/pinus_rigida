@@ -2,7 +2,6 @@
 import enum
 import logging
 import regions
-from os import path
 from rig import machine
 
 # Import classes
@@ -12,7 +11,7 @@ from utils import (Args, InputVertex)
 # Import functions
 from six import iteritems
 from utils import (create_app_ptr_and_region_files_named, split_slice,
-                   model_binaries, sizeof_regions_named)
+                   get_model_executable_filename, sizeof_regions_named)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -54,19 +53,16 @@ class CurrentInputCluster(object):
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
 
-        # Create start of filename for the executable to use for this cluster
-        filename = "current_input_" + cell_type.__class__.__name__.lower()
-
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config.num_profile_samples)
-            filename += "_profiled"
 
         # Slice current input
         post_slices = split_slice(parameters.shape[0], post_synaptic_width)
 
-        current_input_app = path.join(model_binaries, filename + ".aplx")
+        current_input_app = get_model_executable_filename(
+            "current_input_", cell_type, config.num_profile_samples is not None)
         logger.debug("\t\t\tCurrent input application:%s",
                      current_input_app)
 
