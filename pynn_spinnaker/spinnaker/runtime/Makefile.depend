@@ -1,10 +1,10 @@
 ifdef PROFILER_ENABLED
 	BUILDDIR = build_profiled
 	CFLAGS += -DPROFILER_ENABLED
-	APP = $(PINUS_APP)_profiled
+	APP = $(PYNN_APP)_profiled
 else
 	BUILDDIR = build
-	APP = $(PINUS_APP)
+	APP = $(PYNN_APP)
 endif
 
 ifdef LOG_LEVEL
@@ -17,6 +17,6 @@ RUNTIME := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 LIBRARIES = -lspin1_api
 CFLAGS += -Wall -Wextra -Ofast -fno-rtti -fno-exceptions
 LFLAGS += -nodefaultlibs
-APP_DIR = $(RUNTIME)/../../model_binaries
+APP_DIR = $(RUNTIME)/../../standardmodels/binaries
 
 include $(RUNTIME)/Makefile.common

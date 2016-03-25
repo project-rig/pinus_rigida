@@ -1,4 +1,4 @@
-PINUS_APP = synapse_staticsynapse
+PYNN_APP = synapse_staticsynapse
 
 # Build object list
 SOURCES = ../../../common/config.cpp \

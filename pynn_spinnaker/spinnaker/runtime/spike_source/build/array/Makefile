@@ -1,4 +1,4 @@
-PINUS_APP = neuron_spikesourcearray
+PYNN_APP = neuron_spikesourcearray
 
 # Build object list
 SOURCES = ../../../common/array_source.cpp \
