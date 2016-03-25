@@ -11,12 +11,12 @@ ifdef LOG_LEVEL
 	CFLAGS += -DLOG_LEVEL=$(LOG_LEVEL)
 endif
 
-# Get absolute path of THIS make file i.e. the pine_nut directory
-PINE_NUT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+# Get absolute path of THIS make file i.e. the runtime directory
+RUNTIME := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 LIBRARIES = -lspin1_api
 CFLAGS += -Wall -Wextra -Ofast -fno-rtti -fno-exceptions
 LFLAGS += -nodefaultlibs
-APP_DIR = $(PINE_NUT)/../../model_binaries
+APP_DIR = $(RUNTIME)/../../model_binaries
 
-include $(PINE_NUT)/Makefile.common
+include $(RUNTIME)/Makefile.common
