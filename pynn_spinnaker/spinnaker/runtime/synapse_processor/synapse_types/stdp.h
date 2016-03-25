@@ -171,6 +171,25 @@ public:
     return 4 + PreTraceWords + GetNumPlasticWords(rowSynapses) + GetNumControlWords(rowSynapses);
   }
 
+  bool ReadSDRAMData(uint32_t *region, uint32_t flags)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::STDP::ReadSDRAMData");
+
+    // Read timing dependence data
+    if(!m_TimingDependence.ReadSDRAMData(region, flags))
+    {
+      return false;
+    }
+
+    // Read weight dependence data
+    if(!m_WeightDependence.ReadSDRAMData(region, flags))
+    {
+      return false;
+    }
+
+    return true;
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Private static methods

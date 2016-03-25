@@ -61,6 +61,12 @@ public:
     return 3 + ((rowSynapses * sizeof(T)) / 4);
   }
 
+  bool ReadSDRAMData(uint32_t *region, uint32_t)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::Static::ReadSDRAMData");
+    return true;
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Constants

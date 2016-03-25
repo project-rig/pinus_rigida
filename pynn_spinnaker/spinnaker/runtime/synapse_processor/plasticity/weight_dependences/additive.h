@@ -70,6 +70,29 @@ public:
     S2011 m_Depression;
   };
 
+  Additive() : m_MinWeight(0), m_MaxWeight(0), m_A2Plus(0), m_MinusA2Minus(0)
+  {
+  }
+
+  //-----------------------------------------------------------------------------
+  // Public API
+  //-----------------------------------------------------------------------------
+  bool ReadSDRAMData(uint32_t *&region, uint32_t)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "\tPlasticity::WeightDependences::Additive::ReadSDRAMData");
+
+    // Read region parameters
+    m_MinWeight = *reinterpret_cast<int32_t*>(region++);
+    m_MaxWeight = *reinterpret_cast<int32_t*>(region++);
+    m_A2Plus = *reinterpret_cast<int32_t*>(region++);
+    m_MinusA2Minus = -*reinterpret_cast<int32_t*>(region++);
+
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tMin weight:%d, Max weight:%d, A2+:%d, -A2-:%d",
+              m_MinWeight, m_MaxWeight, m_A2Plus, m_MinusA2Minus);
+
+    return true;
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Members

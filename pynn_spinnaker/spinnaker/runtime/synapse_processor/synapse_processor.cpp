@@ -164,6 +164,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+   // Read plasticity region
+  if(!g_Synapse.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionPlasticity),
+    flags))
+  {
+    return false;
+  }
+
   // Read output buffer region
   if(!ReadOutputBufferRegion(
     Config::GetRegionStart(baseAddress, RegionOutputBuffer),

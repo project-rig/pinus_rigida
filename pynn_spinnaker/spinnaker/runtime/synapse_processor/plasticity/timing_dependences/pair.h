@@ -113,6 +113,14 @@ public:
     }
   }
 
+  bool ReadSDRAMData(uint32_t *&region, uint32_t)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "\tPlasticity::TimingDependences::Pair::ReadSDRAMData");
+    m_TauPlusLUT.ReadSDRAMData(region);
+    m_TauMinusLUT.ReadSDRAMData(region);
+    return true;
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Members
