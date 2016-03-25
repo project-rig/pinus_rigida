@@ -1,6 +1,4 @@
-import math, numpy, pylab, random, sys
-import pylab
-import pyNN.nest as sim
+import logging, math, numpy, pylab, random, sys
 from pyNN.parameters import Sequence
 
 #-------------------------------------------------------------------
@@ -17,6 +15,20 @@ num_pairs = 60
 start_w = 0.5
 delta_t = [-100, -60, -40, -30, -20, -10, -1, 1, 10, 20, 30, 40, 60, 100]
 start_time = 200
+spinnaker = True
+
+if spinnaker:
+    import pynn_spinnaker as sim
+
+    logger = logging.getLogger("pynn_spinnaker")
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logging.StreamHandler())
+
+    setup_kwargs = {"spinnaker_hostname": "192.168.240.253"}
+else:
+    import pyNN.nest as sim
+
+    setup_kwargs = {"spike_precision": "on_grid"}
 
 # Population parameters
 model = sim.IF_curr_exp
@@ -31,16 +43,16 @@ cell_params = {'cm'        : 0.25, # nF
                'v_thresh'  : -55.4}
 
 # SpiNNaker setup
-sim.setup(timestep=1.0, spike_precision="on_grid")
+sim.setup(timestep=1.0, **setup_kwargs)
 sim_time = (num_pairs * time_between_pairs) + max(delta_t)
 
 # Neuron populations
-pre_pop = sim.Population(len(delta_t), model(**cell_params))
-post_pop = sim.Population(len(delta_t), model(**cell_params))
+pre_pop = sim.Population(len(delta_t), model(**cell_params), label="pre")
+post_pop = sim.Population(len(delta_t), model(**cell_params), label="post")
 
 # Stimulating populations
-pre_stim = sim.Population(len(delta_t), sim.SpikeSourceArray(spike_times=[10]))
-post_stim = sim.Population(len(delta_t), sim.SpikeSourceArray(spike_times=[10]))
+pre_stim = sim.Population(len(delta_t), sim.SpikeSourceArray(spike_times=[10]), label="pre_stim")
+post_stim = sim.Population(len(delta_t), sim.SpikeSourceArray(spike_times=[10]), label="post_stim")
 
 # Build stimulus spike times
 for i, t in enumerate(delta_t):
