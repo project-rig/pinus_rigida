@@ -280,7 +280,7 @@ class Population(common.Population):
                 self.synapse_j_constraints[s_type] = synapse_constraint
 
                 logger.debug("\t\tSynapse type:%s, receptor:%s - j constraint:%u",
-                             s_type[0].__name__, s_type[1], synapse_constraint)
+                             s_type[0].__class__.__name__, s_type[1], synapse_constraint)
 
             # Loop through directly connectable projections
             for p in directly_connectable_projections:
@@ -354,7 +354,7 @@ class Population(common.Population):
 
                 num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type[0].max_synaptic_event_rate)))
                 logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
-                            s_type[0].__name__, s_type[1],
+                            s_type[0].__class__.__name__, s_type[1],
                             total_synaptic_event_rate, num_i_cores)
 
                 # Add number of i cores to dictionary
@@ -390,7 +390,7 @@ class Population(common.Population):
         logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
         for s_type, constraint in iteritems(self.synapse_j_constraints):
             logger.debug("\t\tSynapse type:%s, receptor:%s - J constraint:%u",
-                         s_type[0].__name__, s_type[1], constraint)
+                         s_type[0].__class__.__name__, s_type[1], constraint)
         for proj, constraint in iteritems(current_input_j_constraints):
             logger.debug("\t\tDirect input projection:%s - J constraint:%u",
                          proj.label, constraint)

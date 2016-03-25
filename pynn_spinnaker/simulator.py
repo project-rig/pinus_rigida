@@ -250,7 +250,7 @@ class State(common.control.BaseState):
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
                 logger.info("\tPopulation label:%s, synapse type:%s, receptor:%s",
-                            pop.label, s_type[0].__name__, s_type[1])
+                            pop.label, s_type[0].__class__.__name__, s_type[1])
 
                 # Expand any incoming connections
                 matrices, weight_fixed_point =\
@@ -425,7 +425,7 @@ class State(common.control.BaseState):
         for pop in self.populations:
             for s_type, stats in iteritems(pop.get_synapse_statistics()):
                 logger.info("\t\tSynapse type:%s receptor:%s",
-                            s_type[0].__name__, s_type[1])
+                            s_type[0].__class__.__name__, s_type[1])
                 logger.info("\t\t\tRows requested per vertex per second:%f",
                             np.mean(stats["row_requested"]) / duration_s)
                 logger.info("\t\t\tDelay rows requested per vertex per second:%f",
@@ -467,17 +467,20 @@ class State(common.control.BaseState):
         vertex_applications = {}
         vertex_resources = {}
 
-        # Allocate synapse clusters
+        # Allocate clusters
+        logger.info("Allocating neuron clusters")
         for pop_id, pop in enumerate(self.populations):
             logger.debug("\tPopulation:%s", pop.label)
             pop._create_neural_cluster(pop_id, hardware_timestep_us, duration_timesteps,
                                        vertex_applications, vertex_resources, keyspace)
 
+        logger.info("Allocating synapse clusters")
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
             pop._create_synapse_clusters(hardware_timestep_us, duration_timesteps,
                                        vertex_applications, vertex_resources)
 
+        logger.info("Allocating current input clusters")
         self.proj_current_input_clusters, self.post_pop_current_input_clusters =\
             self._allocate_current_input_clusters(
                 vertex_applications, vertex_resources, hardware_timestep_us,

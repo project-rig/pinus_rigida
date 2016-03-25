@@ -7,18 +7,18 @@ from pyNN.space import Space
 from pyNN.standardmodels import StandardCellType
 from . import simulator
 
-from .standardmodels.synapses import StaticSynapse
-
 import logging
 import numpy as np
 
 from rig.utils.contexts import ContextMixin
-
 from spinnaker.current_input_cluster import CurrentInputCluster
+from .standardmodels.synapses import StaticSynapse
 
 logger = logging.getLogger("pynn_spinnaker")
 
-
+# --------------------------------------------------------------------------
+# Projection
+# --------------------------------------------------------------------------
 class Projection(common.Projection, ContextMixin):
     __doc__ = common.Projection.__doc__
     _simulator = simulator
@@ -162,7 +162,7 @@ class Projection(common.Projection, ContextMixin):
     # --------------------------------------------------------------------------
     @property
     def _synapse_cluster_type(self):
-        return (self.synapse_type.__class__, self.receptor_type)
+        return (self.synapse_type, self.receptor_type)
 
     @property
     def _directly_connectable(self):
