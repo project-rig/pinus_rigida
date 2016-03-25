@@ -129,8 +129,14 @@ class STDPMechanism(synapses.STDPMechanism, ComparisonMixin):
     # timing and weight dependence's parameter maps concatenated together
     @property
     def plasticity_param_map(self):
-        return self.timing_dependence.plasticity_param_map +\
-            self.weight_dependence.plasticity_param_map
+        return (self.timing_dependence.plasticity_param_map +
+                self.weight_dependence.plasticity_param_map)
+
+    @property
+    def executable_filename(self):
+        return (self.__class__.__name__.lower() + "_" +
+                self.weight_dependence.__class__.__name__.lower() + "_" +
+                self.timing_dependence.__class__.__name__.lower())
 
 # ------------------------------------------------------------------------------
 # AdditiveWeightDependence
