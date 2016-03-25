@@ -87,8 +87,16 @@ class SynapseCluster(object):
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
+        # **THINK** is there a nicer mechanism for this?
+        # Is there any requirement for OTHER plasticity region classes
+        if hasattr(synapse_model, "plasticity_region_class"):
+            self.regions[Regions.plasticity] =\
+                synapse_model.plasticity_region_class(
+                    synapse_model.plasticity_param_map,
+                    synapse_model.native_parameters, sim_timestep_ms)
+
         # Create start of filename for the executable to use for this cluster
-        filename = "synapse_" + synapse_model.__name__.lower()
+        filename = "synapse_" + synapse_model.__class__.__name__.lower()
 
         # Add profiler region if required
         if config.num_profile_samples is not None:
@@ -100,7 +108,7 @@ class SynapseCluster(object):
         post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
-                     synapse_model.__name__, receptor_index)
+                     synapse_model.__class__.__name__, receptor_index)
 
         # Get synapse application name
         # **THINK** is there any point in doing anything cleverer than this
@@ -272,5 +280,8 @@ class SynapseCluster(object):
 
         region_arguments[Regions.delay_buffer].kwargs["sub_matrices"] =\
             sub_matrices
+
+        region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
+            weight_fixed_point
 
         return region_arguments

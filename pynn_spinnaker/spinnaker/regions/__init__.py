@@ -5,6 +5,7 @@ from key_lookup_binary_search import KeyLookupBinarySearch
 from neuron import Neuron
 from output_buffer import OutputBuffer
 from output_weight import OutputWeight
+from plasticity import Plasticity
 from profiler import Profiler
 from spike_recording import SpikeRecording
 from spike_source_array import SpikeSourceArray
