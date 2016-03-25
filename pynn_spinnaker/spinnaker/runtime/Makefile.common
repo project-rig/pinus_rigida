@@ -137,14 +137,14 @@ LS  := \ls -l
 
 # Build the application
 
-# Get absolute path of THIS make file i.e. the pinenut directory
-PINE_NUT := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+# Get absolute path of THIS make file i.e. the runtime directory
+RUNTIME := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 
 # Get absolute paths of sources
 ABSOLUTE_SOURCES = $(abspath $(SOURCES))
 
 # Make these relative to the spinnaker_components directory
-RELATIVE_SOURCES := $(ABSOLUTE_SOURCES:$(PINE_NUT)/%.cpp=%.cpp)
+RELATIVE_SOURCES := $(ABSOLUTE_SOURCES:$(RUNTIME)/%.cpp=%.cpp)
 
 # Construct the list of objects to build - in subdirectories beneath $(BUILDDIR)
 OBJECTS = $(RELATIVE_SOURCES:%.cpp=$(BUILDDIR)/%.o)
@@ -166,6 +166,7 @@ else
 endif
 	mkaplx $(APP).elf | $(CAT) - $(APP).bin > $(APP).aplx
 	$(RM) $(APP).bin RO_DATA.bin RW_DATA.bin
+	-mkdir -p $(APP_DIR)
 	$(CP) $(APP).aplx $(APP_DIR)/
 	$(LS) $(APP_DIR)/$(APP).aplx
 
@@ -185,12 +186,12 @@ $(APP).elf: $(OBJECTS) $(SCRIPT) $(LIBRARY)
 	$(OD) $(APP).elf
 
 # Build C source files into object files
-$(BUILDDIR)/%.o: $(PINE_NUT)/%.c $(INC_DIR)/spinnaker.h $(INC_DIR)/sark.h $(INC_DIR)/spin1_api.h
+$(BUILDDIR)/%.o: $(RUNTIME)/%.c $(INC_DIR)/spinnaker.h $(INC_DIR)/sark.h $(INC_DIR)/spin1_api.h
 	-mkdir -p $(dir $@)
 	$(CC) -std=gnu99 $(CFLAGS) $< -o $@
 
 # Build C++ source files into object files
-$(BUILDDIR)/%.o: $(PINE_NUT)/%.cpp $(INC_DIR)/spinnaker.h $(INC_DIR)/sark.h $(INC_DIR)/spin1_api.h
+$(BUILDDIR)/%.o: $(RUNTIME)/%.cpp $(INC_DIR)/spinnaker.h $(INC_DIR)/sark.h $(INC_DIR)/spin1_api.h
 	-mkdir -p $(dir $@)
 	$(CC) -std=c++11 $(CFLAGS) $< -o $@
 
