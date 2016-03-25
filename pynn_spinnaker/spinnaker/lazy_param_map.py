@@ -17,14 +17,18 @@ float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
 # -----------------------------------------------------------------------------
 # Functions
 # -----------------------------------------------------------------------------
-def apply(lazy_params, param_map, size, **kwargs):
+def _build_dtype(param_map):
     # Build numpy record datatype for neuron region
     # **TODO** this probably doesn't need to be a string:
     # could use np.uint8 style things throughout
-    record_datatype = ",".join(zip(*param_map)[1])
+    return np.dtype(",".join(zip(*param_map)[1]))
 
+def size(param_map, size):
+    return _build_dtype(param_map).itemsize * size
+
+def apply(lazy_params, param_map, size, **kwargs):
     # Build a numpy record array large enough for all neurons
-    params = np.empty(size, dtype=(record_datatype))
+    params = np.empty(size, dtype=_build_dtype(param_map))
 
     # Loop through parameters
     for field_name, param in zip(params.dtype.names, param_map):
@@ -43,13 +47,8 @@ def apply(lazy_params, param_map, size, **kwargs):
 
 
 def apply_indices(lazy_params, param_map, indices, **kwargs):
-    # Build numpy record datatype for neuron region
-    # **TODO** this probably doesn't need to be a string:
-    # could use np.uint8 style things throughout
-    record_datatype = ",".join(zip(*param_map)[1])
-
     # Build a numpy record array large enough for all neurons
-    params = np.empty(len(indices), dtype=(record_datatype))
+    params = np.empty(len(indices), dtype=_build_dtype(param_map))
 
     # Loop through parameters
     for field_name, param in zip(params.dtype.names, param_map):
@@ -153,5 +152,6 @@ def s411_exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
         np.arange(0.0, -timestep_ms * float(num_entries), -timestep_ms))
 
     # Calculate exponential decay
+    values.shape = time_ms.shape
     decay_vals = la.exp(time_ms / values)
     return float_to_s411_no_copy(decay_vals)
