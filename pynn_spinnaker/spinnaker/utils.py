@@ -191,7 +191,8 @@ def get_model_executable_filename(prefix, model, profiled):
     # Start filename with prefix
     filename = prefix
 
-    # If executable filename is specified, use it
+    # If executable filename is specified use it,
+    # otherwise use lowercase classname
     filename += (model.executable_filename
                  if hasattr(model, "executable_filename")
                  else model.__class__.__name__.lower())
