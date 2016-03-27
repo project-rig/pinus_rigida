@@ -9,15 +9,11 @@ from region import Region
 from rig.type_casts import NumpyFloatToFixConverter
 
 # Import functions
-from bisect import bisect_left
 from six import iteritems
 from ..utils import get_row_offset_length
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
                                      "max_cols", "rows"])
-
-row_dtype = [("weight", np.float32), ("delay", np.uint32),
-             ("index", np.uint32)]
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -83,7 +79,6 @@ class SynapticMatrix(Region):
                                                    weight_fixed_point)
 
         # Loop through sub matrices
-        assert fp.tell() == 0
         for matrix, placement in zip(sub_matrices, matrix_placements):
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
@@ -186,14 +181,15 @@ class SynapticMatrix(Region):
                             # sub_row which belong in each delay slot
                             sub_row_sections = np.cumsum(
                                 np.bincount(sub_row_delay_slot))
+
+                            # Split sub-row into delay rows based
+                            # on these sections, filtering out empty
+                            # rows if they aren't the first row
                             sub_rows[i] = [
                                 (e * self.max_dtcm_delay_slots, r)
                                 for e, r in enumerate(
                                     np.split(sub_row, sub_row_sections))
                                     if e == 0 or len(r) > 0]
-
-                            # Check that first delay slot is always instantiated
-                            assert sub_rows[i][0][0] == 0
 
                             # Add number of synapses in all but 1st delay
                             # slot and header for each extension row to total
@@ -205,14 +201,12 @@ class SynapticMatrix(Region):
                             max_cols = max(max_cols, sub_row_sections[0])
                         # Otherwise, add empty row
                         else:
-                            assert False
-                            sub_rows[i] = [(0, [])]
+                            sub_rows[i] = [(0, ())]
 
                     # If there any connections within this sub-matrix
                     if any_connections:
                         # Calculate matrix size in words - size of square
                         # matrix added to number of extension words
-                        # **NOTE** single header word required
                         size_words = num_extension_words +\
                             (len(sub_rows) * (3 + max_cols))
 
@@ -246,6 +240,9 @@ class SynapticMatrix(Region):
             destination[2] = get_row_offset_length(next_row_offset,
                                                    len(next_row[1]),
                                                    self.LengthBits)
+        # If there are any synapses in row
+        # **NOTE** empty rows may be tuples or empty
+        # lists both of which break the following code
         if destination[0] > 0:
             # Extract the DTCM component of delay
             # **NOTE** subtract one so there is a minimum of 1 slot of delay
