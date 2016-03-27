@@ -17,19 +17,18 @@ class StaticSynapticMatrix(SynapticMatrix):
     # stored in the bits above index and delay
     WeightShift = SynapticMatrix.IndexBits + SynapticMatrix.DelayBits
 
-     # 3 header words :
-     # > num synapses
-     # > next delay row time
-     # > next delay offset-length
-    num_header_words = 3
+    # How many bits should fixed point weights be converted into
+    # **NOTE** weights are only 16-bit, but final words need to be 32-bit
+    FixedPointWeightBits = 32
 
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
     def _get_row_words(self, num_synapses):
-        return self.num_header_words + num_synapses
+        return self.NumHeaderWords + num_synapses
 
-    def _get_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices):
-        return (indices
-                | (dtcm_delay << self.IndexBits)
-                | (weight_fixed << self.WeightShift))
+    def _write_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices,
+                                destination):
+        destination[:] = (indices
+                          | (dtcm_delay << self.IndexBits)
+                          | (weight_fixed << self.WeightShift))

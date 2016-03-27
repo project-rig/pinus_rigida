@@ -118,6 +118,11 @@ class STDPMechanism(synapses.STDPMechanism, ComparisonMixin):
             d = state.dt
         return d
 
+    # The pre-trace
+    @property
+    def pre_trace_bytes(self):
+        return self.timing_dependence.pre_trace_bytes
+
     # STDP mechanisms should be compared based on their class, timing
     # dependence (parameters) and weight dependence (parameters)
     @property
@@ -180,3 +185,6 @@ class SpikePairRule(synapses.SpikePairRule, ParamComparisonMixin):
     ]
 
     compatibility_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
+
+    # How many byte does this
+    pre_trace_bytes = 2

@@ -30,8 +30,14 @@ class SynapticMatrix(Region):
     # How many bits are used to represent (extension) row length
     LengthBits = 10
 
-    def __init__(self, max_dtcm_delay_slots):
-        self.max_dtcm_delay_slots = max_dtcm_delay_slots
+    # 3 header words :
+    # > num synapses
+    # > next delay row time
+    # > next delay offset-length
+    NumHeaderWords = 3
+
+    def __init__(self, synapse_type):
+        self.max_dtcm_delay_slots = synapse_type.max_dtcm_delay_slots
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -73,10 +79,9 @@ class SynapticMatrix(Region):
             written into synaptic matrix region
         """
         # Create a numpy fixed point convert to convert
-        # Floating point weights to this format
-        # **NOTE** weights are only 16-bit, but final words need to be 32-bit
-        float_to_weight = NumpyFloatToFixConverter(False, 32,
-                                                   weight_fixed_point)
+        # Floating point weights to correct format
+        float_to_weight = NumpyFloatToFixConverter(
+            False, self.FixedPointWeightBits, weight_fixed_point)
 
         # Loop through sub matrices
         for matrix, placement in zip(sub_matrices, matrix_placements):
@@ -256,5 +261,6 @@ class SynapticMatrix(Region):
 
             # Write synapses
             num_row_words = self._get_row_words(num_synapses)
-            destination[3:num_row_words] = self._get_spinnaker_synapses(
-                dtcm_delay, weight_fixed, row[1]["index"])
+            self._write_spinnaker_synapses(dtcm_delay, weight_fixed,
+                                           row[1]["index"],
+                                           destination[3:num_row_words])
