@@ -77,7 +77,7 @@ class SynapseCluster(object):
         self.regions[Regions.system] = regions.System(timer_period_us,
                                                       sim_ticks)
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
-        self.regions[Regions.synaptic_matrix] = regions.SynapticMatrix(
+        self.regions[Regions.synaptic_matrix] = regions.StaticSynapticMatrix(
             synapse_model.max_dtcm_delay_slots)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(

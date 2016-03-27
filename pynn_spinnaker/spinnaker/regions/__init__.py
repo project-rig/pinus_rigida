@@ -11,6 +11,7 @@ from spike_recording import SpikeRecording
 from spike_source_array import SpikeSourceArray
 from spike_source_poisson import SpikeSourcePoisson
 from statistics import Statistics
+from static_synaptic_matrix import StaticSynapticMatrix
 from synapse import Synapse
 from synaptic_matrix import SynapticMatrix
 from system import System

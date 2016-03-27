@@ -84,9 +84,10 @@ class SynapticMatrix(Region):
             # **NOTE** placement is in WORDS
             fp.seek(placement * 4, 0)
 
-            # Build matrix large enough for entire ragged matri
-            num_matrix_words = len(matrix.rows) * (3 + matrix.max_cols)
-            matrix_words = np.empty((len(matrix.rows), 3 + matrix.max_cols),
+            # Build matrix large enough for entire ragged matrix
+            num_row_words = self._get_row_words(matrix.max_cols)
+            num_matrix_words = len(matrix.rows) * num_row_words
+            matrix_words = np.empty((len(matrix.rows), num_row_words),
                                     dtype=np.uint32)
 
             # Calculate the number of extension words required and build
@@ -110,14 +111,14 @@ class SynapticMatrix(Region):
 
                 # Loop through extension rows
                 for i, ext_row in enumerate(row[1:], start=1):
-                    row_length = 3 + len(ext_row[1])
+                    num_ext_row_words = self._get_row_words(len(ext_row[1]))
                     next_row = None if len(row) == (i + 1) else row[i + 1]
                     self._write_spinnaker_row(
                         ext_row, next_row,
-                        placement + next_row_offset + row_length + num_matrix_words,
+                        placement + next_row_offset + num_ext_row_words + num_matrix_words,
                         float_to_weight, ext_words[next_row_offset:])
 
-                    next_row_offset += row_length
+                    next_row_offset += num_ext_row_words
 
             # Write matrix followed by extension words
             fp.write(matrix_words.tostring())
@@ -193,6 +194,7 @@ class SynapticMatrix(Region):
 
                             # Add number of synapses in all but 1st delay
                             # slot and header for each extension row to total
+                            # **THINK** does second half over-estimate as empty delay rows, skipped by above logic are included
                             num_extension_words += (sub_row_sections[-1] - sub_row_sections[0])
                             num_extension_words += (3 * (len(sub_row_sections) - 1))
 
@@ -208,7 +210,7 @@ class SynapticMatrix(Region):
                         # Calculate matrix size in words - size of square
                         # matrix added to number of extension words
                         size_words = num_extension_words +\
-                            (len(sub_rows) * (3 + max_cols))
+                            (len(sub_rows) * self._get_row_words(max_cols))
 
                         # Add sub matrix to list
                         sub_matrices.append(
@@ -224,7 +226,8 @@ class SynapticMatrix(Region):
     def _write_spinnaker_row(self, row, next_row, next_row_offset,
                              float_to_weight, destination):
         # Write actual length of row (in synapses)
-        destination[0] = len(row[1])
+        num_synapses = len(row[1])
+        destination[0] = num_synapses
 
         # If there is no next row, write zeros to next two words
         if next_row is None:
@@ -243,7 +246,7 @@ class SynapticMatrix(Region):
         # If there are any synapses in row
         # **NOTE** empty rows may be tuples or empty
         # lists both of which break the following code
-        if destination[0] > 0:
+        if num_synapses > 0:
             # Extract the DTCM component of delay
             # **NOTE** subtract one so there is a minimum of 1 slot of delay
             dtcm_delay = 1 + ((row[1]["delay"] - 1) % self.max_dtcm_delay_slots)
@@ -251,10 +254,8 @@ class SynapticMatrix(Region):
             # Convert weight to fixed point
             weight_fixed = float_to_weight(row[1]["weight"])
 
-            # How much should we shift weights to be above index and delay
-            weight_shift = self.IndexBits + self.DelayBits
-
-            # Write row
-            destination[3:3 + len(row[1])] = (row[1]["index"]
-                                        | (dtcm_delay << self.IndexBits)
-                                        | (weight_fixed << weight_shift))
+            # Write synapses
+            num_row_words = self._get_row_words(num_synapses)
+            self._write_spinnaker_synapses(dtcm_delay, weight_fixed,
+                                           row[1]["index"],
+                                           destination[3:num_row_words])
