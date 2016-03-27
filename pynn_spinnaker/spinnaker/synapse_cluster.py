@@ -121,10 +121,11 @@ class SynapseCluster(object):
             vert_event_rate = 0.0
             vert = Vertex(post_slice, receptor_index)
             for proj in synaptic_projections:
+                logger.debug("\t\t\t\tProjection:%s", proj.label)
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
                 for pre_vertex in proj.pre._neural_cluster.verts:
-                    logger.debug("\t\t\t\tPre slice:%s",
+                    logger.debug("\t\t\t\t\tPre slice:%s",
                                  str(pre_vertex.neuron_slice))
 
                     # Estimate number of synapses the connection between
@@ -132,12 +133,18 @@ class SynapseCluster(object):
                     total_synapses = proj._estimate_num_synapses(
                         pre_vertex.neuron_slice, post_slice)
 
+                    # If this projection doesn't result in any
+                    # synapses don't add connection
+                    if total_synapses == 0:
+                        logger.debug("\t\t\t\t\t\tNo synapses")
+                        continue
+
                     # Use this to calculate event rate
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     pre_rate = total_synapses * pre_mean_rate
 
                     # **TODO** SDRAM estimation
-                    logger.debug("\t\t\t\t\tTotal synapses:%d, "
+                    logger.debug("\t\t\t\t\t\tTotal synapses:%d, "
                                  "synaptic event rate:%f",
                                  total_synapses, pre_rate)
 

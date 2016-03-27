@@ -433,7 +433,6 @@ void TimerTick(uint tick, uint)
 //-----------------------------------------------------------------------------
 extern "C" void c_main()
 {
-  //static_init();
   // Get this core's base address using alloc tag
   uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
 
@@ -447,12 +446,6 @@ extern "C" void c_main()
   // Initialise
   g_DMABusy = false;
   g_DMARowBufferIndex = 0;
-
-  // Reset all stats
-  for(unsigned int s = 0; s < StatWordMax; s++)
-  {
-    g_Statistics[s] = 0;
-  }
 
   // Set timer tick (in microseconds) in both timer and
   spin1_set_timer_tick(g_Config.GetTimerPeriod());

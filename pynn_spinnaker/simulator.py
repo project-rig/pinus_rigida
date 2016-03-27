@@ -107,7 +107,7 @@ class State(common.control.BaseState):
                 status = self.machine_controller.get_processor_status(p, x, y)
                 if status.cpu_state is not to_state:
                     print("Core ({}, {}, {}) in state {!s}".format(
-                        x, y, p, status.cpu_state))
+                        x, y, p, status))
                     print self.machine_controller.get_iobuf(p, x, y)
             raise Exception("Unexpected core failures "
                             "before reaching %s state (%u/%u)." % (to_state, cores_in_to_state, num_verts))
@@ -258,8 +258,6 @@ class State(common.control.BaseState):
 
                 # Loop through synapse verts
                 for v in s_cluster.verts:
-                    logger.debug("\t\tVertex %s", v)
-
                     # Cache weight fixed-point for
                     # this synapse point in vertex
                     v.weight_fixed_point = weight_fixed_point
@@ -271,6 +269,10 @@ class State(common.control.BaseState):
                     # Get core this vertex should be run on
                     core = vertex_allocation[machine.Cores]
                     assert (core.stop - core.start) == 1
+
+                    logger.debug("\t\tVertex %s (%u, %u, %u)",
+                             v, vertex_placement[0], vertex_placement[1],
+                             core.start)
 
                     # Partition the matrices
                     sub_matrices, matrix_placements =\
@@ -324,8 +326,6 @@ class State(common.control.BaseState):
 
             # Loop through synapse verts
             for v in c_cluster.verts:
-                logger.debug("\t\tVertex %s", v)
-
                 # Use native S16.15 format
                 v.weight_fixed_point = 15
 
@@ -336,6 +336,10 @@ class State(common.control.BaseState):
                 # Get core this vertex should be run on
                 core = vertex_allocation[machine.Cores]
                 assert (core.stop - core.start) == 1
+
+                logger.debug("\t\tVertex %s (%u, %u, %u)",
+                             v, vertex_placement[0], vertex_placement[1],
+                             core.start)
 
                 # Select placed chip
                 with self.machine_controller(x=vertex_placement[0],
@@ -380,8 +384,6 @@ class State(common.control.BaseState):
 
             # Loop through vertices
             for v in pop._neural_cluster.verts:
-                logger.debug("\t\tVertex %s", v)
-
                 # Get placement and allocation
                 vertex_placement = placements[v]
                 vertex_allocation = allocations[v]
@@ -389,6 +391,10 @@ class State(common.control.BaseState):
                 # Get core this vertex should be run on
                 core = vertex_allocation[machine.Cores]
                 assert (core.stop - core.start) == 1
+
+                logger.debug("\t\tVertex %s (%u, %u, %u): Key:%08x",
+                             v, vertex_placement[0], vertex_placement[1],
+                             core.start, v.key)
 
                 # Select placed chip
                 with self.machine_controller(x=vertex_placement[0],
@@ -514,6 +520,16 @@ class State(common.control.BaseState):
                                     nets, net_keys, system_info, constraints)
         logger.info("Placed on %u cores", len(placements))
         logger.debug(list(itervalues(placements)))
+
+        # If software watchdog is disabled, write zero to each chip in
+        # placement's SV struct, otherwise, write default from SV struct file
+        wdog = (0 if self.disable_software_watchdog else
+                self.machine_controller.structs["sv"]["soft_wdog"].default)
+        for x, y in set(itervalues(placements)):
+            logger.debug("Setting software watchdog to %u for chip %u, %u",
+                         wdog, x, y)
+            self.machine_controller.write_struct_field("sv", "soft_wdog",
+                                                       wdog, x, y)
 
         # Load vertices
         self._load_synapse_verts(placements, allocations,

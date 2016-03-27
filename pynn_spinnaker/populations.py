@@ -27,6 +27,8 @@ logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
+row_dtype = [("weight", np.float32), ("delay", np.uint32),
+             ("index", np.uint32)]
 
 # --------------------------------------------------------------------------
 # WeightRange
@@ -448,24 +450,19 @@ class Population(common.Population):
         # **NOTE** this will result to multiple calls to convergent_connect
         pop_matrix_rows = {}
         for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
-            # Create an array to hold matrix rows
-            # and initialize each one with an empty list
-            # **YUCK** her be syntactic dragons
-            pop_matrix_rows[pre_pop] = np.empty(pre_pop.size, dtype=object)
-            for r in range(pre_pop.size):
-                pop_matrix_rows[pre_pop][r] = []
+            # Create list of lists to contain matrix rows
+            matrix_rows = [[] for _ in range(pre_pop.size)]
 
             # Loop through projections and build
             for projection in projections:
-                projection._build(matrix_rows=pop_matrix_rows[pre_pop],
+                projection._build(matrix_rows=matrix_rows,
                                   weight_range=weight_range,
                                   directly_connect=False)
 
-            # Sort each row in matrix by post-synaptic neuron
-            # **THINK** is this necessary or does
-            # PyNN always move left to right
-            #for r in pop_matrix_rows[pre_pop]:
-            #    r.sort(key=itemgetter(2))
+
+            # Convert completed rows to numpy arrays and add to list
+            pop_matrix_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
+                                        for r in matrix_rows]
 
         # Calculate where the weight format fixed-point lies
         weight_fixed_point = weight_range.fixed_point
@@ -500,9 +497,8 @@ class Population(common.Population):
             weight = itertools.repeat(weight)
 
         # Add synapse to each row
-        presynaptic_rows = matrix_rows[presynaptic_indices]
-        for p, w, d in zip(presynaptic_rows, weight, delay_timesteps):
-            p.append(Synapse(w, d, postsynaptic_index))
+        for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
+            matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties

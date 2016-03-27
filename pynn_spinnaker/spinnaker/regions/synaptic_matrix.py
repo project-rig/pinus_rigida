@@ -9,16 +9,11 @@ from region import Region
 from rig.type_casts import NumpyFloatToFixConverter
 
 # Import functions
-from bisect import bisect_left
-from operator import itemgetter
 from six import iteritems
 from ..utils import get_row_offset_length
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
                                      "max_cols", "rows"])
-
-row_dtype = [("weight", np.float32), ("delay", np.uint32),
-             ("index", np.uint32)]
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -84,7 +79,6 @@ class SynapticMatrix(Region):
                                                    weight_fixed_point)
 
         # Loop through sub matrices
-        assert fp.tell() == 0
         for matrix, placement in zip(sub_matrices, matrix_placements):
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
@@ -101,9 +95,9 @@ class SynapticMatrix(Region):
             ext_words = np.empty(num_ext_words, dtype=np.uint32)
 
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u, "
-                         "matrix words:%u, num extension words:%u",
+                         "matrix words:%u, num extension words:%u, num rows:%u",
                          placement, matrix.max_cols, num_matrix_words,
-                         matrix.size_words - num_matrix_words)
+                         matrix.size_words - num_matrix_words, len(matrix.rows))
 
             # Loop through matrix rows
             next_row_offset = 0
@@ -133,80 +127,86 @@ class SynapticMatrix(Region):
     # Public methods
     # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
-        # Create lambda function to group delays into groups
-        # that can be handled by the DTCM delay buffer
-        # **NOTE** subtract one so there is a minimum of 1 slot of delay
-        delay_grouper = lambda d: (d[1] - 1) // self.max_dtcm_delay_slots
-
         # Loop through all incoming connections
         sub_matrices = []
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
-            # Extract corresponding connection matrix
-            matrix = matrices[pre_pop]
+            # Extract corresponding matrix rows
+            pop_rows = matrices[pre_pop]
 
             # Loop through all the vertices that
             # make up the pre-synaptic population
             for pre_neuron_vertex in pre_neuron_vertices:
-                # Slice the rows out of the matrix (fast)
-                rows = matrix[pre_neuron_vertex.neuron_slice.python_slice]
+                # Slice out the row offsets for this vertex
+                rows = pop_rows[pre_neuron_vertex.neuron_slice.python_slice]
 
                 # If there are any rows
                 if len(rows) > 0:
                     # Create a numpy array to hold the rows of the sub-matrix
                     # Connecting this pre-neuron vertex to this vertexs-lice
-                    sub_rows = np.empty(len(rows), dtype=object)
-                    max_cols = 0
+                    # Create list of lists to contain matrix rows
+                    sub_rows = [[] for _ in range(len(rows))]
+
+                    max_cols = 1
                     num_extension_words = 0
                     any_connections = False
                     for i, row in enumerate(rows):
-                        # Extract indices
-                        row_idxs = [s.index for s in row]
+                        # Find start and end of sub-row
+                        sub_row_start = np.searchsorted(
+                            row["index"], vertex_slice.start, side="left")
+                        sub_row_end = np.searchsorted(
+                            row["index"], vertex_slice.stop, side="left")
 
-                        # Use bisect to find start and stop index of sub-row
-                        # **NOTE** rows are already sorted by index
-                        row_start = bisect_left(row_idxs, vertex_slice.start)
-                        row_end = bisect_left(row_idxs, vertex_slice.stop)
-
-                        # Use these to build sub-row indexed from slice start
-                        sub_row = [(w, d, j - vertex_slice.start)
-                                   for (w, d, j) in row[row_start:row_end]]
+                        # Create copy of this slice of row
+                        sub_row = np.copy(row[sub_row_start:sub_row_end])
 
                         # If sub-row has any elements
                         if len(sub_row) != 0:
+                            # Make indices relative to vertex start
+                            sub_row["index"] -= vertex_slice.start
+
                             # Set flag indicating this sub-matrix
                             # should actually be processed
                             any_connections = True
 
-                            # Sort sub-row by delay
-                            sub_row.sort(key=itemgetter(1))
+                            # Determine which delay slot each sub-rob entry is in
+                            sub_row_delay_slot = (sub_row["delay"] - 1) / self.max_dtcm_delay_slots
 
-                            # Group sub-row into delay groups
-                            delay_row_iter = itertools.groupby(sub_row,
-                                                               delay_grouper)
-                            sub_rows[i] = [(e * self.max_dtcm_delay_slots,
-                                            list(delay_row))
-                                           for e, delay_row in delay_row_iter]
+                            # Sort sub-row by delay slot
+                            sub_row_order = np.argsort(sub_row_delay_slot)
+                            sub_row = sub_row[sub_row_order]
+                            sub_row_delay_slot = sub_row_delay_slot[sub_row_order]
 
-                            # If the first delay group of this sub-row
-                            # isn't extended, add new empty sub-row
-                            if sub_rows[i][0][0] != 0:
-                                sub_rows[i].insert(0, (0, []))
+                            # Take cumulative sum of the number of synapses
+                            # in each delay slot to obtain sections of
+                            # sub_row which belong in each delay slot
+                            sub_row_sections = np.cumsum(
+                                np.bincount(sub_row_delay_slot))
 
-                            # Count number of words in extension rows
-                            for e in sub_rows[i][1:]:
-                                num_extension_words += (3 + len(e[1]))
+                            # Split sub-row into delay rows based
+                            # on these sections, filtering out empty
+                            # rows if they aren't the first row
+                            sub_rows[i] = [
+                                (e * self.max_dtcm_delay_slots, r)
+                                for e, r in enumerate(
+                                    np.split(sub_row, sub_row_sections))
+                                    if e == 0 or len(r) > 0]
 
-                            # Update maximum number of columns
-                            max_cols = max(max_cols, len(sub_rows[i][0][1]))
+                            # Add number of synapses in all but 1st delay
+                            # slot and header for each extension row to total
+                            num_extension_words += (sub_row_sections[-1] - sub_row_sections[0])
+                            num_extension_words += (3 * (len(sub_row_sections) - 1))
+
+                            # Update maximum number of columns based
+                            # on length of first delay slot
+                            max_cols = max(max_cols, sub_row_sections[0])
                         # Otherwise, add empty row
                         else:
-                            sub_rows[i] = [(0, [])]
+                            sub_rows[i] = [(0, ())]
 
                     # If there any connections within this sub-matrix
                     if any_connections:
                         # Calculate matrix size in words - size of square
                         # matrix added to number of extension words
-                        # **NOTE** single header word required
                         size_words = num_extension_words +\
                             (len(sub_rows) * (3 + max_cols))
 
@@ -240,21 +240,21 @@ class SynapticMatrix(Region):
             destination[2] = get_row_offset_length(next_row_offset,
                                                    len(next_row[1]),
                                                    self.LengthBits)
+        # If there are any synapses in row
+        # **NOTE** empty rows may be tuples or empty
+        # lists both of which break the following code
+        if destination[0] > 0:
+            # Extract the DTCM component of delay
+            # **NOTE** subtract one so there is a minimum of 1 slot of delay
+            dtcm_delay = 1 + ((row[1]["delay"] - 1) % self.max_dtcm_delay_slots)
 
-        # Convert row to numpy record array
-        row = np.asarray(row[1], dtype=row_dtype)
+            # Convert weight to fixed point
+            weight_fixed = float_to_weight(row[1]["weight"])
 
-        # Extract the DTCM component of delay
-        # **NOTE** subtract one so there is a minimum of 1 slot of delay
-        dtcm_delay = 1 + ((row["delay"] - 1) % self.max_dtcm_delay_slots)
+            # How much should we shift weights to be above index and delay
+            weight_shift = self.IndexBits + self.DelayBits
 
-        # Convert weight to fixed point
-        weight_fixed = float_to_weight(row["weight"])
-
-        # How much should we shift weights to be above index and delay
-        weight_shift = self.IndexBits + self.DelayBits
-
-        # Write row
-        destination[3:3 + len(row)] = (row["index"]
-                                       | (dtcm_delay << self.IndexBits)
-                                       | (weight_fixed << weight_shift))
+            # Write row
+            destination[3:3 + len(row[1])] = (row[1]["index"]
+                                        | (dtcm_delay << self.IndexBits)
+                                        | (weight_fixed << weight_shift))

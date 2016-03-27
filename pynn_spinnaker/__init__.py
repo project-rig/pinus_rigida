@@ -10,6 +10,8 @@ really running simulations.
 
 import atexit
 import logging
+import warnings
+
 from pyNN import common
 from pyNN.common.control import (DEFAULT_MAX_DELAY, DEFAULT_TIMESTEP,
                                  DEFAULT_MIN_DELAY)
@@ -17,15 +19,19 @@ from pyNN.recording import *
 
 import profiling
 import simulator
+
 from .standardmodels.cells import *
 from .standardmodels.synapses import *
 from .connectors import *
 from .populations import Population, PopulationView, Assembly
 from .projections import Projection
 
+from rig.machine_control.machine_controller import TruncationWarning
 
 logger = logging.getLogger("PyNN")
 
+# Convert Rig TruncationWarnings to errors
+warnings.simplefilter("error", TruncationWarning)
 
 @atexit.register
 def _stop_on_spinnaker():
@@ -55,6 +61,8 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
         extra_params.get("convert_direct_connections", True)
     simulator.state.stop_on_spinnaker =\
         extra_params.get("stop_on_spinnaker", True)
+    simulator.state.disable_software_watchdog =\
+        extra_params.get("disable_software_watchdog", False)
     return rank()
 
 

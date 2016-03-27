@@ -59,14 +59,9 @@ class KeyLookupBinarySearch(Region):
         # **NOTE** default sort is fine as first element of sub-matrix
         # tuple is key which is what we want to sort by
         for m, p in sorted(zip(sub_matrices, matrix_placements)):
-            # **NOTE** if all synapses in all rows are delayed by more than
-            # the maximum supported by DTCM delay, max_cols will be zero, but
-            # because this is actually written as max_cols - 1 to support up
-            # to 1024 columns in 10-bits, zero is not supported
-            max_cols = 1 if m.max_cols == 0 else m.max_cols
             data += struct.pack(
                 "III", m.key, m.mask,
-                get_row_offset_length(p, max_cols, self.LengthBits)
+                get_row_offset_length(p, m.max_cols, self.LengthBits)
             )
 
         # Write data to filelike
