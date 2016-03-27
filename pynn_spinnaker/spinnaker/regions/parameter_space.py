@@ -79,7 +79,7 @@ class ParameterSpace(Region):
         fp.write(struct.pack("I", len(unique_immutable[0])))
 
         # Write indices into unique_immutable array,
-        # adding a padding word to word-align
+        # adding a padding half-word to word-align
         indices = unique_immutable[1].astype(np.uint16)
         fp.write(indices.tostring())
         if len(indices) % 2 != 0:
