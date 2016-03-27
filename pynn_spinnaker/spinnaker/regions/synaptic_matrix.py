@@ -256,6 +256,5 @@ class SynapticMatrix(Region):
 
             # Write synapses
             num_row_words = self._get_row_words(num_synapses)
-            self._write_spinnaker_synapses(dtcm_delay, weight_fixed,
-                                           row[1]["index"],
-                                           destination[3:num_row_words])
+            destination[3:num_row_words] = self._get_spinnaker_synapses(
+                dtcm_delay, weight_fixed, row[1]["index"])

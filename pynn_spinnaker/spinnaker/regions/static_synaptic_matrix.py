@@ -29,8 +29,7 @@ class StaticSynapticMatrix(SynapticMatrix):
     def _get_row_words(self, num_synapses):
         return self.num_header_words + num_synapses
 
-    def _write_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices,
-                                  destination):
-        destination = (indices
-                       | (dtcm_delay << self.IndexBits)
-                       | (weight_fixed << self.WeightShift))
+    def _get_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices):
+        return (indices
+                | (dtcm_delay << self.IndexBits)
+                | (weight_fixed << self.WeightShift))
