@@ -158,12 +158,12 @@ class SynapticMatrix(Region):
                         # Use bisect to find start and stop index of sub-row
                         # **NOTE** rows are already sorted by index
                         # http://stackoverflow.com/questions/15139299/performance-of-numpy-searchsorted-is-poor-on-structured-arrays
-                        # sub_row_start = np.searchsorted(row["index"], vertex_slice.start, side="left")
-                        # sub_row_end = np.searchsorted(row["index"], vertex_slice.stop, side="left")
-                        sub_row_start = bisect_left(row["index"],
-                                                    vertex_slice.start)
-                        sub_row_end = bisect_left(row["index"],
-                                                  vertex_slice.stop)
+                        sub_row_start = np.searchsorted(row["index"], vertex_slice.start, side="left")
+                        sub_row_end = np.searchsorted(row["index"], vertex_slice.stop, side="left")
+                        #sub_row_start = bisect_left(row["index"],
+                        #                            vertex_slice.start)
+                        #sub_row_end = bisect_left(row["index"],
+                        #                          vertex_slice.stop)
 
                         # Create copy of this slice of row
                         sub_row = np.copy(row[sub_row_start:sub_row_end])
