@@ -45,7 +45,7 @@ class SpikeSourceArray(Region):
 
         # Find the largest number of spikes in any of the neurons in the slice
         slice_spike_times = self.spike_times[vertex_slice.python_slice]
-        max_spike_blocks = max(len(s.value) for s in slice_spike_times)
+        max_spike_blocks = max(s.max() for s in slice_spike_times)
 
         # Total size is a single word to specify time of first spike
         # block and maximum number of spike blocks required
