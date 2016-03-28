@@ -165,6 +165,18 @@ public:
     return true;
   }
 
+  void AddPostSynapticSpike(uint tick, unsigned int neuronID)
+  {
+    // Get neuron's post history
+    auto &postHistory = m_PostEventHistory[neuronID];
+
+    // Update last trace entry based on spike at tick
+    // and add new trace and time to post history
+    PostTrace trace = m_TimingDependence.UpdatePostTrace(
+      tick, postHistory.GetLastTrace(), postHistory.GetLastTime());
+    postHistory.Add(tick, trace);
+  }
+
   unsigned int GetRowWords(unsigned int rowSynapses) const
   {
     // Three header word and a synapse

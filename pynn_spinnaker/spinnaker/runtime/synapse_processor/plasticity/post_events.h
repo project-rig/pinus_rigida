@@ -139,6 +139,17 @@ public:
         m_Traces[NumEntries - 1] = trace;
     }
   }
+
+  Trace GetLastTrace() const
+  {
+    return m_Traces[m_CountMinusOne];
+  }
+
+  uint32_t GetLastTime() const
+  {
+    return m_Times[m_CountMinusOne];
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Members
