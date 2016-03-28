@@ -18,7 +18,6 @@ SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
 logger = logging.getLogger("pynn_spinnaker")
 
 
-
 # ------------------------------------------------------------------------------
 # SynapticMatrix
 # ------------------------------------------------------------------------------

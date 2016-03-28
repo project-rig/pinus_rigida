@@ -8,7 +8,6 @@ from synaptic_matrix import SynapticMatrix
 logger = logging.getLogger("pynn_spinnaker")
 
 
-
 # ------------------------------------------------------------------------------
 # StaticSynapticMatrix
 # ------------------------------------------------------------------------------
