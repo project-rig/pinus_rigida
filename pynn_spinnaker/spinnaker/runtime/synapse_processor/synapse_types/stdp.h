@@ -119,8 +119,8 @@ public:
       {
         const uint32_t delayedPostTick = postWindow.GetNextTime() + delayDendritic;
 
-        //log_debug("\t\tApplying post-synaptic event at delayed time:%u\n",
-        //     delayed_post_time);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying post-synaptic event at delayed tick:%u\n",
+                  delayedPostTick);
 
         // Apply post-synaptic spike to state
         m_TimingDependence.ApplyPostSpike(applyDepression, applyPotentiation,
@@ -136,8 +136,8 @@ public:
       if(!flush)
       {
           const uint32_t delayedPreTick = tick + delayAxonal;
-          //log_debug("\t\tApplying pre-synaptic event at time:%u last post time:%u\n",
-          //          delayed_pre_time, post_window.prev_time);
+          LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying pre-synaptic event at tick:%u, last post tick:%u\n",
+                    delayedPreTick, postWindow.GetPrevTime());
 
           // Apply pre-synaptic spike to state
           m_TimingDependence.ApplyPreSpike(applyDepression, applyPotentiation,
@@ -167,6 +167,9 @@ public:
 
   void AddPostSynapticSpike(uint tick, unsigned int neuronID)
   {
+    LOG_PRINT(LOG_LEVEL_TRACE, "Adding post-synaptic event to trace at tick:%u",
+              tick);
+
     // Get neuron's post history
     auto &postHistory = m_PostEventHistory[neuronID];
 

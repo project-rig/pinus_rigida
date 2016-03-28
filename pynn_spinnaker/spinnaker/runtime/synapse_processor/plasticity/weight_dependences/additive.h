@@ -5,6 +5,7 @@
 
 // Common includes
 #include "../../../common/fixed_point_number.h"
+#include "../../../common/log.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;

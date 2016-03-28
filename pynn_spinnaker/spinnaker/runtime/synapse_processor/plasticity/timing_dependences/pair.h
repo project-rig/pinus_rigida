@@ -6,6 +6,7 @@
 // Common includes
 #include "../../../common/exp_decay_lut.h"
 #include "../../../common/fixed_point_number.h"
+#include "../../../common/log.h"
 
 // Namespaces
 using namespace Common::FixedPointNumber;
@@ -44,7 +45,8 @@ public:
     // Add energy caused by new spike to trace
     newTrace += S2011One;
 
-    //log_debug("\tdelta_time=%d, o1=%d\n", deltaTime, newTrace);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tElapsed ticks:%d, New trace:%d",
+              elapsedTicks, newTrace);
 
     // Return new trace_value
     return (PostTrace)newTrace;
@@ -65,7 +67,8 @@ public:
       newTrace += S2011One;
     }
 
-    //log_debug("\tdelta_time=%d, o1=%d\n", deltaTime, newTrace);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tElapsed ticks:%d, New trace:%d",
+              elapsedTicks, newTrace);
 
     // Return new trace_value
     return (PreTrace)newTrace;
@@ -84,8 +87,8 @@ public:
         S2011 decayedPostTrace = Mul16S2011(
           lastPostTrace, m_TauMinusLUT.Get(elapsedTicksSinceLastPost));
 
-        //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
-        //          time_since_last_post, decayed_o1);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, Decayed post trace=%d",
+                  elapsedTicksSinceLastPost, decayedPostTrace);
 
         // Apply depression
         applyDepression(decayedPostTrace);
@@ -105,8 +108,8 @@ public:
         S2011 decayedPreTrace = Mul16S2011(
           lastPreTrace, m_TauPlusLUT.Get(elapsedTicksSinceLastPre));
 
-        //log_debug("\t\t\ttime_since_last_post_event=%u, decayed_o1=%d\n",
-        //          time_since_last_post, decayed_o1);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last pre:%u, Decayed pre trace=%d",
+                  elapsedTicksSinceLastPre, decayedPreTrace);
 
         // Apply potentiation
         applyPotentiation(decayedPreTrace);
@@ -116,6 +119,7 @@ public:
   bool ReadSDRAMData(uint32_t *&region, uint32_t)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "\tPlasticity::TimingDependences::Pair::ReadSDRAMData");
+
     m_TauPlusLUT.ReadSDRAMData(region);
     m_TauMinusLUT.ReadSDRAMData(region);
     return true;
