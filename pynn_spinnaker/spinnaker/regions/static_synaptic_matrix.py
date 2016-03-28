@@ -24,8 +24,15 @@ class StaticSynapticMatrix(SynapticMatrix):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_row_words(self, num_synapses):
+    def _get_num_row_words(self, num_synapses):
         return self.NumHeaderWords + num_synapses
+
+    def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
+                           sub_row_sections):
+        # Number of synapses in all but 1st delay
+        # slot and header for each extension row to total
+        return (sub_row_sections[-1] - sub_row_sections[0]) +\
+            (self.NumHeaderWords * (num_sub_rows - 1))
 
     def _write_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices,
                                 destination):

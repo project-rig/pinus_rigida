@@ -90,7 +90,7 @@ class SynapticMatrix(Region):
             fp.seek(placement * 4, 0)
 
             # Build matrix large enough for entire ragged matrix
-            num_row_words = self._get_row_words(matrix.max_cols)
+            num_row_words = self._get_num_row_words(matrix.max_cols)
             num_matrix_words = len(matrix.rows) * num_row_words
             matrix_words = np.empty((len(matrix.rows), num_row_words),
                                     dtype=np.uint32)
@@ -116,7 +116,7 @@ class SynapticMatrix(Region):
 
                 # Loop through extension rows
                 for i, ext_row in enumerate(row[1:], start=1):
-                    num_ext_row_words = self._get_row_words(len(ext_row[1]))
+                    num_ext_row_words = self._get_num_row_words(len(ext_row[1]))
                     next_row = None if len(row) == (i + 1) else row[i + 1]
                     self._write_spinnaker_row(
                         ext_row, next_row,
@@ -153,7 +153,7 @@ class SynapticMatrix(Region):
                     sub_rows = [[] for _ in range(len(rows))]
 
                     max_cols = 1
-                    num_extension_words = 0
+                    num_ext_words = 0
                     any_connections = False
                     for i, row in enumerate(rows):
                         # Find start and end of sub-row
@@ -185,23 +185,22 @@ class SynapticMatrix(Region):
                             # Take cumulative sum of the number of synapses
                             # in each delay slot to obtain sections of
                             # sub_row which belong in each delay slot
-                            sub_row_sections = np.cumsum(
-                                np.bincount(sub_row_delay_slot))
+                            sub_row_lengths = np.bincount(sub_row_delay_slot)
+                            sub_row_sections = np.cumsum(sub_row_lengths)
 
                             # Split sub-row into delay rows based
                             # on these sections, filtering out empty
                             # rows if they aren't the first row
-                            sub_rows[i] = [
-                                (e * self.max_dtcm_delay_slots, r)
-                                for e, r in enumerate(
-                                    np.split(sub_row, sub_row_sections))
-                                    if e == 0 or len(r) > 0]
+                            sub_rows[i] = [(e * self.max_dtcm_delay_slots, r)
+                                           for e, r in enumerate(
+                                               np.split(sub_row,
+                                                        sub_row_sections))
+                                               if e == 0 or len(r) > 0]
 
-                            # Add number of synapses in all but 1st delay
-                            # slot and header for each extension row to total
-                            # **THINK** does second half over-estimate as empty delay rows, skipped by above logic are included
-                            num_extension_words += (sub_row_sections[-1] - sub_row_sections[0])
-                            num_extension_words += (3 * (len(sub_row_sections) - 1))
+                            # Calculate number of extension words thos
+                            num_ext_words += self._get_num_ext_words(
+                                len(sub_rows[i]), sub_row_lengths,
+                                sub_row_sections)
 
                             # Update maximum number of columns based
                             # on length of first delay slot
@@ -214,8 +213,8 @@ class SynapticMatrix(Region):
                     if any_connections:
                         # Calculate matrix size in words - size of square
                         # matrix added to number of extension words
-                        size_words = num_extension_words +\
-                            (len(sub_rows) * self._get_row_words(max_cols))
+                        size_words = num_ext_words +\
+                            (len(sub_rows) * self._get_num_row_words(max_cols))
 
                         # Add sub matrix to list
                         sub_matrices.append(
@@ -260,7 +259,7 @@ class SynapticMatrix(Region):
             weight_fixed = float_to_weight(row[1]["weight"])
 
             # Write synapses
-            num_row_words = self._get_row_words(num_synapses)
+            num_row_words = self._get_num_row_words(num_synapses)
             self._write_spinnaker_synapses(dtcm_delay, weight_fixed,
                                            row[1]["index"],
                                            destination[3:num_row_words])

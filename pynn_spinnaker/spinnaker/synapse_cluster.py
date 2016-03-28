@@ -77,14 +77,16 @@ class SynapseCluster(object):
         self.regions[Regions.system] = regions.System(timer_period_us,
                                                       sim_ticks)
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
-        self.regions[Regions.synaptic_matrix] = regions.StaticSynapticMatrix(
-            synapse_model)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
+
+        # Create correct type of synaptic matrix region
+        self.regions[Regions.synaptic_matrix] =\
+            synapse_model.synaptic_matrix_region_class(synapse_model)
 
         # **THINK** is there a nicer mechanism for this?
         # Is there any requirement for OTHER plasticity region classes

@@ -70,6 +70,8 @@ class StaticSynapse(synapses.StaticSynapse, ComparisonMixin):
     # synapse_processor of this type process synaptic events (hZ)
     max_synaptic_event_rate = 5E6
 
+    synaptic_matrix_region_class = regions.StaticSynapticMatrix
+
     # How many timesteps of delay can DTCM ring-buffer handle
     # **NOTE** only 7 timesteps worth of delay can be handled by
     # 8 element delay buffer - The last element is purely for output
@@ -105,6 +107,7 @@ class STDPMechanism(synapses.STDPMechanism, ComparisonMixin):
     # synapse_processor of this type process synaptic events (hZ)
     max_synaptic_event_rate = 2E6
 
+    synaptic_matrix_region_class = regions.PlasticSynapticMatrix
     plasticity_region_class = regions.Plasticity
 
     # How many timesteps of delay can DTCM ring-buffer handle

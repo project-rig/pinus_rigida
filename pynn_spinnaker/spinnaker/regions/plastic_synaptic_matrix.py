@@ -26,7 +26,7 @@ class PlasticSynapticMatrix(SynapticMatrix):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_row_words(self, num_synapses):
+    def _get_num_row_words(self, num_synapses):
         # Both control and plastic words are stored as seperate
         # arrays of 16-bit elements so numbers of words
         # should be rounded up to keep them word aligned
@@ -36,6 +36,17 @@ class PlasticSynapticMatrix(SynapticMatrix):
         # spike, pre-synaptic trace and arrays of control words and plastic weights
         return self.NumHeaderWords + 1 + self.pre_trace_words +\
             (2 * num_array_words)
+
+    def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
+                           sub_row_sections):
+        # Round up each extension sub-row's length
+        # to keep word aligned and take sum
+        num_array_words = np.sum(np.ceil(sub_row_lengths[1:] / 2.0), dtype=int)
+
+        # Number of synapses in all but 1st delay
+        # slot and header for each extension row to total
+        return (2 * num_array_words) +\
+            ((self.NumHeaderWords + 1 + self.pre_trace_words) * (num_sub_rows - 1))
 
     def _write_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices,
                                 destination):
@@ -51,12 +62,14 @@ class PlasticSynapticMatrix(SynapticMatrix):
 
         # Create 16-bit view of section of plastic weight
         # section of destination and copy them in
-        weight_view = destination[num_pre_state_words: control_start_idx].view(dtype=np.uint16)
-        weight_view[:len(weight_fixed)] = weight_fixed
+        weight_view = destination[num_pre_state_words: control_start_idx]
+        weight_view = weight_view.view(dtype=np.uint16)[:len(weight_fixed)]
+        weight_view[:] = weight_fixed
 
         # Create 16-bit view of control word
         # section of destination and copy them in
-        control_view = destination[control_start_idx:].view(dtype=np.uint16)
-        control_view[:len(indices)] = (indices
-                                       | (dtcm_delay << self.IndexBits)).asdtype(np.uint16)
+        control_view = destination[control_start_idx:]
+        control_view = control_view.view(dtype=np.uint16)[:len(indices)]
+        control_view[:] = (indices
+                           | (dtcm_delay << self.IndexBits)).astype(np.uint16)
 
