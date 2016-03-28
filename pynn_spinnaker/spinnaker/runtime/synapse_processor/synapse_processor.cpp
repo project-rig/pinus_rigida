@@ -7,6 +7,9 @@
 #include "../common/spinnaker.h"
 #include "../common/statistics.h"
 
+// Synapse processor includes
+#include "spike_back_propagation.h"
+
 // Configuration include
 #include "config.h"
 
@@ -42,6 +45,7 @@ KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
 Statistics<StatWordMax> g_Statistics;
 SynapseType g_Synapse;
+SpikeBackPropagation g_SpikeBackPropagation;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -187,6 +191,13 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  if(!g_SpikeBackPropagation.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionSpikeBackPropagation),
+    flags))
+  {
+    return false;
+  }
+
   // Read profiler region
   if(!Profiler::ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionProfiler),
@@ -213,6 +224,14 @@ void SetupNextDMARowRead()
   uint32_t key;
   if(g_SpikeInputBuffer.GetNextSpike(key))
   {
+    // If this spike should be treated as back-propagation
+    // input for the synapses, allow synapse model to process it
+    unsigned int localNeuronIndex;
+    if(g_SpikeBackPropagation.GetLocalNeuronIndex(key, localNeuronIndex))
+    {
+      g_Synapse.AddPostSynapticSpike(g_Tick, localNeuronIndex);
+    }
+
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
     
     // Create lambda function to convert number of synapses to a row length in words

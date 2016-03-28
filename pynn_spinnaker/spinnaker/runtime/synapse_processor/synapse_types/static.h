@@ -55,13 +55,17 @@ public:
     return true;
   }
   
+  void AddPostSynapticSpike(uint, unsigned int)
+  {
+  }
+
   unsigned int GetRowWords(unsigned int rowSynapses) const
   {
     // Three header word and a synapse
     return 3 + ((rowSynapses * sizeof(T)) / 4);
   }
 
-  bool ReadSDRAMData(uint32_t *region, uint32_t)
+  bool ReadSDRAMData(uint32_t*, uint32_t)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::Static::ReadSDRAMData");
     return true;

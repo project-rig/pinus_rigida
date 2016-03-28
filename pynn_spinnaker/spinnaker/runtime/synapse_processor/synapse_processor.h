@@ -14,6 +14,7 @@ enum Region
   RegionPlasticity,
   RegionOutputBuffer,
   RegionDelayBuffer,
+  RegionSpikeBackPropagation,
   RegionProfiler,
   RegionStatistics,
 };
