@@ -33,7 +33,21 @@ enum DMATag
   DMATagDelayBufferRead,
 };
 
-typedef uint32_t DMABuffer[SynapseType::MaxRowWords];
+//----------------------------------------------------------------------------
+// DMABuffer
+//----------------------------------------------------------------------------
+struct DMABuffer
+{
+  // Address of row in SDRAM
+  uint32_t *m_SDRAMAddress;
+
+  // Is this spike a flush message
+  // (used to force an plasticity update)
+  bool m_Flush;
+
+  // Data read from SDRAM
+  uint32_t m_Data[SynapseType::MaxRowWords];
+};
 
 //----------------------------------------------------------------------------
 // Module level variables
@@ -51,7 +65,7 @@ uint32_t g_AppWords[AppWordMax];
 
 uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
-const uint32_t *g_SynapticMatrixBaseAddress = NULL;
+uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
 uint g_CurrentDelayRowIndex = 0;
 bool g_DelayRowBufferFetched = false;
@@ -243,17 +257,21 @@ void SetupNextDMARowRead()
     
     // Decode key to get address and length of destination synaptic row
     unsigned int rowWords;
-    const uint32_t *rowAddress;
+    uint32_t *rowAddress;
     if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress, getRowWordsLambda,
       rowWords, rowAddress))
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\tRow words:%u, Row address:%08x",
                 rowWords, rowAddress);
       
+      // Store SDRAM address of row in buffer
+      // so it can be written back if required
+      DMACurrentRowBuffer().m_SDRAMAddress = rowAddress;
+      DMACurrentRowBuffer().m_Flush = false;
+
       // Start a DMA transfer to fetch this synaptic row into current buffer
       g_Statistics[StatRowRequested]++;
-      spin1_dma_transfer(DMATagRowRead,
-                         const_cast<uint32_t*>(rowAddress), DMACurrentRowBuffer(),
+      spin1_dma_transfer(DMATagRowRead, rowAddress, DMACurrentRowBuffer().m_Data,
                          DMA_READ, rowWords * sizeof(uint32_t));
 
       // Flip DMA buffers
@@ -275,15 +293,19 @@ void SetupNextDMARowRead()
 
     // Convert number of synapses to words and get address from synaptic matrix base
     unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
-    const uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
+    uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
 
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row index:%u, synapse:%u, words:%u, address:%08x",
               g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
 
+    // Store SDRAM address of row in buffer
+    // so it can be written back if required
+    DMACurrentRowBuffer().m_SDRAMAddress = delayRowAddress;
+    DMACurrentRowBuffer().m_Flush = false;
+
     // Start a DMA transfer to fetch this synaptic row into current buffer
     g_Statistics[StatDelayRowRequested]++;
-    spin1_dma_transfer(DMATagRowRead,
-                       const_cast<uint32_t*>(delayRowAddress), DMACurrentRowBuffer(),
+    spin1_dma_transfer(DMATagRowRead, delayRowAddress, DMACurrentRowBuffer().m_Data,
                        DMA_READ, delayRowWords * sizeof(uint32_t));
 
     // Flip DMA buffers
@@ -341,12 +363,21 @@ void DMATransferDone(uint, uint tag)
           tick, rowOffsetLength.GetNumSynapses(), rowOffsetLength.GetWordOffset());
         g_DelayBuffer.AddRow(tick, rowOffsetLength);
       };
+
+    // Create lambda function to write back row
+    auto writeBackRowLambda =
+      [](uint32_t *sdramAddress, uint32_t *localAddress, unsigned int numWords)
+      {
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tWriting back %u words to SDRAM address:%08x",
+                  numWords, sdramAddress);
+        spin1_dma_transfer(DMATagRowWrite, sdramAddress, localAddress,
+                           DMA_WRITE, numWords * sizeof(uint32_t));
+      };
     
     // Process the next row in the DMA buffer, using this function to apply
-    bool flush = false;
     Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessRow);
-    g_Synapse.ProcessRow(g_Tick, DMANextRowBuffer(), flush,
-                         addWeightLambda, addDelayRowLambda);
+    g_Synapse.ProcessRow(g_Tick, DMANextRowBuffer().m_Data, DMANextRowBuffer().m_SDRAMAddress, DMANextRowBuffer().m_Flush,
+                         addWeightLambda, addDelayRowLambda, writeBackRowLambda);
     Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
 
     // Setup next row read

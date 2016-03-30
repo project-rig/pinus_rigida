@@ -26,9 +26,9 @@ public:
   //-----------------------------------------------------------------------------
   // Public methods
   //-----------------------------------------------------------------------------
-  template<typename F, typename E>
-  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], bool,
-                         F applyInputFunction, E addDelayRowFunction)
+  template<typename F, typename E, typename R>
+  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], uint32_t *, bool,
+                  F applyInputFunction, E addDelayRowFunction, R)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing static row with %u synapses",
               dmaBuffer[0]);

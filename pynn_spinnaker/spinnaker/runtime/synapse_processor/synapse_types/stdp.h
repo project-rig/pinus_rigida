@@ -47,9 +47,9 @@ public:
   //-----------------------------------------------------------------------------
   // Public methods
   //-----------------------------------------------------------------------------
-  template<typename F, typename E>
-  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], bool flush,
-                  F applyInputFunction, E addDelayRowFunction)
+  template<typename F, typename E, typename R>
+  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], uint32_t *sdramRowAddress, bool flush,
+                  F applyInputFunction, E addDelayRowFunction, R writeBackRowFunction)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing STDP row with %u synapses",
               dmaBuffer[0]);
@@ -67,6 +67,8 @@ public:
     dmaBuffer[3] = tick;
 
     // Calculate new pre-trace
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tUpdating pre-synaptic trace with spike at tick:%u (flush:%u)",
+              tick, flush);
     const PreTrace lastPreTrace = *GetPreTrace(dmaBuffer);
     const PreTrace newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
                                                                    lastPreTick, flush);
@@ -101,6 +103,10 @@ public:
       auto postWindow = m_PostEventHistory[postIndex].GetWindow(windowBeginTick,
                                                                 windowEndTick);
 
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tPerforming deferred synapse update for post neuron:%u", postIndex);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tWindow begin tick:%u, window end tick:%u: Previous time:%u, Num events:%u",
+          windowBeginTick, windowEndTick, postWindow.GetPrevTime(), postWindow.GetNumEvents());
+
       // Create lambda functions to apply depression
       // and potentiation to the update state
       auto applyDepression =
@@ -119,7 +125,7 @@ public:
       {
         const uint32_t delayedPostTick = postWindow.GetNextTime() + delayDendritic;
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying post-synaptic event at delayed tick:%u\n",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tApplying post-synaptic event at delayed tick:%u",
                   delayedPostTick);
 
         // Apply post-synaptic spike to state
@@ -136,7 +142,7 @@ public:
       if(!flush)
       {
           const uint32_t delayedPreTick = tick + delayAxonal;
-          LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying pre-synaptic event at tick:%u, last post tick:%u\n",
+          LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying pre-synaptic event at tick:%u, last post tick:%u",
                     delayedPreTick, postWindow.GetPrevTime());
 
           // Apply pre-synaptic spike to state
@@ -162,6 +168,9 @@ public:
       *plasticWords++ = finalState.GetPlasticSynapse();
     }
 
+    // Write back row and all plastic data to SDRAM
+    writeBackRowFunction(&sdramRowAddress[3], &dmaBuffer[3],
+      1 + PreTraceWords + GetNumPlasticWords(dmaBuffer[0]));
     return true;
   }
 
