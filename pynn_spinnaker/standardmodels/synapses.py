@@ -34,6 +34,10 @@ class StaticSynapse(synapses.StaticSynapse):
     # 8 element delay buffer - The last element is purely for output
     max_dtcm_delay_slots = 7
 
+    # Static synapses don't require post-synaptic
+    # spikes back-propagated to them
+    requires_back_propagation = False
+
     def _get_minimum_delay(self):
         d = state.min_delay
         if d == "auto":
@@ -71,6 +75,10 @@ class STDPMechanism(synapses.STDPMechanism):
     # **NOTE** only 7 timesteps worth of delay can be handled by
     # 8 element delay buffer - The last element is purely for output
     max_dtcm_delay_slots = 7
+
+    # STDP synapses require post-synaptic
+    # spikes back-propagated to them
+    requires_back_propagation = True
 
     def _get_minimum_delay(self):
         d = state.min_delay

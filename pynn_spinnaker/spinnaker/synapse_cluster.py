@@ -43,6 +43,7 @@ class Vertex(InputVertex):
         super(Vertex, self).__init__(post_neuron_slice, receptor_index)
 
         self.incoming_connections = defaultdict(list)
+        self.back_prop_verts = []
 
     def add_connection(self, pre_pop, pre_neuron_vertex):
         self.incoming_connections[pre_pop].append(pre_neuron_vertex)

@@ -445,10 +445,8 @@ class Population(common.Population):
                 self._synapse_clusters[s_type] = c
 
     def _build_nets(self, nets, net_keys):
-        # If population has no outgoing projections
-        # or neural cluster, skip
-        if (len(self.outgoing_projections) == 0 or
-            self._neural_cluster is None):
+        # If population has no  neural cluster, skip
+        if self._neural_cluster is None:
             return
 
         logger.debug("\tPopulation label:%s", self.label)
@@ -462,25 +460,46 @@ class Population(common.Population):
         logger.debug("\t\t%u post-synaptic vertices",
                         len(post_s_verts))
 
+        # Get synapse vertices associated with this
+        # population that require back propogation
+        back_prop_s_verts = list(itertools.chain.from_iterable(
+                [c.verts for t, c in iteritems(self._synapse_clusters)
+                 if t.model.requires_back_propagation]))
+
+        logger.debug("\t\t%u back-propagation vertices",
+                        len(back_prop_s_verts))
+
         # Loop through each neuron vertex that makes up population
         for n_vert in self._neural_cluster.verts:
-            # Get subset of the synapse vertices that need
-            # to be connected to this neuron vertex
-            filtered_post_s_verts = [
-                s for s in post_s_verts
-                if n_vert in s.incoming_connections[self]]
+            # Get subset of the post-synaptic synapse vertices
+            # that need to be connected to this neuron vertex
+            post_s_verts = [s for s in post_s_verts
+                            if n_vert in s.incoming_connections[self]]
 
-            # Create a key for this source neuron vertex
-            net_key = (n_vert.key, n_vert.mask)
+            # Loop through back propagation synapse vertices
+            for s_vert in back_prop_s_verts:
+                # If the post-synaptic slice for this synapse
+                # vertex overlaps the neuron vertex, add neuron vertex to
+                # synapse vertices list of vertices which provide
+                # back-propagation input and also add synapse vertex to list of
+                # post-synaptic vertices for this neuron vertex
+                if s_vert.post_neuron_slice.overlaps(n_vert.neuron_slice):
+                    s_vert.back_prop_verts.append(n_vert)
+                    post_s_verts.append(s_vert)
 
-            # Create a net connecting neuron vertex to synapse vertices
-            mean_firing_rate = self.spinnaker_config.mean_firing_rate
-            net = Net(n_vert, filtered_post_s_verts,
-                        mean_firing_rate * len(n_vert.neuron_slice))
+            # If there are any post-synaptic vertices
+            if len(post_s_verts) > 0:
+                # Create a key for this source neuron vertex
+                net_key = (n_vert.key, n_vert.mask)
 
-            # Add net to list and associate with key
-            nets.append(net)
-            net_keys[net] = net_key
+                # Create a net connecting neuron vertex to synapse vertices
+                mean_firing_rate = self.spinnaker_config.mean_firing_rate
+                net = Net(n_vert, post_s_verts,
+                          mean_firing_rate * len(n_vert.neuron_slice))
+
+                # Add net to list and associate with key
+                nets.append(net)
+                net_keys[net] = net_key
 
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of
