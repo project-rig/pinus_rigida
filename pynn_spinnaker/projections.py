@@ -16,7 +16,7 @@ from spinnaker.current_input_cluster import CurrentInputCluster
 from .standardmodels.synapses import StaticSynapse
 
 # Import functions
-from spinnaker.utils import get_model_hash
+from spinnaker.utils import get_model_comparable
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -25,10 +25,23 @@ logger = logging.getLogger("pynn_spinnaker")
 # --------------------------------------------------------------------------
 class SynapseClusterType(namedtuple("SynapseClusterType",
                                     ["model", "receptor"])):
-    # Override hash magic method so synapse cluster
-    # types are compared for compatibility
+    # Override hash and equality magic methods so synapse
+    # cluster types are compared based on compatibility
     def __hash__(self):
-        return hash((self.receptor,) + get_model_hash(self.model))
+        return hash(self._comparable)
+
+    def __eq__(self, other):
+        return self._comparable == other._comparable
+
+    def __ne__(self, other):
+        return not(self == other)
+
+    @property
+    # Concatenate together the receptor type and
+    # the comparable tuple of the model
+    def _comparable(self):
+        return (self.receptor,) + get_model_comparable(self.model)
+
 
 # --------------------------------------------------------------------------
 # Projection

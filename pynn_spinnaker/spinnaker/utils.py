@@ -206,13 +206,13 @@ def get_model_executable_filename(prefix, model, profiled):
     return path.join(model_directory, "binaries", filename + ".aplx")
 
 # Recursively build a tuple containing basic python types allowing an
-# (annotated) PyNN StandardModelType to allow hashing for compatibility)
-def get_model_hash(value):
+# (annotated) PyNN StandardModelType to compared/hashed for compatibility)
+def get_model_comparable(value):
     # **YUCK** if this isn't a class object - model classes will have
     # have the same attributes, they'll just be property object
     if not inspect.isclass(value):
         # If model type has a list of param names to use for hash
-        if hasattr(value, "hash_param_names"):
+        if hasattr(value, "comparable_param_names"):
             # Start tuple with class type - various STDP components
             # are likely to have similarly named parameters
             # with simular values so this is important 1st check
@@ -220,7 +220,7 @@ def get_model_hash(value):
 
             # Loop through names of parameters which
             # much match for objects to be equal
-            for p in value.hash_param_names:
+            for p in value.comparable_param_names:
                 # Extract named parameter lazy array from parameter
                 # space and check that it's homogeneous
                 param_array = value.parameter_space[p]
@@ -234,11 +234,11 @@ def get_model_hash(value):
                 # **NOTE** for homogeneous arrays this always returns a scalar
                 comp += (param_array.evaluate(simplify=True),)
             return comp
-        # Otherwise, if model type has a collection of hashable properties,
+        # Otherwise, if model type has a collection of comparable properties,
         # Loop through the properties and recursively call this function
-        elif hasattr(value, "hash_properties"):
+        elif hasattr(value, "comparable_properties"):
             return tuple(itertools.chain.from_iterable(
-                get_model_hash(p) for p in value.hash_properties))
+                get_model_comparable(p) for p in value.comparable_properties))
     # Otherwise, return value itself
     return (value,)
 

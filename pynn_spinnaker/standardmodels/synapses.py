@@ -42,7 +42,7 @@ class StaticSynapse(synapses.StaticSynapse):
 
     # Static synapses are always compatible with each other
     @property
-    def hash_properties(self):
+    def comparable_properties(self):
         return (self.__class__,)
 
 # ------------------------------------------------------------------------------
@@ -86,7 +86,7 @@ class STDPMechanism(synapses.STDPMechanism):
     # STDP mechanisms should be compared based on their class, timing
     # dependence (parameters) and weight dependence (parameters)
     @property
-    def hash_properties(self):
+    def comparable_properties(self):
         return (self.__class__, self.timing_dependence,
                 self.weight_dependence)
 
@@ -121,7 +121,7 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
         ("a_minus", "i4", lazy_param_map.s2211),
     ]
 
-    hash_param_names =  ("w_max", "w_min")
+    comparable_param_names =  ("w_max", "w_min")
 
 # ------------------------------------------------------------------------------
 # SpikePairRule
@@ -143,7 +143,7 @@ class SpikePairRule(synapses.SpikePairRule):
                                        num_entries=256, time_shift=0)),
     ]
 
-    hash_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
+    comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
 
     # How many byte does this
     pre_trace_bytes = 2
