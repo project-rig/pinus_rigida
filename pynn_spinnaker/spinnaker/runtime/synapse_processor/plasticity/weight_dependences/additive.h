@@ -1,6 +1,7 @@
 #pragma once
 
 // Standard includes
+#include <algorithm>
 #include <cstdint>
 
 // Common includes
@@ -58,7 +59,15 @@ public:
       weightChange = __smlabb(m_Depression, weightDependence.m_MinusA2Minus, weightChange);
       weightChange >>= 11;
 
-      return (Weight)(m_InitialWeight + weightChange);
+      // Apply weight change and clamp
+      int32_t newWeight = m_InitialWeight + weightChange;
+      newWeight = std::min(weightDependence.m_MaxWeight,
+                           std::max(newWeight, weightDependence.m_MinWeight));
+
+      LOG_PRINT(LOG_LEVEL_INFO, "\tInitial weight:%d, Potentiation:%d, Depression:%d, Weight change:%d, New weight:%d",
+                m_InitialWeight, m_Potentiation, m_Depression, weightChange, newWeight);
+
+      return (Weight)newWeight;
     }
 
   private:
