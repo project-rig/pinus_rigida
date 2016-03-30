@@ -6,15 +6,29 @@ from pyNN import common
 from pyNN.space import Space
 from pyNN.standardmodels import StandardCellType
 from . import simulator
-
 import logging
 import numpy as np
 
+# Import classes
+from collections import namedtuple
 from rig.utils.contexts import ContextMixin
 from spinnaker.current_input_cluster import CurrentInputCluster
 from .standardmodels.synapses import StaticSynapse
 
+# Import functions
+from spinnaker.utils import get_model_hash
+
 logger = logging.getLogger("pynn_spinnaker")
+
+# --------------------------------------------------------------------------
+# SynapseClusterType
+# --------------------------------------------------------------------------
+class SynapseClusterType(namedtuple("SynapseClusterType",
+                                    ["model", "receptor"])):
+    # Override hash magic method so synapse cluster
+    # types are compared for compatibility
+    def __hash__(self):
+        return hash((self.receptor,) + get_model_hash(self.model))
 
 # --------------------------------------------------------------------------
 # Projection
@@ -162,7 +176,7 @@ class Projection(common.Projection, ContextMixin):
     # --------------------------------------------------------------------------
     @property
     def _synapse_cluster_type(self):
-        return (self.synapse_type, self.receptor_type)
+        return SynapseClusterType(self.synapse_type, self.receptor_type)
 
     @property
     def _directly_connectable(self):

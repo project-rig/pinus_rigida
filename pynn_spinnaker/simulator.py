@@ -250,7 +250,8 @@ class State(common.control.BaseState):
             # Loop through synapse types and associated cluster
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
                 logger.info("\tPopulation label:%s, synapse type:%s, receptor:%s",
-                            pop.label, s_type[0].__class__.__name__, s_type[1])
+                            pop.label, s_type.model.__class__.__name__,
+                            s_type.receptor)
 
                 # Expand any incoming connections
                 matrices, weight_fixed_point =\
@@ -431,7 +432,7 @@ class State(common.control.BaseState):
         for pop in self.populations:
             for s_type, stats in iteritems(pop.get_synapse_statistics()):
                 logger.info("\t\tSynapse type:%s receptor:%s",
-                            s_type[0].__class__.__name__, s_type[1])
+                            s_type.model.__class__.__name__, s_type.receptor)
                 logger.info("\t\t\tRows requested per vertex per second:%f",
                             np.mean(stats["row_requested"]) / duration_s)
                 logger.info("\t\t\tDelay rows requested per vertex per second:%f",

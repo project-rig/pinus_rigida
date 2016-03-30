@@ -10,52 +10,9 @@ from functools import partial
 logger = logging.getLogger("PyNN")
 
 # ------------------------------------------------------------------------------
-# ComparisonMixin
-# ------------------------------------------------------------------------------
-# Mixin to provide comparison based on a tuple of object properties
-class ComparisonMixin(object):
-    def __eq__(self, other):
-        return self.compatible_comparison == other.compatible_comparison
-
-    def __ne__(self, other):
-        return not(self == other)
-
-    def __hash__(self):
-        return hash(self.compatible_comparison)
-
-# ------------------------------------------------------------------------------
-# ParamComparisonMixin
-# ------------------------------------------------------------------------------
-# Mixin to provide comparison based on a tuple of object properties
-class ParamComparisonMixin(ComparisonMixin):
-    @property
-    def compatible_comparison(self):
-        # Start tuple with class type - various STDP components
-        # are likely to have similarly named parameters
-        # with simular values so this is important 1st check
-        comp = (self.__class__,)
-
-        # Loop through names of parameters which
-        # much match for objects to be equal
-        for p in self.compatibility_param_names:
-            # Extract named parameter lazy array from parameter
-            # space and check that it's homogeneous
-            param_array = self.parameter_space[p]
-            assert param_array.is_homogeneous
-
-            # Set it's shape to 1
-            # **NOTE** for homogeneous arrays this is a)free and b)works
-            param_array.shape = 1
-
-            # Evaluate and simplify
-            # **NOTE** for homogeneous arrays this always returns a scalar
-            comp += (param_array.evaluate(simplify=True),)
-        return comp
-
-# ------------------------------------------------------------------------------
 # StaticSynapse
 # ------------------------------------------------------------------------------
-class StaticSynapse(synapses.StaticSynapse, ComparisonMixin):
+class StaticSynapse(synapses.StaticSynapse):
     __doc__ = synapses.StaticSynapse.__doc__
     translations = build_translations(
         ("weight", "weight"),
@@ -85,13 +42,13 @@ class StaticSynapse(synapses.StaticSynapse, ComparisonMixin):
 
     # Static synapses are always compatible with each other
     @property
-    def compatible_comparison(self):
+    def hash_properties(self):
         return (self.__class__,)
 
 # ------------------------------------------------------------------------------
 # STDPMechanism
 # ------------------------------------------------------------------------------
-class STDPMechanism(synapses.STDPMechanism, ComparisonMixin):
+class STDPMechanism(synapses.STDPMechanism):
     __doc__ = synapses.STDPMechanism.__doc__
 
     base_translations = build_translations(
@@ -129,7 +86,7 @@ class STDPMechanism(synapses.STDPMechanism, ComparisonMixin):
     # STDP mechanisms should be compared based on their class, timing
     # dependence (parameters) and weight dependence (parameters)
     @property
-    def compatible_comparison(self):
+    def hash_properties(self):
         return (self.__class__, self.timing_dependence,
                 self.weight_dependence)
 
@@ -149,8 +106,7 @@ class STDPMechanism(synapses.STDPMechanism, ComparisonMixin):
 # ------------------------------------------------------------------------------
 # AdditiveWeightDependence
 # ------------------------------------------------------------------------------
-class AdditiveWeightDependence(synapses.AdditiveWeightDependence,
-                               ParamComparisonMixin):
+class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     __doc__ = synapses.AdditiveWeightDependence.__doc__
 
     translations = build_translations(
@@ -165,12 +121,12 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence,
         ("a_minus", "i4", lazy_param_map.s2211),
     ]
 
-    compatibility_param_names =  ("w_max", "w_min")
+    hash_param_names =  ("w_max", "w_min")
 
 # ------------------------------------------------------------------------------
 # SpikePairRule
 # ------------------------------------------------------------------------------
-class SpikePairRule(synapses.SpikePairRule, ParamComparisonMixin):
+class SpikePairRule(synapses.SpikePairRule):
     __doc__ = synapses.SpikePairRule.__doc__
 
     translations = build_translations(
@@ -187,7 +143,7 @@ class SpikePairRule(synapses.SpikePairRule, ParamComparisonMixin):
                                        num_entries=256, time_shift=0)),
     ]
 
-    compatibility_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
+    hash_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
 
     # How many byte does this
     pre_trace_bytes = 2
