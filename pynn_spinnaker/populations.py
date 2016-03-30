@@ -3,6 +3,7 @@ import itertools
 import logging
 import math
 import numpy as np
+from rig import machine
 import sys
 from pyNN import common
 
@@ -559,6 +560,121 @@ class Population(common.Population):
         # Add synapse to each row
         for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
             matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
+
+    def _load_synapse_verts(self, placements, allocations, machine_controller,
+                            hardware_timestep_us, duration_timesteps):
+        # Loop through synapse types and associated cluster
+        for s_type, s_cluster in iteritems(self._synapse_clusters):
+            logger.info("\tPopulation label:%s, synapse type:%s, receptor:%s",
+                        self.label, s_type.model.__class__.__name__,
+                        s_type.receptor)
+
+            # Expand any incoming connections
+            matrices, weight_fixed_point =\
+                self._build_incoming_connection(s_type)
+
+            # Loop through synapse verts
+            for v in s_cluster.verts:
+                # Cache weight fixed-point for
+                # this synapse point in vertex
+                v.weight_fixed_point = weight_fixed_point
+
+                # Get placement and allocation
+                vertex_placement = placements[v]
+                vertex_allocation = allocations[v]
+
+                # Get core this vertex should be run on
+                core = vertex_allocation[machine.Cores]
+                assert (core.stop - core.start) == 1
+
+                logger.debug("\t\tVertex %s (%u, %u, %u)",
+                            v, vertex_placement[0], vertex_placement[1],
+                            core.start)
+
+                # Partition the matrices
+                sub_matrices, matrix_placements =\
+                    s_cluster.partition_matrices(matrices,
+                                                 v.post_neuron_slice,
+                                                 v.incoming_connections)
+
+                # Select placed chip
+                with machine_controller(x=vertex_placement[0],
+                                        y=vertex_placement[1]):
+                    # Allocate two output buffers
+                    # for this synapse population
+                    out_buffer_bytes = len(v.post_neuron_slice) * 4
+                    v.out_buffers = [
+                        machine_controller.sdram_alloc(out_buffer_bytes,
+                                                       clear=True)
+                        for _ in range(2)]
+
+                    # Calculate required memory size
+                    size, allocs = s_cluster.get_size(
+                        v.post_neuron_slice, sub_matrices,
+                        matrix_placements, weight_fixed_point,
+                        v.out_buffers)
+
+                    # Allocate a suitable memory block
+                    # for this vertex and get memory io
+                    # **NOTE** this is tagged by core
+                    memory_io = machine_controller.sdram_alloc_as_filelike(
+                        size, tag=core.start)
+                    logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                                    core.start, memory_io.address)
+
+                    # Write the vertex to file
+                    v.region_memory = s_cluster.write_to_file(
+                        v.post_neuron_slice, sub_matrices,
+                        matrix_placements, weight_fixed_point,
+                        v.out_buffers, memory_io)
+
+    def _load_neuron_verts(self, placements, allocations, machine_controller,
+                           hardware_timestep_us, duration_timesteps):
+        # If population has no neuron cluster, skip
+        if self._neural_cluster is None:
+            return
+
+        logger.info("\tPopulation label:%s", self.label)
+
+        # Loop through vertices
+        for v in self._neural_cluster.verts:
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
+
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
+
+            logger.debug("\t\tVertex %s (%u, %u, %u): Key:%08x",
+                            v, vertex_placement[0], vertex_placement[1],
+                            core.start, v.key)
+
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Get the input buffers from each synapse vertex
+                in_buffers = [
+                    (s.get_in_buffer(v.neuron_slice), s.receptor_index,
+                        s.weight_fixed_point)
+                    for s in v.input_verts]
+
+                # Calculate required memory size
+                size, allocs = self._neural_cluster.get_size(v.key,
+                                                            v.neuron_slice,
+                                                            in_buffers)
+
+                # Allocate a suitable memory block
+                # for this vertex and get memory io
+                # **NOTE** this is tagged by core
+                memory_io = machine_controller.sdram_alloc_as_filelike(
+                    size, tag=core.start)
+                logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                                core.start, memory_io.address)
+
+                # Write the vertex to file
+                v.region_memory = self._neural_cluster.write_to_file(
+                    v.key, v.neuron_slice, in_buffers, memory_io)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
