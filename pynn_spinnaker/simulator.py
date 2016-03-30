@@ -13,7 +13,6 @@ from rig.bitfield import BitField
 from rig.machine_control.consts import AppState, signal_types, AppSignal, MessageType
 from rig.machine_control.machine_controller import MachineController
 from rig.place_and_route.constraints import SameChipConstraint
-from rig.netlist import Net
 
 # Import functions
 from rig.place_and_route import place_and_route_wrapper
@@ -157,52 +156,6 @@ class State(common.control.BaseState):
             proj_current_input_clusters[proj] = c
 
         return proj_current_input_clusters, post_pop_current_input_clusters
-
-    def _build_nets(self):
-        logger.info("Building nets")
-
-        # Loop through all neuron clusters
-        nets = []
-        net_keys = {}
-        for pop in self.populations:
-            # If population has no outgoing projections
-            # or no neural cluster, skip
-            if (len(pop.outgoing_projections) == 0 or
-                pop._neural_cluster is None):
-                continue
-
-            logger.debug("\tPopulation label:%s", pop.label)
-
-            # Get synapse vertices associated
-            # with post-synaptic population
-            post_s_verts = list(itertools.chain.from_iterable(
-                [o.post._synapse_clusters[o._synapse_cluster_type].verts
-                for o in pop.outgoing_projections]))
-
-            logger.debug("\t\t%u post-synaptic vertices",
-                            len(post_s_verts))
-
-            # Loop through each neuron vertex that makes up population
-            for n_vert in pop._neural_cluster.verts:
-                # Get subset of the synapse vertices that need
-                # to be connected to this neuron vertex
-                filtered_post_s_verts = [
-                    s for s in post_s_verts
-                    if n_vert in s.incoming_connections[pop]]
-
-                # Create a key for this source neuron vertex
-                net_key = (n_vert.key, n_vert.mask)
-
-                # Create a net connecting neuron vertex to synapse vertices
-                mean_firing_rate = pop.spinnaker_config.mean_firing_rate
-                net = Net(n_vert, filtered_post_s_verts,
-                            mean_firing_rate * len(n_vert.neuron_slice))
-
-                # Add net to list and associate with key
-                nets.append(net)
-                net_keys[net] = net_key
-
-        return nets, net_keys
 
     def _constrain_clusters(self):
         logger.info("Constraining vertex clusters to same chip")
@@ -502,7 +455,13 @@ class State(common.control.BaseState):
         keyspace.assign_fields()
 
         # Build nets
-        nets, net_keys = self._build_nets()
+        logger.info("Building nets")
+
+        # Loop through all populations and build nets
+        nets = []
+        net_keys = {}
+        for pop in self.populations:
+            pop._build_nets(nets, net_keys)
 
         logger.info("Connecting to SpiNNaker")
 
