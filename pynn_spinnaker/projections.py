@@ -8,6 +8,7 @@ from pyNN.standardmodels import StandardCellType
 from . import simulator
 import logging
 import numpy as np
+from rig import machine
 
 # Import classes
 from collections import namedtuple
@@ -108,20 +109,26 @@ class Projection(common.Projection, ContextMixin):
 
     def _create_current_input_cluster(self, timer_period_us, simulation_ticks,
                                       vertex_applications, vertex_resources):
-        # Assert that this projection can be directly connected
-        assert self._directly_connectable
+        # If this projection is directory connectable
+        if self._directly_connectable:
+            logger.debug("\t\tProjection:%s", self.label)
 
-        # Find index of receptor type
-        receptor_index =\
-            self.post.celltype.receptor_types.index(self.receptor_type)
+            # Find index of receptor type
+            receptor_index =\
+                self.post.celltype.receptor_types.index(self.receptor_type)
 
-        # Create current input cluster
-        return CurrentInputCluster(
-            self.pre.celltype, self.pre._parameters, self.pre.initial_values,
-            self._simulator.state.dt, timer_period_us, simulation_ticks,
-            self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
-            receptor_index, vertex_applications, vertex_resources,
-            self.current_input_j_constraint)
+            # Create current input cluster
+            self._current_input_cluster = CurrentInputCluster(
+                self.pre.celltype, self.pre._parameters, self.pre.initial_values,
+                self._simulator.state.dt, timer_period_us, simulation_ticks,
+                self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
+                receptor_index, vertex_applications, vertex_resources,
+                self.current_input_j_constraint)
+        # Otherwise, null current input cluster
+        else:
+            self._current_input_cluster = None
+
+        return self._current_input_cluster
 
     @ContextMixin.use_contextual_arguments()
     def _direct_convergent_connect(self, presynaptic_indices,
@@ -183,6 +190,63 @@ class Projection(common.Projection, ContextMixin):
     def _estimate_num_synapses(self, pre_slice, post_slice):
         return self._connector.estimate_num_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
+
+    def _load_current_input_verts(self, placements, allocations,
+                                  machine_controller, hardware_timestep_us,
+                                  duration_timesteps):
+        # If projection has no current input cluster, skip
+        if self._current_input_cluster is None:
+            return
+
+        logger.info("\tProjection label:%s from population label:%s",
+                    self.label, self.pre.label)
+
+        # Build direct connection for projection
+        direct_weights = self._build_direct_connection()
+
+        # Loop through synapse verts
+        for v in self._current_input_cluster.verts:
+            # Use native S16.15 format
+            v.weight_fixed_point = 15
+
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
+
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
+
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
+
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Allocate two output buffers for this synapse population
+                out_buffer_bytes = len(v.post_neuron_slice) * 4
+                v.out_buffers = [
+                    machine_controller.sdram_alloc(out_buffer_bytes,
+                                                   clear=True)
+                    for _ in range(2)]
+
+                # Calculate required memory size
+                size, allocs = self._current_input_cluster.get_size(
+                    v.post_neuron_slice, direct_weights, v.out_buffers)
+
+                # Allocate a suitable memory block
+                # for this vertex and get memory io
+                # **NOTE** this is tagged by core
+                memory_io = machine_controller.sdram_alloc_as_filelike(
+                    size, tag=core.start)
+                logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                                core.start, memory_io.address)
+
+                # Write the vertex to file
+                v.region_memory = self._current_input_cluster.write_to_file(
+                    v.post_neuron_slice, direct_weights, v.out_buffers,
+                    memory_io)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties

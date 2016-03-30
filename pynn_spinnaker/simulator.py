@@ -122,41 +122,6 @@ class State(common.control.BaseState):
             logger.debug("\tPopulation:%s", pop.label)
             pop._estimate_constraints(hardware_timestep_us)
 
-    def _allocate_current_input_clusters(self, vertex_applications,
-                                         vertex_resources,
-                                         hardware_timestep_us,
-                                         duration_timesteps):
-        logger.info("Allocating current input clusters")
-
-        # Mapping from PyNN projection to current input cluster
-        # {pynn_projection: current_input_cluster}
-        proj_current_input_clusters = {}
-
-        # Mapping from post-synaptic PyNN population (i.e. the
-        # one the current input cluster is injecting current INTO)
-        # to list of current input clusters
-        # {pynn_population: [current_input_cluster]}
-        post_pop_current_input_clusters = defaultdict(list)
-
-        # Loop through projections
-        for proj in self.projections:
-            # If this projection isn't directory connectable
-            if not proj._directly_connectable:
-                continue
-
-            logger.debug("\t\tProjection:%s", proj.label)
-
-            # Create cluster
-            c = proj._create_current_input_cluster(
-                hardware_timestep_us, duration_timesteps,
-                vertex_applications, vertex_resources)
-
-            # Add cluster to data structures
-            post_pop_current_input_clusters[proj.post].append(c)
-            proj_current_input_clusters[proj] = c
-
-        return proj_current_input_clusters, post_pop_current_input_clusters
-
     def _constrain_clusters(self):
         logger.info("Constraining vertex clusters to same chip")
 
@@ -193,66 +158,6 @@ class State(common.control.BaseState):
                     constraints.append(SameChipConstraint(n.input_verts + [n]))
 
         return constraints
-
-
-
-    def _load_current_input_verts(self, placements, allocations,
-                                  hardware_timestep_us, duration_timesteps):
-        logger.info("Loading current input vertices")
-
-        # Build current input populations
-        for proj, c_cluster in iteritems(self.proj_current_input_clusters):
-            logger.info("\tProjection label:%s from population label:%s",
-                         proj.label, proj.pre.label)
-
-            # Build direct connection for projection
-            direct_weights = proj._build_direct_connection()
-
-            # Loop through synapse verts
-            for v in c_cluster.verts:
-                # Use native S16.15 format
-                v.weight_fixed_point = 15
-
-                # Get placement and allocation
-                vertex_placement = placements[v]
-                vertex_allocation = allocations[v]
-
-                # Get core this vertex should be run on
-                core = vertex_allocation[machine.Cores]
-                assert (core.stop - core.start) == 1
-
-                logger.debug("\t\tVertex %s (%u, %u, %u)",
-                             v, vertex_placement[0], vertex_placement[1],
-                             core.start)
-
-                # Select placed chip
-                with self.machine_controller(x=vertex_placement[0],
-                                             y=vertex_placement[1]):
-                    # Allocate two output buffers for this synapse population
-                    out_buffer_bytes = len(v.post_neuron_slice) * 4
-                    v.out_buffers = [
-                        self.machine_controller.sdram_alloc(
-                            out_buffer_bytes, clear=True)
-                        for _ in range(2)]
-
-                    # Calculate required memory size
-                    size, allocs = c_cluster.get_size(v.post_neuron_slice,
-                                                      direct_weights,
-                                                      v.out_buffers)
-
-                    # Allocate a suitable memory block
-                    # for this vertex and get memory io
-                    # **NOTE** this is tagged by core
-                    memory_io =\
-                        self.machine_controller.sdram_alloc_as_filelike(
-                            size, tag=core.start)
-                    logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                 core.start, memory_io.address)
-
-                    # Write the vertex to file
-                    v.region_memory = c_cluster.write_to_file(
-                        v.post_neuron_slice, direct_weights, v.out_buffers,
-                        memory_io)
 
     def _read_stats(self, duration_ms):
         logger.info("Reading stats")
@@ -317,11 +222,23 @@ class State(common.control.BaseState):
             pop._create_synapse_clusters(hardware_timestep_us, duration_timesteps,
                                        vertex_applications, vertex_resources)
 
+
+        # Mapping from post-synaptic PyNN population (i.e. the
+        # one the current input cluster is injecting current INTO)
+        # to list of current input clusters
+        # {pynn_population: [current_input_cluster]}
+        self.post_pop_current_input_clusters = defaultdict(list)
+
         logger.info("Allocating current input clusters")
-        self.proj_current_input_clusters, self.post_pop_current_input_clusters =\
-            self._allocate_current_input_clusters(
-                vertex_applications, vertex_resources, hardware_timestep_us,
-                duration_timesteps)
+        for proj in self.projections:
+            # Create cluster
+            c = proj._create_current_input_cluster(
+                hardware_timestep_us, duration_timesteps,
+                vertex_applications, vertex_resources)
+
+            # Add cluster to data structures
+            if c is not None:
+                self.post_pop_current_input_clusters[proj.post].append(c)
 
         # Constrain all vertices in clusters to same chip
         constraints = self._constrain_clusters()
@@ -375,9 +292,12 @@ class State(common.control.BaseState):
                                     self.machine_controller,
                                     hardware_timestep_us, duration_timesteps)
 
-        self._load_current_input_verts(placements, allocations,
-                                       hardware_timestep_us,
-                                       duration_timesteps)
+        logger.info("Loading current input vertices")
+        for proj in self.projections:
+            proj._load_current_input_verts(placements, allocations,
+                                           self.machine_controller,
+                                           hardware_timestep_us,
+                                           duration_timesteps)
 
         logger.info("Loading neuron vertices")
         for pop in self.populations:
