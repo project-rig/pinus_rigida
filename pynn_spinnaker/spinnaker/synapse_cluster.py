@@ -201,10 +201,10 @@ class SynapseCluster(object):
         return sub_matrices, matrix_placements
 
     def get_size(self, post_vertex_slice, sub_matrices, matrix_placements,
-                 weight_fixed_point, out_buffers):
+                 weight_fixed_point, out_buffers, back_prop_verts):
         region_arguments = self._get_region_arguments(
             post_vertex_slice, sub_matrices, matrix_placements,
-            weight_fixed_point, out_buffers)
+            weight_fixed_point, out_buffers, back_prop_verts)
 
         # Calculate region size
         vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
@@ -214,10 +214,10 @@ class SynapseCluster(object):
         return vertex_bytes, vertex_allocs
 
     def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
-                      weight_fixed_point, out_buffers, fp):
+                      weight_fixed_point, out_buffers, back_prop_verts, fp):
         region_arguments = self._get_region_arguments(
             post_vertex_slice, sub_matrices, matrix_placements,
-            weight_fixed_point, out_buffers)
+            weight_fixed_point, out_buffers, back_prop_verts)
 
         # Layout the slice of SDRAM we have been given
         region_memory = create_app_ptr_and_region_files_named(
@@ -264,7 +264,7 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrices,
                               matrix_placements, weight_fixed_point,
-                              out_buffers):
+                              out_buffers, back_prop_verts):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
@@ -292,7 +292,7 @@ class SynapseCluster(object):
         region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
             weight_fixed_point
 
-        region_arguments[Regions.spike_back_prop].kwargs["vertex_slice"] =\
-            post_vertex_slice
+        region_arguments[Regions.spike_back_prop].kwargs["back_prop_verts"] =\
+            back_prop_verts
 
         return region_arguments

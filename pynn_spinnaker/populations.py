@@ -419,7 +419,7 @@ class Population(common.Population):
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
                                  vertex_applications, vertex_resources):
-        # Loop through newly partioned incoming projections_load_synapse_verts
+        # Loop through newly partioned incoming projections
         self._synapse_clusters = {}
         for s_type, pre_pop_projs in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
@@ -612,7 +612,7 @@ class Population(common.Population):
                     size, allocs = s_cluster.get_size(
                         v.post_neuron_slice, sub_matrices,
                         matrix_placements, weight_fixed_point,
-                        v.out_buffers)
+                        v.out_buffers, v.back_prop_verts)
 
                     # Allocate a suitable memory block
                     # for this vertex and get memory io
@@ -624,9 +624,9 @@ class Population(common.Population):
 
                     # Write the vertex to file
                     v.region_memory = s_cluster.write_to_file(
-                        v.post_neuron_slice, sub_matrices,
-                        matrix_placements, weight_fixed_point,
-                        v.out_buffers, memory_io)
+                        v.post_neuron_slice, sub_matrices, matrix_placements,
+                        weight_fixed_point, v.out_buffers, v.back_prop_verts,
+                        memory_io)
 
     def _load_neuron_verts(self, placements, allocations, machine_controller,
                            hardware_timestep_us, duration_timesteps):
