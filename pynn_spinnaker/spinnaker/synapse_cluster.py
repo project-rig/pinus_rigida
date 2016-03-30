@@ -29,8 +29,9 @@ class Regions(enum.IntEnum):
     plasticity = 3
     output_buffer = 4
     delay_buffer = 5
-    profiler = 6
-    statistics = 7
+    spike_back_prop = 6
+    profiler = 7
+    statistics = 8
 
 
 # ----------------------------------------------------------------------------
@@ -81,6 +82,7 @@ class SynapseCluster(object):
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
+        self.regions[Regions.spike_back_prop] = regions.SpikeBackProp()
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
@@ -288,5 +290,8 @@ class SynapseCluster(object):
 
         region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
             weight_fixed_point
+
+        region_arguments[Regions.spike_back_prop].kwargs["vertex_slice"] =\
+            post_vertex_slice
 
         return region_arguments

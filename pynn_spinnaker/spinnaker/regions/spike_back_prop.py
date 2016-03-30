@@ -8,9 +8,9 @@ from region import Region
 logger = logging.getLogger("pynn_spinnaker")
 
 # ------------------------------------------------------------------------------
-# SpikeBackPropagation
+# SpikeBackProp
 # ------------------------------------------------------------------------------
-class SpikeBackPropagation(Region):
+class SpikeBackProp(Region):
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------

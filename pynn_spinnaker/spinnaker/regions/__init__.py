@@ -8,6 +8,7 @@ from output_weight import OutputWeight
 from plastic_synaptic_matrix import PlasticSynapticMatrix
 from plasticity import Plasticity
 from profiler import Profiler
+from spike_back_prop import SpikeBackProp
 from spike_recording import SpikeRecording
 from spike_source_array import SpikeSourceArray
 from spike_source_poisson import SpikeSourcePoisson
