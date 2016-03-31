@@ -67,7 +67,7 @@ public:
       newTrace += S2011One;
     }
 
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tElapsed ticks:%d, New trace:%d",
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks:%d, New trace:%d",
               elapsedTicks, newTrace);
 
     // Return new trace_value
@@ -87,8 +87,8 @@ public:
         S2011 decayedPostTrace = Mul16S2011(
           lastPostTrace, m_TauMinusLUT.Get(elapsedTicksSinceLastPost));
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, Decayed post trace=%d",
-                  elapsedTicksSinceLastPost, decayedPostTrace);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
+                  elapsedTicksSinceLastPost, lastPostTrace, decayedPostTrace);
 
         // Apply depression
         applyDepression(decayedPostTrace);
@@ -97,9 +97,9 @@ public:
 
   template<typename D, typename P>
   void ApplyPostSpike(D, P applyPotentiation,
-                     uint32_t time, PostTrace,
-                     uint32_t lastPreTime, PreTrace lastPreTrace,
-                     uint32_t, PostTrace)
+                      uint32_t time, PostTrace,
+                      uint32_t lastPreTime, PreTrace lastPreTrace,
+                      uint32_t, PostTrace)
   {
     // Get time of event relative to last pre-synaptic event
     uint32_t elapsedTicksSinceLastPre = time - lastPreTime;
@@ -108,8 +108,8 @@ public:
         S2011 decayedPreTrace = Mul16S2011(
           lastPreTrace, m_TauPlusLUT.Get(elapsedTicksSinceLastPre));
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last pre:%u, Decayed pre trace=%d",
-                  elapsedTicksSinceLastPre, decayedPreTrace);
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tElapsed ticks since last pre:%u, last pre trace:%d, decayed pre trace=%d",
+                  elapsedTicksSinceLastPre, lastPreTrace, decayedPreTrace);
 
         // Apply potentiation
         applyPotentiation(decayedPreTrace);

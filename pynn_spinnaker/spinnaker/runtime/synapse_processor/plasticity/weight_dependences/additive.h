@@ -64,7 +64,7 @@ public:
       newWeight = std::min(weightDependence.m_MaxWeight,
                            std::max(newWeight, weightDependence.m_MinWeight));
 
-      LOG_PRINT(LOG_LEVEL_INFO, "\tInitial weight:%d, Potentiation:%d, Depression:%d, Weight change:%d, New weight:%d",
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tInitial weight:%d, Potentiation:%d, Depression:%d, Weight change:%d, New weight:%d",
                 m_InitialWeight, m_Potentiation, m_Depression, weightChange, newWeight);
 
       return (Weight)newWeight;
