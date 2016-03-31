@@ -2,6 +2,7 @@
 
 // Standard includes
 #include <cstdint>
+#include <cstring>
 
 // Common includes
 #include "../../common/log.h"
@@ -69,12 +70,11 @@ public:
     // Calculate new pre-trace
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tUpdating pre-synaptic trace with spike at tick:%u (flush:%u)",
               tick, flush);
-    const PreTrace lastPreTrace = *GetPreTrace(dmaBuffer);
+    const PreTrace lastPreTrace = GetPreTrace(dmaBuffer);
     const PreTrace newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
                                                                    lastPreTick, flush);
     // Write back updated trace to row
-    *GetPreTrace(dmaBuffer) = newPreTrace;
-    //SetPreTrace(dmaBuffer, newPreTrace);
+    SetPreTrace(dmaBuffer, newPreTrace);
 
     // Extract first plastic and control words; and loop through synapses
     uint32_t count = dmaBuffer[0];
@@ -247,20 +247,20 @@ private:
     return (controlBytes / 4) + (((controlBytes % 4) == 0) ? 0 : 1);
   }
 
-  /*static PreTrace GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
+  static PreTrace GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
   {
-    return *reinterpret_cast<PreTrace*>(&dmaBuffer[4]);
+    // **NOTE** GCC will optimise this memcpy out it
+    // is simply strict-aliasing-safe solution
+    PreTrace preTrace;
+    memcpy(&preTrace, &dmaBuffer[4], sizeof(PreTrace));
+    return preTrace;
   }
 
   static void SetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords], PreTrace preTrace)
   {
-    PreTrace *dmaBufferPreTrace = reinterpret_cast<PreTrace*>(&dmaBuffer[4]);
-    *dmaBufferPreTrace = preTrace;
-  }*/
-
-  static PreTrace *GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
-  {
-    return reinterpret_cast<PreTrace*>(&dmaBuffer[4]);
+    // **NOTE** GCC will optimise this memcpy out it
+    // is simply strict-aliasing-safe solution
+    memcpy(&dmaBuffer[4], &preTrace, sizeof(PreTrace));
   }
 
   static PlasticSynapse *GetPlasticWords(uint32_t (&dmaBuffer)[MaxRowWords])
