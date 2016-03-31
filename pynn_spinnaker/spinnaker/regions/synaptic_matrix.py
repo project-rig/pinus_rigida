@@ -6,7 +6,7 @@ import numpy as np
 # Import classes
 from collections import namedtuple
 from region import Region
-from rig.type_casts import NumpyFloatToFixConverter
+from rig.type_casts import NumpyFloatToFixConverter, NumpyFixToFloatConverter
 
 # Import functions
 from six import iteritems
@@ -83,8 +83,8 @@ class SynapticMatrix(Region):
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
         """
-        # Create a numpy fixed point convert to convert
-        # Floating point weights to correct format
+        # Create a converter to convert floating
+        # point weights to correct format
         float_to_weight = NumpyFloatToFixConverter(
             False, self.FixedPointWeightBits, weight_fixed_point)
 
@@ -117,15 +117,15 @@ class SynapticMatrix(Region):
             for i, row in enumerate(matrix_rows):
                 # Write base row to matrix
                 next_row = None if len(row) == 1 else row[1]
-                self._write_spinnaker_row(row[0], next_row,
-                                          placement + next_row_offset + num_matrix_words,
-                                          float_to_weight, matrix_words[i])
+                self._write_row(row[0], next_row,
+                                placement + next_row_offset + num_matrix_words,
+                                float_to_weight, matrix_words[i])
 
                 # Loop through extension rows
                 for i, ext_row in enumerate(row[1:], start=1):
                     num_ext_row_words = self._get_num_row_words(len(ext_row[1]))
                     next_row = None if len(row) == (i + 1) else row[i + 1]
-                    self._write_spinnaker_row(
+                    self._write_row(
                         ext_row, next_row,
                         placement + next_row_offset + num_ext_row_words + num_matrix_words,
                         float_to_weight, ext_words[next_row_offset:])
@@ -233,10 +233,89 @@ class SynapticMatrix(Region):
 
         return sub_matrix_props, sub_matrix_rows
 
+    def read_sub_matrix(self, pre_n_vert, post_s_vert, names, region_mem):
+        # Find the matrix properties and placement of sub-matrix
+        # associated with pre-synaptic neuron vertex
+        vert_matrix_prop, vert_matrix_placement = next((
+            (s, p) for s, p in zip(post_s_vert.sub_matrix_props,
+                                   post_s_vert.matrix_placements)
+            if s.key == pre_n_vert.key),
+            (None, None))
+        assert vert_matrix_prop is not None
+        assert vert_matrix_placement is not None
+
+        # Calculate the size of the ragged matrix
+        num_rows = len(pre_n_vert.neuron_slice)
+        num_row_words = self._get_num_row_words(vert_matrix_prop.max_cols)
+        num_matrix_words = (num_row_words * num_rows)
+
+        logger.debug("\tReading matrix - max cols:%u, size words:%u, "
+                     "num row words:%u, num matrix words:%u, num rows:%u",
+                     vert_matrix_prop.max_cols, vert_matrix_prop.size_words,
+                     num_row_words, num_matrix_words, num_rows)
+
+        # Seek to the absolute offset for this matrix
+        # **NOTE** placement is in WORDS
+        region_mem.seek(vert_matrix_placement * 4, 0)
+
+        # Read matrix from memory
+        data = region_mem.read(vert_matrix_prop.size_words * 4)
+
+        # Load into numpy
+        data = np.fromstring(data, dtype=np.uint32)
+
+        # On this basis, create two views
+        matrix_words = data[:num_matrix_words]
+        ext_words = data[num_matrix_words:]
+
+        # Reading of delay extension rows not currently implemented - throw
+        if len(ext_words) > 0:
+            raise NotImplementedError()
+
+        # Reshape matrix words
+        matrix_words = matrix_words.reshape((num_rows, -1))
+
+        # Create a converter to convert fixed
+        # point weights back to floating point
+        weight_to_float = NumpyFixToFloatConverter(
+            post_s_vert.weight_fixed_point)
+
+        # Build data type for rows
+        dtype = np.dtype([(n, np.float32 if n == "weight" else np.uint32)
+                 for n in names])
+        logger.debug("\tUsing row dtype:%s", dtype)
+
+        # Read rows
+        return [self._read_row(i, r, pre_n_vert.neuron_slice,
+                               post_s_vert.post_neuron_slice,
+                               weight_to_float, dtype)
+                for i, r in enumerate(matrix_words)]
+
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _write_spinnaker_row(self, row, next_row, next_row_offset,
+    def _read_row(self, pre_idx, row_words, pre_slice, post_slice,
+                  weight_to_float, dtype):
+        num_synapses = row_words[0]
+
+        # Create empty array to hold synapses
+        synapses = np.empty(num_synapses, dtype=dtype)
+
+        # If pre-synaptic indices are required, fill them in
+        if "presynaptic_index" in dtype.names:
+            synapses["presynaptic_index"][:] = pre_idx + pre_slice.start
+
+        # Read synapses
+        self._read_synapses(row_words[3:], weight_to_float, dtype, synapses)
+
+        # If post-synaptic indices are required,
+        # add post-synaptic slice start to them
+        if "postsynaptic_index" in dtype.names:
+            synapses["presynaptic_index"] += post_slice.start
+
+        return synapses
+
+    def _write_row(self, row, next_row, next_row_offset,
                              float_to_weight, destination):
         # Write actual length of row (in synapses)
         num_synapses = len(row[1])
@@ -269,6 +348,6 @@ class SynapticMatrix(Region):
 
             # Write synapses
             num_row_words = self._get_num_row_words(num_synapses)
-            self._write_spinnaker_synapses(dtcm_delay, weight_fixed,
-                                           row[1]["index"],
-                                           destination[3:num_row_words])
+            self._write_synapses(dtcm_delay, weight_fixed,
+                                 row[1]["index"],
+                                 destination[3:num_row_words])

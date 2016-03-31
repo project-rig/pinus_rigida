@@ -264,19 +264,30 @@ class SynapseCluster(object):
             itertools.repeat("u4", len(self.statistic_names)))
         return np.core.records.fromarrays(np_stats.T, names=stat_names,
                                           formats=stat_format)
-    def read_synaptic_weights(self, pre_pop):
+
+    def read_synaptic_matrices(self, pre_pop, names):
+        # Get the synaptic matrix region
+        region = self.regions[Regions.synaptic_matrix]
+
         # Loop through synapse vertices (post-synaptic)
-        for v in self.verts:
+        sub_matrices = []
+        for post_s_vert in self.verts:
             # If this synapse vertex has no incoming connections
             # from pre-synaptic population, skip
-            if pre_pop not in v.incoming_connections:
+            if pre_pop not in post_s_vert.incoming_connections:
                 continue
 
-            # Get list of pre-synaptic vertices
-            # this synapse vertex is connected to
-            pre_verts = v.incoming_connections[pre_pop]
+            # Get region memory for synaptic matrix
+            region_mem = post_s_vert.region_memory[Regions.synaptic_matrix]
 
-            #self.regions[Regions.synaptic_matrix].read
+            # Loop through list of pre-synaptic vertices
+            # this synapse vertex is connected to
+            for pre_n_vert in post_s_vert.incoming_connections[pre_pop]:
+                # Read associated sub-matrix
+                sub_matrices.append(region.read_sub_matrix(
+                    pre_n_vert, post_s_vert, names, region_mem))
+
+        return sub_matrices
 
     # --------------------------------------------------------------------------
     # Private methods

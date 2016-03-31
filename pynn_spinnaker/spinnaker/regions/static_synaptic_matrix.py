@@ -33,8 +33,10 @@ class StaticSynapticMatrix(SynapticMatrix):
         return (sub_row_sections[-1] - sub_row_sections[0]) +\
             (self.NumHeaderWords * (num_sub_rows - 1))
 
-    def _write_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices,
-                                destination):
+    def _write_synapses(self, dtcm_delay, weight_fixed, indices, destination):
         destination[:] = (indices
                           | (dtcm_delay << self.IndexBits)
                           | (weight_fixed << self.WeightShift))
+
+    def _read_synapses(self, synapse_words, weight_to_float, dtype, synapses):
+        raise NotImplementedError()

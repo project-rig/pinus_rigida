@@ -248,6 +248,11 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
+    def _read_synaptic_matrices(self, pre_pop, synapse_type, names):
+        # Return synaptic weights from correct synapse cluster
+        synapse_cluster = self._synapse_clusters[synapse_type]
+        return synapse_cluster.read_synaptic_matrices(pre_pop, names)
+
     def _read_recorded_vars(self, vars_to_read):
         spike_times = {}
         signals = {}

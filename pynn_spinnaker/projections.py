@@ -6,8 +6,10 @@ from pyNN import common
 from pyNN.space import Space
 from pyNN.standardmodels import StandardCellType
 from . import simulator
+import itertools
 import logging
 import numpy as np
+import scipy
 from rig import machine
 
 # Import classes
@@ -96,6 +98,65 @@ class Projection(common.Projection, ContextMixin):
 
     def set(self, **attributes):
         raise NotImplementedError
+
+    # --------------------------------------------------------------------------
+    # Internal PyNN methods
+    # --------------------------------------------------------------------------
+    def _get_attributes_as_list(self, *names):
+        logger.info("Downloading synaptic matrices for projection %s",
+                    self.label)
+
+        # Read synaptic matrices from the post-synaptic population
+        synaptic_matrices = self.post._read_synaptic_matrices(
+            self.pre, self._synapse_cluster_type, names)
+
+        # Loop through all the rows of all the matrices and conver to a list
+        return list(itertools.chain.from_iterable(
+            row for matrix in synaptic_matrices for row in matrix))
+
+    def _get_attributes_as_arrays(self, *names):
+        logger.info("Downloading synaptic matrices for projection %s",
+                    self.label)
+
+        # **YUCK** As it's rather hard to build an array without
+        # indices, add index parameters if not specified
+        if "presynaptic_index" not in names:
+            names += ("presynaptic_index",)
+        if "postsynaptic_index" not in names:
+            names += ("postsynaptic_index",)
+
+        # Read synaptic matrices from the post-synaptic population
+        synaptic_matrices = self.post._read_synaptic_matrices(
+            self.pre, self._synapse_cluster_type, names)
+
+        # Stack all rows together into single mega-row
+        all_rows = np.hstack(
+            row for matrix in synaptic_matrices for row in matrix)
+
+        # Count connections and build mask array of the pairs
+        # of neurons between which there are no connections
+        connection_bins = (self.pre.size, self.post.size)
+        no_connection_mask = np.histogram2d(all_rows["presynaptic_index"],
+                                            all_rows["postsynaptic_index"],
+                                            connection_bins)[0] == 0
+
+        # Build a tuple containing the sum of each connection
+        # property (skipping over the pre and postsynaptic indices)
+        attribute_arrays = tuple(
+            scipy.stats.binned_statistic_2d(all_rows["presynaptic_index"],
+                                            all_rows["postsynaptic_index"],
+                                            all_rows[name],
+                                            "sum", connection_bins)[0]
+            for name in names
+            if name != "presynaptic_index" and name != "postsynaptic_index")
+
+        # Loop through each attribute array and set the
+        # value to NaN wherever there is no connection
+        for a in attribute_arrays:
+            a[no_connection_mask] = np.nan
+
+        # Return the tuple of attribute arrays
+        return attribute_arrays
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods

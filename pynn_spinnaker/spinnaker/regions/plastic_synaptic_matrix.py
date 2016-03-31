@@ -49,8 +49,7 @@ class PlasticSynapticMatrix(SynapticMatrix):
         return (2 * num_array_words) +\
             ((self.NumHeaderWords + 1 + self.pre_trace_words) * (num_sub_rows - 1))
 
-    def _write_spinnaker_synapses(self, dtcm_delay, weight_fixed, indices,
-                                destination):
+    def _write_synapses(self, dtcm_delay, weight_fixed, indices, destination):
         # Zero time of last pre-synaptic spike and pre-synaptic trace
         num_pre_state_words = 1 + self.pre_trace_words
         destination[0: num_pre_state_words] = 0
@@ -58,10 +57,10 @@ class PlasticSynapticMatrix(SynapticMatrix):
         # Re-calculate size of control and plastic arrays in words
         num_array_words = int(math.ceil(float(len(indices)) / 2.0))
 
-        # Based on this get index of where
+        # Based on this get index of where control words begin
         control_start_idx = num_pre_state_words + num_array_words
 
-        # Create 16-bit view of section of plastic weight
+        # Create 16-bit view of plastic weight
         # section of destination and copy them in
         weight_view = destination[num_pre_state_words: control_start_idx]
         weight_view = weight_view.view(dtype=np.uint16)[:len(weight_fixed)]
@@ -74,3 +73,33 @@ class PlasticSynapticMatrix(SynapticMatrix):
         control_view[:] = (indices
                            | (dtcm_delay << self.IndexBits)).astype(np.uint16)
 
+    def _read_synapses(self, synapse_words, weight_to_float, dtype, synapses):
+        # Re-calculate size of control and plastic arrays in words
+        num_array_words = int(math.ceil(float(len(synapses)) / 2.0))
+
+        # Based on this get index of where control words begin
+        num_pre_state_words = 1 + self.pre_trace_words
+        control_start_idx = num_pre_state_words + num_array_words
+
+        # If weights are required
+        if "weight" in dtype.names:
+            # Create 16-bit view of plastic weight section of synapse words
+            weight_view = synapse_words[num_pre_state_words: control_start_idx]
+            weight_view = weight_view.view(dtype=np.uint16)[:len(synapses)]
+
+            # Convert the weight view to floating point
+            synapses["weight"] = weight_to_float(weight_view)
+
+        # Create 16-bit view of control word section of synapse words
+        control_view = synapse_words[control_start_idx:]
+        control_view = control_view.view(dtype=np.uint16)[:len(synapses)]
+
+        # Extract the delays if required
+        if "delay" in dtype.names:
+            delay_mask = (1 << self.DelayBits) - 1
+            synapses["delay"] = (control_view >> self.IndexBits) & delay_mask
+
+        # Extract the post-synaptic index if required
+        if "postsynaptic_index" in dtype.names:
+            index_mask = (1 << self.IndexBits) - 1
+            synapses["postsynaptic_index"] = control_view & index_mask
