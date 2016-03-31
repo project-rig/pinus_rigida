@@ -72,6 +72,9 @@ public:
     const PreTrace lastPreTrace = *GetPreTrace(dmaBuffer);
     const PreTrace newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
                                                                    lastPreTick, flush);
+    // Write back updated trace to row
+    *GetPreTrace(dmaBuffer) = newPreTrace;
+    //SetPreTrace(dmaBuffer, newPreTrace);
 
     // Extract first plastic and control words; and loop through synapses
     uint32_t count = dmaBuffer[0];
@@ -243,6 +246,17 @@ private:
     const unsigned int controlBytes = numSynapses * sizeof(C);
     return (controlBytes / 4) + (((controlBytes % 4) == 0) ? 0 : 1);
   }
+
+  /*static PreTrace GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
+  {
+    return *reinterpret_cast<PreTrace*>(&dmaBuffer[4]);
+  }
+
+  static void SetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords], PreTrace preTrace)
+  {
+    PreTrace *dmaBufferPreTrace = reinterpret_cast<PreTrace*>(&dmaBuffer[4]);
+    *dmaBufferPreTrace = preTrace;
+  }*/
 
   static PreTrace *GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
   {
