@@ -187,53 +187,79 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def partition_matrices(self, matrices, vertex_slice, in_connections):
-        # Partition matrices
-        sub_matrices =\
-            self.regions[Regions.synaptic_matrix].partition_matrices(
-                matrices, vertex_slice, in_connections)
+    def load(self, matrices, weight_fixed_point, machine_controller,
+             placements, allocations):
+        # Loop through synapse verts
+        for v in self.verts:
+            # Cache weight fixed-point for
+            # this synapse point in vertex
+            v.weight_fixed_point = weight_fixed_point
 
-        # Place them in memory
-        matrix_placements = self.regions[Regions.key_lookup].place_matrices(
-            sub_matrices)
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
 
-        # Return both
-        return sub_matrices, matrix_placements
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
 
-    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements,
-                 weight_fixed_point, out_buffers, back_prop_verts):
-        region_arguments = self._get_region_arguments(
-            post_vertex_slice, sub_matrices, matrix_placements,
-            weight_fixed_point, out_buffers, back_prop_verts)
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                        v, vertex_placement[0], vertex_placement[1],
+                        core.start)
 
-        # Calculate region size
-        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
-                                                           region_arguments)
+            # Partition matrices
+            sub_matrices =\
+                self.regions[Regions.synaptic_matrix].partition_matrices(
+                    matrices, v.post_neuron_slice, v.incoming_connections)
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
-        return vertex_bytes, vertex_allocs
+            # Place them in memory
+            matrix_placements = self.regions[Regions.key_lookup].place_matrices(
+                sub_matrices)
 
-    def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
-                      weight_fixed_point, out_buffers, back_prop_verts, fp):
-        region_arguments = self._get_region_arguments(
-            post_vertex_slice, sub_matrices, matrix_placements,
-            weight_fixed_point, out_buffers, back_prop_verts)
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Allocate two output buffers
+                # for this synapse population
+                out_buffer_bytes = len(v.post_neuron_slice) * 4
+                v.out_buffers = [
+                    machine_controller.sdram_alloc(out_buffer_bytes,
+                                                    clear=True)
+                    for _ in range(2)]
 
-        # Layout the slice of SDRAM we have been given
-        region_memory = create_app_ptr_and_region_files_named(
-            fp, self.regions, region_arguments)
+                # Get region arguments required to calculate size and write
+                region_arguments = self._get_region_arguments(
+                    v.post_neuron_slice, sub_matrices, matrix_placements,
+                    weight_fixed_point, v.out_buffers, v.back_prop_verts)
 
-        # Write each region into memory
-        for key, region in iteritems(self.regions):
-            # Get memory
-            mem = region_memory[key]
+                # Calculate region size
+                size, allocs = sizeof_regions_named(self.regions,
+                                                    region_arguments)
+                logger.debug("\t\t\tRegion size = %u bytes", size)
 
-            # Get the arguments
-            args, kwargs = region_arguments[key]
+                # Allocate a suitable memory block
+                # for this vertex and get memory io
+                # **NOTE** this is tagged by core
+                memory_io = machine_controller.sdram_alloc_as_filelike(
+                    size, tag=core.start)
+                logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                                core.start, memory_io.address)
 
-            # Perform the write
-            region.write_subregion_to_file(mem, *args, **kwargs)
-        return region_memory
+                # Layout the slice of SDRAM we have been given
+                v.region_memory = create_app_ptr_and_region_files_named(
+                    memory_io, self.regions, region_arguments)
+
+                # Write each region into memory
+                for key, region in iteritems(self.regions):
+                    # Get memory
+                    mem = v.region_memory[key]
+
+                    # Get the arguments
+                    args, kwargs = region_arguments[key]
+
+                    # Perform the write
+                    region.write_subregion_to_file(mem, *args, **kwargs)
+
 
     def read_profile(self):
         # Get the profile recording region

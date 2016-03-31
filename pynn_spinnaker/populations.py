@@ -573,60 +573,9 @@ class Population(common.Population):
             matrices, weight_fixed_point =\
                 self._build_incoming_connection(s_type)
 
-            # Loop through synapse verts
-            for v in s_cluster.verts:
-                # Cache weight fixed-point for
-                # this synapse point in vertex
-                v.weight_fixed_point = weight_fixed_point
-
-                # Get placement and allocation
-                vertex_placement = placements[v]
-                vertex_allocation = allocations[v]
-
-                # Get core this vertex should be run on
-                core = vertex_allocation[machine.Cores]
-                assert (core.stop - core.start) == 1
-
-                logger.debug("\t\tVertex %s (%u, %u, %u)",
-                            v, vertex_placement[0], vertex_placement[1],
-                            core.start)
-
-                # Partition the matrices
-                sub_matrices, matrix_placements =\
-                    s_cluster.partition_matrices(matrices,
-                                                 v.post_neuron_slice,
-                                                 v.incoming_connections)
-
-                # Select placed chip
-                with machine_controller(x=vertex_placement[0],
-                                        y=vertex_placement[1]):
-                    # Allocate two output buffers
-                    # for this synapse population
-                    out_buffer_bytes = len(v.post_neuron_slice) * 4
-                    v.out_buffers = [
-                        machine_controller.sdram_alloc(out_buffer_bytes,
-                                                       clear=True)
-                        for _ in range(2)]
-
-                    # Calculate required memory size
-                    size, allocs = s_cluster.get_size(
-                        v.post_neuron_slice, sub_matrices,
-                        matrix_placements, weight_fixed_point,
-                        v.out_buffers, v.back_prop_verts)
-
-                    # Allocate a suitable memory block
-                    # for this vertex and get memory io
-                    # **NOTE** this is tagged by core
-                    memory_io = machine_controller.sdram_alloc_as_filelike(
-                        size, tag=core.start)
-                    logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                    core.start, memory_io.address)
-
-                    # Write the vertex to file
-                    v.region_memory = s_cluster.write_to_file(
-                        v.post_neuron_slice, sub_matrices, matrix_placements,
-                        weight_fixed_point, v.out_buffers, v.back_prop_verts,
-                        memory_io)
+            # Load vertices that make up cluster
+            s_cluster.load(matrices, weight_fixed_point, machine_controller,
+                           placements, allocations)
 
     def _load_neuron_verts(self, placements, allocations, machine_controller,
                            hardware_timestep_us, duration_timesteps):
