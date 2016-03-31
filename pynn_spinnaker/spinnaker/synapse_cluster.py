@@ -12,8 +12,7 @@ from utils import Args, InputVertex
 
 # Import functions
 from six import iteritems
-from utils import (create_app_ptr_and_region_files_named, split_slice,
-                   get_model_executable_filename, sizeof_regions_named)
+from utils import (get_model_executable_filename, load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -187,8 +186,8 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def load(self, matrices, weight_fixed_point, machine_controller,
-             placements, allocations):
+    def load(self, placements, allocations, machine_controller,
+             matrices, weight_fixed_point):
         # Loop through synapse verts
         for v in self.verts:
             # Cache weight fixed-point for
@@ -231,35 +230,10 @@ class SynapseCluster(object):
                 region_arguments = self._get_region_arguments(
                     v.post_neuron_slice, sub_matrices, matrix_placements,
                     weight_fixed_point, v.out_buffers, v.back_prop_verts)
-
-                # Calculate region size
-                size, allocs = sizeof_regions_named(self.regions,
-                                                    region_arguments)
-                logger.debug("\t\t\tRegion size = %u bytes", size)
-
-                # Allocate a suitable memory block
-                # for this vertex and get memory io
-                # **NOTE** this is tagged by core
-                memory_io = machine_controller.sdram_alloc_as_filelike(
-                    size, tag=core.start)
-                logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                core.start, memory_io.address)
-
-                # Layout the slice of SDRAM we have been given
-                v.region_memory = create_app_ptr_and_region_files_named(
-                    memory_io, self.regions, region_arguments)
-
-                # Write each region into memory
-                for key, region in iteritems(self.regions):
-                    # Get memory
-                    mem = v.region_memory[key]
-
-                    # Get the arguments
-                    args, kwargs = region_arguments[key]
-
-                    # Perform the write
-                    region.write_subregion_to_file(mem, *args, **kwargs)
-
+                    
+                # Load regions
+                v.region_memory = load_regions(self.regions, region_arguments,
+                                               machine_controller, core)
 
     def read_profile(self):
         # Get the profile recording region

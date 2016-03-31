@@ -2,6 +2,7 @@
 import inspect
 import itertools
 import lazyarray as la
+import logging
 import math
 import numpy as np
 import struct
@@ -15,10 +16,7 @@ from copy import (copy, deepcopy)
 from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
-
-# Determine model binaries path for models in this module
-#model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
-
+logger = logging.getLogger("pynn_spinnaker")
 
 # ----------------------------------------------------------------------------
 # Args
@@ -241,6 +239,38 @@ def get_model_comparable(value):
                 get_model_comparable(p) for p in value.comparable_properties))
     # Otherwise, return value itself
     return (value,)
+
+def load_regions(regions, region_arguments, machine_controller, core):
+    # Calculate region size
+    size, allocs = sizeof_regions_named(regions, region_arguments)
+
+    logger.debug("\t\t\tRegion size = %u bytes", size)
+
+    # Allocate a suitable memory block
+    # for this vertex and get memory io
+    # **NOTE** this is tagged by core
+    memory_io = machine_controller.sdram_alloc_as_filelike(
+        size, tag=core.start)
+    logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                    core.start, memory_io.address)
+
+    # Layout the slice of SDRAM we have been given
+    region_memory = create_app_ptr_and_region_files_named(
+        memory_io, regions, region_arguments)
+
+    # Write each region into memory
+    for key, region in iteritems(regions):
+        # Get memory
+        mem = region_memory[key]
+
+        # Get the arguments
+        args, kwargs = region_arguments[key]
+
+        # Perform the write
+        region.write_subregion_to_file(mem, *args, **kwargs)
+
+    # Return region memory
+    return region_memory
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
 # to the start, this is common with Nengo SpiNNaker

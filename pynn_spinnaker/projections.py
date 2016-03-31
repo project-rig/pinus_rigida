@@ -192,8 +192,7 @@ class Projection(common.Projection, ContextMixin):
             pre_slice, post_slice, self.pre.size, self.post.size)
 
     def _load_current_input_verts(self, placements, allocations,
-                                  machine_controller, hardware_timestep_us,
-                                  duration_timesteps):
+                                  machine_controller):
         # If projection has no current input cluster, skip
         if self._current_input_cluster is None:
             return

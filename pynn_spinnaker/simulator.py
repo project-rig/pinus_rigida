@@ -289,21 +289,17 @@ class State(common.control.BaseState):
         logger.info("Loading synapse vertices")
         for pop in self.populations:
             pop._load_synapse_verts(placements, allocations,
-                                    self.machine_controller,
-                                    hardware_timestep_us, duration_timesteps)
+                                    self.machine_controller)
 
         logger.info("Loading current input vertices")
         for proj in self.projections:
             proj._load_current_input_verts(placements, allocations,
-                                           self.machine_controller,
-                                           hardware_timestep_us,
-                                           duration_timesteps)
+                                           self.machine_controller)
 
         logger.info("Loading neuron vertices")
         for pop in self.populations:
             pop._load_neuron_verts(placements, allocations,
-                                   self.machine_controller,
-                                   hardware_timestep_us, duration_timesteps)
+                                   self.machine_controller)
 
         # Load routing tables and applications
         logger.info("Loading routing tables")
