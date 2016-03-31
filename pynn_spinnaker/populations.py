@@ -248,6 +248,30 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
+    def _read_recorded_vars(self, vars_to_read):
+        spike_times = {}
+        signals = {}
+
+        # If we have a neuron clusters
+        if self._neural_cluster is not None:
+            # Loop through all variables to read
+            for var in vars_to_read:
+                # If this variable is a spike recording, update the
+                # spike times dictionary with spikes from this vertex
+                if var == "spikes":
+                    spike_times = self._neural_cluster.read_recorded_spikes()
+                # Otherwise
+                else:
+                    # Convert variable name to channel number
+                    # **HACK** subtract one assuming first entry is spikes
+                    channel = self.celltype.recordable.index(var) - 1
+
+                    # Read signal from this channel and add to dictionary
+                    sig = self._neural_cluster.read_recorded_signal(channel)
+                    signals[var] = sig
+
+        return spike_times, signals
+
     def _estimate_constraints(self, hardware_timestep_us):
         # Determine the fraction of 1ms that the hardware timestep is.
         # This is used to scale all time-driven estimates

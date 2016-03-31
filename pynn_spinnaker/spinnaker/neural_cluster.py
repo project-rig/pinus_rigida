@@ -165,23 +165,28 @@ class NeuralCluster(object):
                 v.region_memory = load_regions(self.regions, region_arguments,
                                                machine_controller, core)
 
-    def read_spike_times(self, region_memory, vertex_slice):
-        # Get the spike recording region and
-        # the memory block associated with it
+    def read_recorded_spikes(self):
+        # Loop through all neuron vertices and read spike times into dictionary
+        spike_times = {}
         region = self.regions[Regions.spike_recording]
+        for v in self.verts:
+            region_mem = v.region_memory[Regions.spike_recording]
+            spike_times.update(region.read_spike_times(v.neuron_slice,
+                                                       region_mem))
+        return spike_times
 
-        # Use spike recording region to get spike times
-        return region.read_spike_times(vertex_slice,
-                                       region_memory[Regions.spike_recording])
-
-    def read_signal(self, channel, region_memory, vertex_slice):
+    def read_recorded_signal(self, channel):
         # Get index of channelread_profile
-        r = Regions(Regions.analogue_recording_start + channel)
+        region_index = Regions(Regions.analogue_recording_start + channel)
+        region = self.regions[region_index]
 
-        # Get the analogue recording region and
-        # the memory block associated with it
-        # Use analogue recording region to get signal
-        return self.regions[r].read_signal(vertex_slice, region_memory[r])
+        # Loop through all neuron vertices and read signal
+        signal = {}
+        for v in self.verts:
+            region_mem = v.region_memory[region_index]
+            signal.update(region.read_signal(v.neuron_slice, region_mem))
+
+        return signal
 
     def read_profile(self):
         # Get the profile recording region and
