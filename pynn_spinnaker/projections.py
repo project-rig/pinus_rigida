@@ -203,49 +203,9 @@ class Projection(common.Projection, ContextMixin):
         # Build direct connection for projection
         direct_weights = self._build_direct_connection()
 
-        # Loop through synapse verts
-        for v in self._current_input_cluster.verts:
-            # Use native S16.15 format
-            v.weight_fixed_point = 15
-
-            # Get placement and allocation
-            vertex_placement = placements[v]
-            vertex_allocation = allocations[v]
-
-            # Get core this vertex should be run on
-            core = vertex_allocation[machine.Cores]
-            assert (core.stop - core.start) == 1
-
-            logger.debug("\t\tVertex %s (%u, %u, %u)",
-                         v, vertex_placement[0], vertex_placement[1],
-                         core.start)
-
-            # Select placed chip
-            with machine_controller(x=vertex_placement[0],
-                                    y=vertex_placement[1]):
-                # Allocate two output buffers for this synapse population
-                out_buffer_bytes = len(v.post_neuron_slice) * 4
-                v.out_buffers = [
-                    machine_controller.sdram_alloc(out_buffer_bytes,
-                                                   clear=True)
-                    for _ in range(2)]
-
-                # Calculate required memory size
-                size, allocs = self._current_input_cluster.get_size(
-                    v.post_neuron_slice, direct_weights, v.out_buffers)
-
-                # Allocate a suitable memory block
-                # for this vertex and get memory io
-                # **NOTE** this is tagged by core
-                memory_io = machine_controller.sdram_alloc_as_filelike(
-                    size, tag=core.start)
-                logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
-                                core.start, memory_io.address)
-
-                # Write the vertex to file
-                v.region_memory = self._current_input_cluster.write_to_file(
-                    v.post_neuron_slice, direct_weights, v.out_buffers,
-                    memory_io)
+        # Load
+        self._current_input_cluster.load(placements, allocations,
+                                         machine_controller, direct_weights)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties

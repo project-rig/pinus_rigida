@@ -10,8 +10,7 @@ from utils import (Args, InputVertex)
 
 # Import functions
 from six import iteritems
-from utils import (create_app_ptr_and_region_files_named, split_slice,
-                   get_model_executable_filename, sizeof_regions_named)
+from utils import (get_model_executable_filename, load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -85,37 +84,42 @@ class CurrentInputCluster(object):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def get_size(self, post_vertex_slice, weights, out_buffers):
-        region_arguments = self._get_region_arguments(
-            post_vertex_slice, weights, out_buffers)
+    def load(self, placements, allocations, machine_controller,
+             direct_weights):
+        # Loop through synapse verts
+        for v in self.verts:
+            # Use native S16.15 format
+            v.weight_fixed_point = 15
 
-        # Calculate region size
-        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
-                                                           region_arguments)
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
-        return vertex_bytes, vertex_allocs
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
 
-    def write_to_file(self, post_vertex_slice, weights, out_buffers, fp):
-        region_arguments = self._get_region_arguments(
-            post_vertex_slice, weights, out_buffers)
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
 
-        # Layout the slice of SDRAM we have been given
-        region_memory = create_app_ptr_and_region_files_named(
-            fp, self.regions, region_arguments)
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Allocate two output buffers for this synapse population
+                out_buffer_bytes = len(v.post_neuron_slice) * 4
+                v.out_buffers = [
+                    machine_controller.sdram_alloc(out_buffer_bytes,
+                                                   clear=True)
+                    for _ in range(2)]
 
-        # Write each region into memory
-        for key, region in iteritems(self.regions):
-            # Get memory
-            mem = region_memory[key]
+                # Get region arguments required to calculate size and write
+                region_arguments = self._get_region_arguments(
+                    v.post_neuron_slice, direct_weights, v.out_buffers)
 
-            # Get the arguments
-            args, kwargs = region_arguments[key]
-
-            # Perform the write
-            region.write_subregion_to_file(mem, *args, **kwargs)
-
-        return region_memory
+                # Load regions
+                v.region_memory = load_regions(self.regions, region_arguments,
+                                               machine_controller, core)
 
     def read_profile(self):
         # Get the profile recording region and
