@@ -12,8 +12,7 @@ from rig.type_casts import NumpyFloatToFixConverter
 from six import iteritems
 from ..utils import get_row_offset_length
 
-SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words",
-                                     "max_cols", "rows"])
+SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -41,13 +40,17 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, sub_matrices, matrix_placements, weight_fixed_point):
+    def sizeof(self, sub_matrix_props, sub_matrix_rows, matrix_placements,
+               weight_fixed_point):
         """Get the size requirements of the region in bytes.
 
         Parameters
         ----------
-        sub_matrices : list of :py:class:`._SubMatrix`
-            Partitioned and expanded synaptic matrix rows
+        sub_matrix_props : list of :py:class:`._SubMatrix`
+            Properties of the sub matrices to be written
+            to synaptic matrix region
+        sub_matrix_rows : list of list of numpy arrays
+            Partitioned matrix rows to be written to SpiNNaker
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
@@ -63,16 +66,19 @@ class SynapticMatrix(Region):
         if len(matrix_placements) == 0:
             return 0
         else:
-            return 4 * (matrix_placements[-1] + sub_matrices[-1].size_words)
+            return 4 * (matrix_placements[-1] + sub_matrix_props[-1].size_words)
 
-    def write_subregion_to_file(self, fp, sub_matrices, matrix_placements,
-                                weight_fixed_point):
+    def write_subregion_to_file(self, fp, sub_matrix_props, sub_matrix_rows,
+                                matrix_placements, weight_fixed_point):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
         ----------
-        sub_matrices : list of :py:class:`._SubMatrix`
-            Partitioned and expanded synaptic matrix rows
+        sub_matrix_props : list of :py:class:`._SubMatrix`
+            Properties of the sub matrices to be written
+            to synaptic matrix region
+        sub_matrix_rows : list of list of numpy arrays
+            Partitioned matrix rows to be written to SpiNNaker
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
@@ -83,15 +89,17 @@ class SynapticMatrix(Region):
             False, self.FixedPointWeightBits, weight_fixed_point)
 
         # Loop through sub matrices
-        for matrix, placement in zip(sub_matrices, matrix_placements):
+        for matrix, matrix_rows, placement in zip(sub_matrix_props,
+                                                  sub_matrix_rows,
+                                                  matrix_placements):
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
             fp.seek(placement * 4, 0)
 
             # Build matrix large enough for entire ragged matrix
             num_row_words = self._get_num_row_words(matrix.max_cols)
-            num_matrix_words = len(matrix.rows) * num_row_words
-            matrix_words = np.empty((len(matrix.rows), num_row_words),
+            num_matrix_words = len(matrix_rows) * num_row_words
+            matrix_words = np.empty((len(matrix_rows), num_row_words),
                                     dtype=np.uint32)
 
             # Calculate the number of extension words required and build
@@ -102,11 +110,11 @@ class SynapticMatrix(Region):
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u, "
                          "matrix words:%u, num extension words:%u, num rows:%u",
                          placement, matrix.max_cols, num_matrix_words,
-                         matrix.size_words - num_matrix_words, len(matrix.rows))
+                         matrix.size_words - num_matrix_words, len(matrix_rows))
 
             # Loop through matrix rows
             next_row_offset = 0
-            for i, row in enumerate(matrix.rows):
+            for i, row in enumerate(matrix_rows):
                 # Write base row to matrix
                 next_row = None if len(row) == 1 else row[1]
                 self._write_spinnaker_row(row[0], next_row,
@@ -133,7 +141,8 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     def partition_matrices(self, matrices, vertex_slice, incoming_connections):
         # Loop through all incoming connections
-        sub_matrices = []
+        sub_matrix_props = []
+        sub_matrix_rows = []
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
             # Extract corresponding matrix rows
             pop_rows = matrices[pre_pop]
@@ -216,12 +225,13 @@ class SynapticMatrix(Region):
                             (len(sub_rows) * self._get_num_row_words(max_cols))
 
                         # Add sub matrix to list
-                        sub_matrices.append(
+                        sub_matrix_props.append(
                             SubMatrix(pre_neuron_vertex.key,
                                       pre_neuron_vertex.mask,
-                                      size_words, max_cols, sub_rows))
+                                      size_words, max_cols))
+                        sub_matrix_rows.append(sub_rows)
 
-        return sub_matrices
+        return sub_matrix_props, sub_matrix_rows
 
     # --------------------------------------------------------------------------
     # Private methods

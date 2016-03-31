@@ -23,13 +23,14 @@ class DelayBuffer(Region):
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, sub_matrices):
+    def sizeof(self, sub_matrix_props):
         """Get the size requirements of the region in bytes.
 
         Parameters
         ----------
-        sub_matrices : list of :py:class:`._SubMatrix`
-            Partitioned and expanded synaptic matrix rows
+        sub_matrix_props : list of :py:class:`._SubMatrix`
+            Properties of the sub matrices to be written
+            to synaptic matrix region
 
         Returns
         -------
@@ -38,13 +39,13 @@ class DelayBuffer(Region):
             of the region.
         """
         # Calculate buffer size
-        buffer_size = self._calc_buffer_size(sub_matrices)
+        buffer_size = self._calc_buffer_size(sub_matrix_props)
 
         # One word for number of delay slots and buffer size,
         # followed by delay matrix
         return 8 + (4 * (self.max_delay_ticks * buffer_size))
 
-    def write_subregion_to_file(self, fp, sub_matrices):
+    def write_subregion_to_file(self, fp, sub_matrix_props):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -52,20 +53,21 @@ class DelayBuffer(Region):
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        sub_matrices : list of :py:class:`._SubMatrix`
-            Partitioned and expanded synaptic matrix rows
+        sub_matrix_props : list of :py:class:`._SubMatrix`
+            Properties of the sub matrices to be written
+            to synaptic matrix region
         """
         # Calculate buffer size
-        buffer_size = self._calc_buffer_size(sub_matrices)
+        buffer_size = self._calc_buffer_size(sub_matrix_props)
 
         # Write maximum delay ticks and buffer size
         fp.write(struct.pack("II", self.max_delay_ticks, buffer_size))
 
-    def _calc_buffer_size(self, sub_matrices):
+    def _calc_buffer_size(self, sub_matrix_props):
         # **TODO** is there a point to capping this?
 
         # Get the maximum number of columns in any sub-matrices
-        max_cols = max(s.max_cols for s in sub_matrices)
+        max_cols = max(s.max_cols for s in sub_matrix_props)
 
         # Use this to scale events per tick into rows per tick
         return min(255, self.max_events_per_tick // max_cols)

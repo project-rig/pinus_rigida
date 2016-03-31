@@ -207,13 +207,13 @@ class SynapseCluster(object):
                         core.start)
 
             # Partition matrices
-            sub_matrices =\
+            sub_matrix_props, sub_matrix_rows =\
                 self.regions[Regions.synaptic_matrix].partition_matrices(
                     matrices, v.post_neuron_slice, v.incoming_connections)
 
             # Place them in memory
             matrix_placements = self.regions[Regions.key_lookup].place_matrices(
-                sub_matrices)
+                sub_matrix_props)
 
             # Select placed chip
             with machine_controller(x=vertex_placement[0],
@@ -228,12 +228,18 @@ class SynapseCluster(object):
 
                 # Get region arguments required to calculate size and write
                 region_arguments = self._get_region_arguments(
-                    v.post_neuron_slice, sub_matrices, matrix_placements,
-                    weight_fixed_point, v.out_buffers, v.back_prop_verts)
+                    v.post_neuron_slice, sub_matrix_props, sub_matrix_rows,
+                    matrix_placements, weight_fixed_point, v.out_buffers,
+                    v.back_prop_verts)
                     
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
                                                machine_controller, core)
+
+                # Store sub matrix properties and placements in vertex so
+                # they can be used to subsequently read weights back
+                v.sub_matrix_props = sub_matrix_props
+                v.matrix_placements = matrix_placements
 
     def read_profile(self):
         # Get the profile recording region
@@ -258,26 +264,41 @@ class SynapseCluster(object):
             itertools.repeat("u4", len(self.statistic_names)))
         return np.core.records.fromarrays(np_stats.T, names=stat_names,
                                           formats=stat_format)
+    def read_synaptic_weights(self, pre_pop):
+        # Loop through synapse vertices (post-synaptic)
+        for v in self.verts:
+            # If this synapse vertex has no incoming connections
+            # from pre-synaptic population, skip
+            if pre_pop not in v.incoming_connections:
+                continue
+
+            # Get list of pre-synaptic vertices
+            # this synapse vertex is connected to
+            pre_verts = v.incoming_connections[pre_pop]
+
+            #self.regions[Regions.synaptic_matrix].read
 
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_region_arguments(self, post_vertex_slice, sub_matrices,
-                              matrix_placements, weight_fixed_point,
-                              out_buffers, back_prop_verts):
+    def _get_region_arguments(self, post_vertex_slice, sub_matrix_props,
+                              sub_matrix_rows, matrix_placements,
+                              weight_fixed_point, out_buffers, back_prop_verts):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
             [weight_fixed_point, len(post_vertex_slice)]
 
-        region_arguments[Regions.key_lookup].kwargs["sub_matrices"] =\
-            sub_matrices
+        region_arguments[Regions.key_lookup].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
         region_arguments[Regions.key_lookup].kwargs["matrix_placements"] =\
             matrix_placements
 
-        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrices"] =\
-            sub_matrices
+        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
+        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrix_rows"] =\
+            sub_matrix_rows
         region_arguments[Regions.synaptic_matrix].kwargs["matrix_placements"] =\
             matrix_placements
         region_arguments[Regions.synaptic_matrix].kwargs["weight_fixed_point"] =\
@@ -286,8 +307,8 @@ class SynapseCluster(object):
         region_arguments[Regions.output_buffer].kwargs["out_buffers"] =\
             out_buffers
 
-        region_arguments[Regions.delay_buffer].kwargs["sub_matrices"] =\
-            sub_matrices
+        region_arguments[Regions.delay_buffer].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
 
         region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
             weight_fixed_point
