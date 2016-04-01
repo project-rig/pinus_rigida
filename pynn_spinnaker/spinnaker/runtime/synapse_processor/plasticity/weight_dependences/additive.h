@@ -80,7 +80,7 @@ public:
     S2011 m_Depression;
   };
 
-  Additive() : m_MinWeight(0), m_MaxWeight(0), m_A2Plus(0), m_MinusA2Minus(0)
+  Additive() : m_A2Plus(0), m_MinusA2Minus(0), m_MinWeight(0), m_MaxWeight(0)
   {
   }
 
@@ -92,13 +92,13 @@ public:
     LOG_PRINT(LOG_LEVEL_INFO, "\tPlasticity::WeightDependences::Additive::ReadSDRAMData");
 
     // Read region parameters
-    m_MinWeight = *reinterpret_cast<int32_t*>(region++);
-    m_MaxWeight = *reinterpret_cast<int32_t*>(region++);
     m_A2Plus = *reinterpret_cast<int32_t*>(region++);
     m_MinusA2Minus = -*reinterpret_cast<int32_t*>(region++);
+    m_MinWeight = *reinterpret_cast<int32_t*>(region++);
+    m_MaxWeight = *reinterpret_cast<int32_t*>(region++);
 
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\tMin weight:%d, Max weight:%d, A2+:%d, -A2-:%d",
-              m_MinWeight, m_MaxWeight, m_A2Plus, m_MinusA2Minus);
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tA2+:%d, -A2-:%d, Min weight:%d, Max weight:%d",
+              m_A2Plus, m_MinusA2Minus, m_MinWeight, m_MaxWeight);
 
     return true;
   }
@@ -107,13 +107,13 @@ private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  // Minimum and maximum synaptic weight in runtime weight format
-  int32_t m_MinWeight;
-  int32_t m_MaxWeight;
-
   // Potentiation and depression scaling factors in runtime weight format
   int32_t m_A2Plus;
   int32_t m_MinusA2Minus;
+
+  // Minimum and maximum synaptic weight in runtime weight format
+  int32_t m_MinWeight;
+  int32_t m_MaxWeight;
 };
 } // WeightDependences
 } // Plasticity

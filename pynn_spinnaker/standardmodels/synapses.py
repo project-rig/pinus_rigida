@@ -125,8 +125,6 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     plasticity_param_map = [
         ("w_min", "i4", lazy_param_map.s32_weight_fixed_point),
         ("w_max", "i4", lazy_param_map.s32_weight_fixed_point),
-        ("a_plus", "i4", lazy_param_map.s32_weight_fixed_point),
-        ("a_minus", "i4", lazy_param_map.s32_weight_fixed_point),
     ]
 
     comparable_param_names =  ("w_max", "w_min")
@@ -138,10 +136,10 @@ class SpikePairRule(synapses.SpikePairRule):
     __doc__ = synapses.SpikePairRule.__doc__
 
     translations = build_translations(
-        ("tau_plus",  "tau_plus"),
-        ("tau_minus", "tau_minus"),
         ("A_plus",    "a_plus"),
         ("A_minus",   "a_minus"),
+        ("tau_plus",  "tau_plus"),
+        ("tau_minus", "tau_minus"),
     )
 
     plasticity_param_map = [
@@ -149,6 +147,8 @@ class SpikePairRule(synapses.SpikePairRule):
                                       num_entries=256, time_shift=0)),
         ("tau_minus", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                        num_entries=256, time_shift=0)),
+        ("a_plus", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("a_minus", "i4", lazy_param_map.s32_weight_fixed_point),
     ]
 
     comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
