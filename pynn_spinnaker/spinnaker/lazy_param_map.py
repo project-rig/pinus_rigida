@@ -89,9 +89,14 @@ def s1615(values, **kwargs):
 def s2211(values, **kwargs):
     return float_to_s2211_no_copy(deepcopy(values))
 
-def unsigned_weight_fixed_point(values, weight_fixed_point, **kwargs):
+def u32_weight_fixed_point(values, weight_fixed_point, **kwargs):
     float_to_weight_no_copy = LazyArrayFloatToFixConverter(
-        False, 16, weight_fixed_point, False)
+        False, 32, weight_fixed_point, False)
+    return float_to_weight_no_copy(deepcopy(values))
+
+def s32_weight_fixed_point(values, weight_fixed_point, **kwargs):
+    float_to_weight_no_copy = LazyArrayFloatToFixConverter(
+        True, 32, weight_fixed_point, False)
     return float_to_weight_no_copy(deepcopy(values))
 
 def s1615_time_multiply(values, sim_timestep_ms, **kwargs):

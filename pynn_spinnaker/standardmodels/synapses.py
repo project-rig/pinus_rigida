@@ -123,10 +123,10 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     )
 
     plasticity_param_map = [
-        ("w_min", "i4", lazy_param_map.unsigned_weight_fixed_point),
-        ("w_max", "i4", lazy_param_map.unsigned_weight_fixed_point),
-        ("a_plus", "i4", lazy_param_map.s2211),
-        ("a_minus", "i4", lazy_param_map.s2211),
+        ("w_min", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("w_max", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("a_plus", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("a_minus", "i4", lazy_param_map.s32_weight_fixed_point),
     ]
 
     comparable_param_names =  ("w_max", "w_min")
