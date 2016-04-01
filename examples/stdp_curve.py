@@ -24,7 +24,7 @@ if spinnaker:
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler())
 
-    setup_kwargs = {"spinnaker_hostname": "192.168.240.253"}
+    setup_kwargs = {"spinnaker_hostname": "192.168.1.1"}
 else:
     import pyNN.nest as sim
 
@@ -89,7 +89,7 @@ print("Simulating for %us" % (sim_time / 1000))
 sim.run(sim_time)
 
 # Get weight from each projection
-end_w = plastic_proj.getWeights()
+end_w = plastic_proj.get("weight", format="list", with_address=False)
 
 # End simulation on SpiNNaker
 sim.end()
