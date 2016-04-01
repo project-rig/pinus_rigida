@@ -121,6 +121,17 @@ class CurrentInputCluster(object):
                 v.region_memory = load_regions(self.regions, region_arguments,
                                                machine_controller, core)
 
+    def read_recorded_spikes(self):
+        # Loop through all current input vertices
+        # and read spike times into dictionary
+        spike_times = {}
+        region = self.regions[Regions.spike_recording]
+        for v in self.verts:
+            region_mem = v.region_memory[Regions.spike_recording]
+            spike_times.update(region.read_spike_times(v.post_neuron_slice,
+                                                       region_mem))
+        return spike_times
+
     def read_profile(self):
         # Get the profile recording region and
         region = self.regions[Regions.profiler]

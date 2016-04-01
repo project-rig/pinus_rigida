@@ -274,6 +274,19 @@ class Population(common.Population):
                     # Read signal from this channel and add to dictionary
                     sig = self._neural_cluster.read_recorded_signal(channel)
                     signals[var] = sig
+        # Otherwise, if we're recording spikes
+        elif "spikes" in vars_to_read:
+            # Loop through outgoing connections
+            for o in self.outgoing_projections:
+                # If this connection isn't directly connectable skip
+                if not o._directly_connectable:
+                    continue
+
+                # Read spike times from the current input
+                # cluster associated with this projection
+                spike_times = o._current_input_cluster.read_recorded_spikes()
+                break
+
 
         return spike_times, signals
 
