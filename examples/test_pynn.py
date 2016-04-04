@@ -12,7 +12,7 @@ num_neurons = 10
 duration = 100
 dt = 1.0
 nest = False
-pinus = True
+spinnaker = True
 legacy = False
 spinnaker_config = defaultdict(dict)
 
@@ -50,7 +50,7 @@ def simulate(sim, setup_kwargs):
 
     return pop_a_data, pop_b_data
 
-def simulate_pinus():
+def simulate_spinnaker():
     import pynn_spinnaker as sim
 
     logger = logging.getLogger("pynn_spinnaker")
@@ -82,8 +82,8 @@ data = {}
 if nest:
     data["NEST"] = (simulate_nest(), { "color": "blue" })
 
-if pinus:
-    data["SpiNNaker"] = (simulate_pinus(), { "color": "red" })
+if spinnaker:
+    data["SpiNNaker"] = (simulate_spinnaker(), { "color": "red" })
 
 legacy_kwargs = { "color": "green", "alpha": 0.5 }
 
