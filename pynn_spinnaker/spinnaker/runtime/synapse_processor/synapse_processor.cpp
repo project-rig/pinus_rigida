@@ -269,12 +269,12 @@ void SetupNextDMARowRead()
 
         // Store SDRAM address of row in buffer
         // so it can be written back if required
-        DMACurrentRowBuffer().m_SDRAMAddress = rowAddress;
-        DMACurrentRowBuffer().m_Flush = false;
+        DMANextRowBuffer().m_SDRAMAddress = rowAddress;
+        DMANextRowBuffer().m_Flush = false;
 
-        // Start a DMA transfer to fetch this synaptic row into current buffer
+        // Start a DMA transfer to fetch this synaptic row into next buffer
         g_Statistics[StatRowRequested]++;
-        spin1_dma_transfer(DMATagRowRead, rowAddress, DMACurrentRowBuffer().m_Data,
+        spin1_dma_transfer(DMATagRowRead, rowAddress, DMANextRowBuffer().m_Data,
                           DMA_READ, rowWords * sizeof(uint32_t));
 
         // Flip DMA buffers and stop
@@ -302,12 +302,12 @@ void SetupNextDMARowRead()
 
       // Store SDRAM address of row in buffer
       // so it can be written back if required
-      DMACurrentRowBuffer().m_SDRAMAddress = delayRowAddress;
-      DMACurrentRowBuffer().m_Flush = false;
+      DMANextRowBuffer().m_SDRAMAddress = delayRowAddress;
+      DMANextRowBuffer().m_Flush = false;
 
-      // Start a DMA transfer to fetch this synaptic row into current buffer
+      // Start a DMA transfer to fetch this synaptic row into next buffer
       g_Statistics[StatDelayRowRequested]++;
-      spin1_dma_transfer(DMATagRowRead, delayRowAddress, DMACurrentRowBuffer().m_Data,
+      spin1_dma_transfer(DMATagRowRead, delayRowAddress, DMANextRowBuffer().m_Data,
                         DMA_READ, delayRowWords * sizeof(uint32_t));
 
       // Flip DMA buffers and stop
@@ -380,15 +380,22 @@ void DMATransferDone(uint, uint tag)
         spin1_dma_transfer(DMATagRowWrite, sdramAddress, localAddress,
                            DMA_WRITE, numWords * sizeof(uint32_t));
       };
-    
-    // Process the next row in the DMA buffer, using this function to apply
+
+    // Cache the current row buffer as starting
+    // a new row read will potentially flip buffers
+    auto &dmaCurrentRowBuffer = DMACurrentRowBuffer();
+
+    // Setup next row read so, ideally, data will be
+    // available as soon as processing of current row completes
+    SetupNextDMARowRead();
+
+    // Process the current row, using this function to apply
     Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessRow);
-    g_Synapse.ProcessRow(g_Tick, DMANextRowBuffer().m_Data, DMANextRowBuffer().m_SDRAMAddress, DMANextRowBuffer().m_Flush,
+    g_Synapse.ProcessRow(g_Tick, dmaCurrentRowBuffer.m_Data, dmaCurrentRowBuffer.m_SDRAMAddress, dmaCurrentRowBuffer.m_Flush,
                          addWeightLambda, addDelayRowLambda, writeBackRowLambda);
     Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
 
-    // Setup next row read
-    SetupNextDMARowRead();
+
   }
   else if(tag == DMATagOutputWrite)
   {
