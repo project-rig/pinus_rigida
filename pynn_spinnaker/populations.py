@@ -65,7 +65,9 @@ class WeightRange(object):
                             self.min, self.max)
 
         # Calculate where the weight format fixed-point lies
-        return (16 - int(max_msb))
+        # **NOTE** we clamp so that there is at least a 1-bit overlap with
+        # The bottom of the S16.15 format used by the neuron processors
+        return min(30, (16 - int(max_msb)))
 
 
 
