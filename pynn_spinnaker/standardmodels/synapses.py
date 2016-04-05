@@ -2,6 +2,7 @@ from pyNN.standardmodels import synapses, build_translations
 from ..spinnaker import regions
 from ..simulator import state
 from ..spinnaker import lazy_param_map
+from ..spinnaker.utils import get_homogeneous_param
 import logging
 
 # Import functions
@@ -86,6 +87,9 @@ class STDPMechanism(synapses.STDPMechanism):
             d = state.dt
         return d
 
+    def update_weight_range(self, weight_range):
+        self.weight_dependence.update_weight_range(weight_range)
+
     # The pre-trace
     @property
     def pre_trace_bytes(self):
@@ -128,6 +132,10 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     ]
 
     comparable_param_names =  ("w_max", "w_min")
+
+    def update_weight_range(self, weight_range):
+        weight_range.update(get_homogeneous_param(self.parameter_space, "w_max"))
+        weight_range.update(get_homogeneous_param(self.parameter_space, "w_min"))
 
 # ------------------------------------------------------------------------------
 # SpikePairRule

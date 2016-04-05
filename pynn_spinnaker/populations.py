@@ -567,6 +567,10 @@ class Population(common.Population):
             pop_matrix_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
                                         for r in matrix_rows]
 
+        # If the synapse model has a function to update weight range
+        if hasattr(synapse_type.model, "update_weight_range"):
+            synapse_type.model.update_weight_range(weight_range)
+
         # Calculate where the weight format fixed-point lies
         weight_fixed_point = weight_range.fixed_point
         logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)

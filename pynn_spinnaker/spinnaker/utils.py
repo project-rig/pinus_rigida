@@ -203,6 +203,19 @@ def get_model_executable_filename(prefix, model, profiled):
     # Join filename to path and add extension
     return path.join(model_directory, "binaries", filename + ".aplx")
 
+def get_homogeneous_param(param_space, param_name):
+    # Extract named parameter lazy array from parameter
+    # space and check that it's homogeneous
+    param_array = param_space[param_name]
+    assert param_array.is_homogeneous
+
+    # Set it's shape to 1
+    # **NOTE** for homogeneous arrays this is a)free and b)works
+    param_array.shape = 1
+
+    # Evaluate param array, simplifying it to a scalar
+    return param_array.evaluate(simplify=True)
+
 # Recursively build a tuple containing basic python types allowing an
 # (annotated) PyNN StandardModelType to compared/hashed for compatibility)
 def get_model_comparable(value):
@@ -216,21 +229,10 @@ def get_model_comparable(value):
             # with simular values so this is important 1st check
             comp = (value.__class__,)
 
-            # Loop through names of parameters which
-            # much match for objects to be equal
+            # Loop through names of parameters which much match for objects
+            # to be equal and read them from parameter space into tuple
             for p in value.comparable_param_names:
-                # Extract named parameter lazy array from parameter
-                # space and check that it's homogeneous
-                param_array = value.parameter_space[p]
-                assert param_array.is_homogeneous
-
-                # Set it's shape to 1
-                # **NOTE** for homogeneous arrays this is a)free and b)works
-                param_array.shape = 1
-
-                # Evaluate and simplify
-                # **NOTE** for homogeneous arrays this always returns a scalar
-                comp += (param_array.evaluate(simplify=True),)
+                comp += (get_homogeneous_param(value.parameter_space, p),)
             return comp
         # Otherwise, if model type has a collection of comparable properties,
         # Loop through the properties and recursively call this function
