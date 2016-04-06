@@ -144,6 +144,12 @@ class SynapticMatrix(Region):
         sub_matrix_props = []
         sub_matrix_rows = []
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
+            # If there are no vertices, skip
+            # **NOTE** this is because this is a defaultdict and
+            # empty lists can be added when attempting to iterate
+            if len(pre_neuron_vertices) == 0:
+                continue
+
             # Extract corresponding matrix rows
             pop_rows = matrices[pre_pop]
 
