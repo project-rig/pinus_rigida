@@ -163,15 +163,16 @@ class State(common.control.BaseState):
                 for n in pop._neural_cluster.verts:
                     # Find synapse and current vertices
                     # with overlapping slices
+                    verts = list(itertools.chain(s_verts, c_verts))
                     n.input_verts = [
-                        i for i in itertools.chain(s_verts, c_verts)
+                        i for i in verts
                         if i.post_neuron_slice.overlaps(n.neuron_slice)]
 
-                    logger.debug("\t\tConstraining neuron vert and %u input "
-                                 "verts to same chip", len(n.input_verts))
+                    logger.info("\t\tConstraining neuron vert and %u/%u input "
+                                 "verts to same chip", len(n.input_verts), len(verts))
 
                     # Build same chip constraint and add to list
-                    constraints.append(SameChipConstraint(n.input_verts + [n]))
+                    constraints.append(SameChipConstraint(verts + [n]))
 
             # Loop through synapse clusters
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
