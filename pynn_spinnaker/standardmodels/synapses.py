@@ -67,7 +67,7 @@ class STDPMechanism(synapses.STDPMechanism):
 
     # Assuming relatively long row length, at what rate can a SpiNNaker
     # synapse_processor of this type process synaptic events (hZ)
-    max_synaptic_event_rate = 2E6
+    max_synaptic_event_rate = 1E6
 
     synaptic_matrix_region_class = regions.PlasticSynapticMatrix
     plasticity_region_class = regions.Plasticity
