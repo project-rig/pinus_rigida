@@ -75,14 +75,37 @@ class FromListConnector(FromListConnector):
                 (post_indices >= post_slice.start) &
                 (post_indices < post_slice.stop)).sum()
 
+# ----------------------------------------------------------------------------
+# FixedNumberPostConnector
+# ----------------------------------------------------------------------------
+class FixedNumberPostConnector(FixedNumberPostConnector):
+    directly_connectable = False
+
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
+        return len(pre_slice) * self.n
+
+# ----------------------------------------------------------------------------
+# FixedNumberPreConnector
+# ----------------------------------------------------------------------------
+class FixedNumberPreConnector(FixedNumberPreConnector):
+    directly_connectable = False
+
+    def estimate_num_synapses(self, pre_slice, post_slice,
+                              pre_size, post_size):
+        return self.n * len(post_slice)
+
+# ----------------------------------------------------------------------------
+# FixedTotalNumberConnector
+# ----------------------------------------------------------------------------
 class FixedTotalNumberConnector(FixedTotalNumberConnector):
     directly_connectable = False
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
         # How large a fraction of the full pre and post populations is this
-        pre_fraction = float(len(pre_slice)) / float(pre_pop.size)
-        post_fraction = float(len(post_slice)) / float(post_pop.size)
+        pre_fraction = float(len(pre_slice)) / float(pre_size)
+        post_fraction = float(len(post_slice)) / float(post_size)
 
         # Multiply these by the total number of synapses
         return int(pre_fraction * post_fraction * float(self.n))
