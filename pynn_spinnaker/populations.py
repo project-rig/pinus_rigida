@@ -295,12 +295,15 @@ class Population(common.Population):
     def _estimate_constraints(self, hardware_timestep_us):
         # Determine the fraction of 1ms that the hardware timestep is.
         # This is used to scale all time-driven estimates
-        timestep_multiplier = min(1.0, float(hardware_timestep_us) / 1000.0)
-        logger.debug("\t\tTimestep multiplier:%f", timestep_multiplier)
+        timestep_mul = min(1.0, float(hardware_timestep_us) / 1000.0)
+        logger.debug("\t\tTimestep multiplier:%f", timestep_mul)
 
         # Apply timestep multipliers to the hard maximum specified in celltype
-        self.neuron_j_constraint = int(self.celltype.max_neurons_per_core *
-                                       timestep_multiplier)
+        max_neurons_per_core = (
+            self.spinnaker_config.max_neurons_per_core
+            if self.spinnaker_config.max_neurons_per_core is not None
+            else self.celltype.max_neurons_per_core)
+        self.neuron_j_constraint = int(max_neurons_per_core * timestep_mul)
 
         # Clamp constraint to actual size of population
         self.neuron_j_constraint = min(self.neuron_j_constraint, self.size)
@@ -337,7 +340,7 @@ class Population(common.Population):
                 # hard maximum specified in celltype
                 current_input_constraint =\
                     int(p.pre.celltype.max_current_inputs_per_core *
-                        timestep_multiplier)
+                        timestep_mul)
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
