@@ -163,3 +163,28 @@ class SpikePairRule(synapses.SpikePairRule):
 
     # How many byte does this
     pre_trace_bytes = 2
+
+# ------------------------------------------------------------------------------
+# Vogels2011Rule
+# ------------------------------------------------------------------------------
+class Vogels2011Rule(synapses.Vogels2011Rule):
+    __doc__ = synapses.Vogels2011Rule.__doc__
+
+    translations = build_translations(
+        ("tau", "tau"),
+        ("eta", "eta"),
+        ("rho", "rho"),
+    )
+
+    plasticity_param_map = [
+        ("rho", "i4", lazy_param_map.s2211),
+        ("tau", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
+                                 num_entries=256, time_shift=0)),
+        ("eta", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("eta", "i4", lazy_param_map.s32_weight_fixed_point),
+    ]
+
+    comparable_param_names = ("tau", "eta", "rho")
+
+    # How many byte does this
+    pre_trace_bytes = 2
