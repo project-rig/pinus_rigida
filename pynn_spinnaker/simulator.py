@@ -44,10 +44,11 @@ class State(common.control.BaseState):
 
     def __init__(self):
         common.control.BaseState.__init__(self)
-        self.clear()
+        self.machine_controller = None
+        self.system_info = None
         self.dt = 0.1
-        self.populations = []
-        self.projections = []
+
+        self.clear()
 
     def run(self, simtime):
         # Build data
@@ -71,6 +72,21 @@ class State(common.control.BaseState):
         self.id_counter = 42
         self.segment_counter = -1
         self.reset()
+
+        # Mapping from post-synaptic PyNN population (i.e. the
+        # one the current input cluster is injecting current INTO)
+        # to list of current input clusters
+        # {pynn_population: [current_input_cluster]}
+        self.post_pop_current_input_clusters = defaultdict(list)
+
+        # List of populations
+        self.populations = []
+
+        # List of projections
+        self.projections = []
+
+        # Stop any currently running SpiNNaker application
+        self.stop()
 
     def reset(self):
         """Reset the state of the current network to time t = 0."""
@@ -222,13 +238,6 @@ class State(common.control.BaseState):
             pop._create_synapse_clusters(hardware_timestep_us, duration_timesteps,
                                        vertex_applications, vertex_resources)
 
-
-        # Mapping from post-synaptic PyNN population (i.e. the
-        # one the current input cluster is injecting current INTO)
-        # to list of current input clusters
-        # {pynn_population: [current_input_cluster]}
-        self.post_pop_current_input_clusters = defaultdict(list)
-
         logger.info("Allocating current input clusters")
         for proj in self.projections:
             # Create cluster
@@ -257,21 +266,24 @@ class State(common.control.BaseState):
         for pop in self.populations:
             pop._build_nets(nets, net_keys)
 
-        logger.info("Connecting to SpiNNaker")
+        # If there isn't already a machine controller
+        # **TODO** this probably doesn't belong here
+        if self.machine_controller is None:
+            logger.info("Connecting to SpiNNaker")
 
-        # Get machine controller from connected SpiNNaker board and boot
-        self.machine_controller = MachineController(self.spinnaker_hostname)
-        self.machine_controller.boot()
+            # Get machine controller from connected SpiNNaker board and boot
+            self.machine_controller = MachineController(self.spinnaker_hostname)
+            self.machine_controller.boot()
 
-        # Get system info
-        system_info = self.machine_controller.get_system_info()
-        logger.debug("Found %u chip machine", len(system_info))
+            # Get system info
+            self.system_info = self.machine_controller.get_system_info()
+            logger.debug("Found %u chip machine", len(self.system_info))
 
         # Place-and-route
         logger.info("Placing and routing")
         placements, allocations, application_map, routing_tables =\
             place_and_route_wrapper(vertex_resources, vertex_applications,
-                                    nets, net_keys, system_info, constraints)
+                                    nets, net_keys, self.system_info, constraints)
         logger.info("Placed on %u cores", len(placements))
         logger.debug(list(itervalues(placements)))
 
