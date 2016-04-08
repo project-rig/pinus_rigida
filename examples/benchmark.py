@@ -11,19 +11,22 @@ logger.addHandler(logging.StreamHandler())
 setup_kwargs = {"spinnaker_hostname": "192.168.1.1",
                 "convert_direct_connections": False}
 
-n_stim = 1000
+n_stim = 200
 stim_rate = 10.0
-n_neurons = 8192
-connection_prob = 1.0
+n_neurons = 512
+row_length = 400
 duration = 5000
-current = 0.7575 # 10Hz
+#current = 1.49 # 60Hz
+#current = 0.83 # 20Hz
+#current = 0.7575 # 10Hz
 #current = 0.7501 # 5Hz
-static = True
+current = 0.0 # 0Hz
+static = False
 
-profile = False
-record_spikes = False
+profile = True
+record_spikes = True
 
-n_synapses = n_neurons * n_stim * connection_prob
+n_synapses = n_stim * row_length
 print("Number of synapses:%u" % n_synapses)
 print("Synaptic event rate:%fHz" % (n_synapses * stim_rate))
 
@@ -34,6 +37,7 @@ pop_stim = sim.Population(n_stim, sim.SpikeSourcePoisson(rate=stim_rate, duratio
 pop_neurons = sim.Population(n_neurons, sim.IF_curr_exp(tau_refrac=2.0, i_offset=current),
                              label="pop")
 if profile:
+    pop_stim.spinnaker_config.num_profile_samples = duration * 4
     pop_neurons.spinnaker_config.num_profile_samples = 1E5
 
 if record_spikes:
@@ -48,7 +52,7 @@ else:
         weight_dependence=sim.AdditiveWeightDependence(w_min=0.0, w_max=0.0),
         weight=0.0, delay=1.0, dendritic_delay_fraction=1.0)
 
-sim.Projection(pop_stim, pop_neurons, sim.FixedProbabilityConnector(connection_prob),
+sim.Projection(pop_stim, pop_neurons, sim.FixedNumberPostConnector(n=row_length),
                synapse, receptor_type="excitatory", label="proj")
 
 sim.run(duration)
@@ -68,6 +72,12 @@ if profile:
         print("E synapse type %s:" % str(t))
         sim.profiling.print_summary(c[0][1], duration, 1.0)
 
+        np.set_printoptions(threshold=np.nan)
+        np.save("row_times_%u.npy" % row_length, c[0][1]["Process row"][1])
+
+    print("Stim:")
+    s_profiling_data = pop_stim.get_neural_profile_data()[0][1]
+    sim.profiling.print_summary(s_profiling_data, duration, 1.0)
 # End simulation
 sim.end()
 
