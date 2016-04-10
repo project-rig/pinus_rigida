@@ -8,7 +8,7 @@
 #include "../common/statistics.h"
 
 // Synapse processor includes
-#include "spike_back_propagation.h"
+#include "sdram_back_propagation.h"
 
 // Configuration include
 #include "config.h"
@@ -31,6 +31,7 @@ enum DMATag
   DMATagRowWrite,
   DMATagOutputWrite,
   DMATagDelayBufferRead,
+  DMATagBackPropagationRead,
 };
 
 //----------------------------------------------------------------------------
@@ -59,7 +60,7 @@ KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
 Statistics<StatWordMax> g_Statistics;
 SynapseType g_Synapse;
-SpikeBackPropagation g_SpikeBackPropagation;
+SDRAMBackPropagation g_SDRAMBackPropagation;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -205,8 +206,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
-  if(!g_SpikeBackPropagation.ReadSDRAMData(
-    Config::GetRegionStart(baseAddress, RegionSpikeBackPropagation),
+  if(!g_SDRAMBackPropagation.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionBackPropagation),
     flags))
   {
     return false;
@@ -241,14 +242,6 @@ void SetupNextDMARowRead()
     uint32_t key;
     if(g_SpikeInputBuffer.GetNextSpike(key))
     {
-      // If this spike should be treated as back-propagation
-      // input for the synapses, allow synapse model to process it
-      unsigned int localNeuronIndex;
-      if(g_SpikeBackPropagation.GetLocalNeuronIndex(key, localNeuronIndex))
-      {
-        g_Synapse.AddPostSynapticSpike(g_Tick, localNeuronIndex);
-      }
-
       LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
 
       // Create lambda function to convert number of synapses to a row length in words
@@ -402,6 +395,21 @@ void DMATransferDone(uint, uint tag)
     // This timesteps output has been written from
     // the ring-buffer so we can now zero it
     g_RingBuffer.ClearOutputBuffer(g_Tick);
+
+    // Fetch back propagation data for this timestep
+    g_SDRAMBackPropagation.Fetch(g_Tick, DMATagBackPropagationRead);
+  }
+  else if(tag == DMATagBackPropagationRead)
+  {
+    // Create lambda function to pass back propagating spike to synapse
+    auto processSpikeLambda =
+      [](unsigned int j)
+      {
+        g_Synapse.AddPostSynapticSpike(g_Tick, j);
+      };
+
+    // Process back propagated spikes using lambda function
+    g_SDRAMBackPropagation.Process(g_AppWords[AppWordNumPostNeurons], processSpikeLambda);
 
     // Fetch delay buffer for this timestep
     // **NOTE** this will only cause a DMA if the buffer has any entries

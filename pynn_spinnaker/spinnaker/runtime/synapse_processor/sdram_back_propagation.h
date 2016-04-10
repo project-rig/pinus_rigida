@@ -19,7 +19,7 @@ namespace SynapseProcessor
 class SDRAMBackPropagation
 {
 public:
-  SDRAMBackPropagation()
+  SDRAMBackPropagation() : m_SDRAMBuffers{NULL, NULL}
   {
   }
 
