@@ -70,7 +70,7 @@ namespace BitField
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] n The index of the bit.
 //! \return The function returns true if the bit is set or false otherwise.
-inline bool TestBit(uint32_t *b, unsigned int i)
+inline bool TestBit(const uint32_t *b, unsigned int i)
 {
   return ((b [i >> 5] & (1 << (i & 0x1F))) != 0);
 }
@@ -107,7 +107,7 @@ inline void Flip(uint32_t *b, unsigned int s)
 //! the result is returned in this parameter.
 //! \param[in] b2 The sequence of words representing the second bit_field.
 //! \param[in] s The size of the bit_field.
-inline void And(uint32_t *b1, uint32_t *b2, unsigned int s)
+inline void And(uint32_t *b1, const uint32_t *b2, unsigned int s)
 {
     for ( ; s > 0; s--)
     {
@@ -120,7 +120,7 @@ inline void And(uint32_t *b1, uint32_t *b2, unsigned int s)
 //! the result is returned in this parameter.
 //! \param[in] b2 The sequence of words representing the second bit_field.
 //! \param[in] s The size of the bit_field.
-inline void Or(uint32_t *b1, uint32_t *b2, unsigned int s)
+inline void Or(uint32_t *b1, const uint32_t *b2, unsigned int s)
 {
     for ( ; s > 0; s--)
     {
@@ -154,10 +154,10 @@ inline void Set(uint32_t *b, unsigned int s)
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 //! \return The function returns true if every bit is zero, or false otherwise.
-inline bool IsEmpty(uint32_t *b, unsigned int s)
+inline bool IsEmpty(const uint32_t *b, unsigned int s)
 {
     bool empty = true;
-
+Prints a bit_field as ones and zeros.
     for ( ; s > 0; s--)
     {
         empty = empty && (b [s-1] == 0);
@@ -171,7 +171,7 @@ inline bool IsEmpty(uint32_t *b, unsigned int s)
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 //! \return The function returns true if at least one bit is set; otherwise false.
-inline bool IsNonEmpty(uint32_t *b, unsigned int s)
+inline bool IsNonEmpty(const uint32_t *b, unsigned int s)
 {
     return !IsEmpty(b, s);
 }
@@ -192,6 +192,56 @@ inline unsigned int GetWordSize(unsigned int bits)
     }
 
     return words;
+}
+
+//! \brief Loops through bitfield and calls function-like for each bit which is set
+//! \param[in] b The sequence of words representing a bit_field.
+//! \param[in] s The size of the bit_field.
+//! \param[in] processBitFunction Function-like to call whenever a set bit is encountered
+template<typename F>
+inline void ForEach(const uint32_t *b, unsigned int s, F processBitFunction)
+{
+  // While we have bits left to process
+  unsigned int remaining_bits = s;
+  while (remaining_bits > 0)
+  {
+    // Determine how many bits are in the next word of the bitfield.
+    unsigned int remaining_word_bits = (remaining_bits > 32) ? 32 : remaining_bits;
+
+    // Load the next word of the bitfield
+    uint32_t word = *b++;
+
+    // While there are still bits left
+    while (remaining_word_bits > 0)
+    {
+      // Work out how many bits we can skip
+      // XXX: The GCC documentation claims that `__builtin_clz(0)` is
+      // undefined, but the ARM instruction it uses is defined such that:
+      // CLZ 0x00000000 is 32
+      unsigned int skip = __builtin_clz(word);
+
+      // If `skip` is NOT less than `reamining_word_bits` then there are
+      // either no bits left in the word (`skip` == 32) or the first
+      // `1` in the word is beyond the range of bits we care about anyway.
+      if (skip < remaining_word_bits)
+      {
+        // Call process bit function
+        processBitFunction(s - remaining_bits);
+
+        // Prepare to test the bit after the one we just processed.
+        skip++;                       // Skip the bit we just decoded
+        remaining_bits -= skip;       // Reduce the number of bits left
+        remaining_word_bits -= skip;  // and the number left in this word.
+        word <<= skip;                // Shift out processed bits
+      }
+      // Otherwise, there are no bits left in this word
+      else
+      {
+        remaining_bits -= remaining_word_bits;  // Reduce the number of remaining bits
+        break;
+      }
+    }
+  }
 }
 
 //! \brief Prints a bit_field as ones and zeros.
