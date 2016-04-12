@@ -157,7 +157,6 @@ inline void Set(uint32_t *b, unsigned int s)
 inline bool IsEmpty(const uint32_t *b, unsigned int s)
 {
     bool empty = true;
-Prints a bit_field as ones and zeros.
     for ( ; s > 0; s--)
     {
         empty = empty && (b [s-1] == 0);
