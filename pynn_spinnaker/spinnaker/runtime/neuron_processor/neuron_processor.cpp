@@ -15,6 +15,7 @@
 // Neuron processor includes
 #include "analogue_recording.h"
 #include "input_buffer.h"
+#include "sdram_back_propagation.h"
 
 // Configuration include
 #include "config.h"
@@ -36,6 +37,8 @@ namespace
 enum DMATag
 {
   DMATagInputRead,
+  DMATagSpikeRecordingWrite,
+  DMATagBackPropagationWrite
 };
 
 //----------------------------------------------------------------------------
@@ -53,6 +56,8 @@ Synapse::MutableState *g_SynapseMutableState = NULL;
 Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
 InputBuffer g_InputBuffer;
+
+SDRAMBackPropagation g_BackPropagation;
 
 SpikeRecording g_SpikeRecording;
 AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax];
@@ -175,6 +180,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read back propagation region
+  if(!g_BackPropagation.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionBackPropagation), flags,
+    g_AppWords[AppWordNumNeurons]))
+  {
+    return false;
+  }
+
   // Read spike recording region
   if(!g_SpikeRecording.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
@@ -254,6 +267,9 @@ void UpdateNeurons()
       {
         spin1_delay_us(1);
       }
+
+      // Record spike in back propagation system if required
+      g_BackPropagation.RecordSpike(n);
     }
 
     // Loop through neuron model's analogue recording channels
@@ -273,8 +289,9 @@ void UpdateNeurons()
     }*/
   }
 
-  // Transfer spike recording buffer to SDRAM
-  g_SpikeRecording.TransferBuffer();
+  // Transfer spike recording and back propagation buffers to SDRAM
+  g_SpikeRecording.TransferBuffer(DMATagSpikeRecordingWrite);
+  g_BackPropagation.TransferBuffer(g_Tick, DMATagBackPropagationWrite);
 }
 
 //-----------------------------------------------------------------------------
@@ -311,6 +328,14 @@ static void DMATransferDone(uint, uint tag)
     {
       UpdateNeurons();
     }
+  }
+  else if(tag == DMATagSpikeRecordingWrite)
+  {
+    g_SpikeRecording.Reset();
+  }
+  else if(tag == DMATagBackPropagationWrite)
+  {
+    g_BackPropagation.ClearBuffer();
   }
   else
   {
