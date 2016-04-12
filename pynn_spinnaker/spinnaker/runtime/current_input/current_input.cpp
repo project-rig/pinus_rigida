@@ -177,9 +177,7 @@ void TimerTick(uint tick, uint)
     // Finalise profiling
     Profiler::Finalise();
     
-    // Finalise any recordings that are in progress, writing
-    // back the final amounts of samples recorded to SDRAM
-    //recording_finalise();
+    // Exit simulation
     spin1_exit(0);
   }
   // Otherwise
@@ -218,8 +216,8 @@ void TimerTick(uint tick, uint)
 
     // DMA output buffer into correct output buffer for this timer tick
     spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[tick % 2],
-                      g_OutputBuffer, DMA_WRITE,
-                      g_AppWords[AppWordNumCurrentSources] * sizeof(uint32_t));
+                       g_OutputBuffer, DMA_WRITE,
+                       g_AppWords[AppWordNumCurrentSources] * sizeof(uint32_t));
   }
 }
 } // anonymous namespace

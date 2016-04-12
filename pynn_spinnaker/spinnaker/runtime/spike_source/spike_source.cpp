@@ -119,9 +119,7 @@ void TimerTick(uint tick, uint)
     // Finalise profiling
     Profiler::Finalise();
 
-    // Finalise any recordings that are in progress, writing
-    // back the final amounts of samples recorded to SDRAM
-    //recording_finalise();
+    // Exit simulation
     spin1_exit(0);
   }
   // Otherwise

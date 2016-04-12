@@ -472,7 +472,7 @@ void TimerTick(uint tick, uint)
     // Finalise statistics
     g_Statistics.Finalise();
 
-    // Exit
+    // Exit simulation
     spin1_exit(0);
   }
   else
