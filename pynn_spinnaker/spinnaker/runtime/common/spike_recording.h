@@ -76,7 +76,7 @@ public:
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tRecording neuron:%u, spikes:%u",
                 neuron, spiked ? 1 : 0);
 
-      // If it's spiked, set current bit
+      // If it's spiked, set current bitm_SDRAMBuffers
       if(spiked)
       {
         BitField::SetBit(m_RecordBuffer, m_CurrentBit);
@@ -87,32 +87,6 @@ public:
     }
   }
 
-  void TransferBuffer()
-  {
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tTransferring record buffer to SDRAM:%08x",
-      m_RecordSDRAM);
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-    BitField::PrintBits(IO_BUF, m_RecordBuffer, m_NumWords);
-    io_printf(IO_BUF, "\n");
-#endif
-
-    // Copy record buffer into SDRAM
-    const uint32_t *recordBuffer = m_RecordBuffer;
-    unsigned int count = m_NumWords;
-    for(; count > 0; count--)
-    {
-      *m_RecordSDRAM++ = *recordBuffer++;
-    }
-
-    // Reset
-    Reset();
-  }
-
-
-private:
-  //-----------------------------------------------------------------------------
-  // Private methods
-  //-----------------------------------------------------------------------------
   void Reset()
   {
     // Reset current bit
@@ -122,6 +96,29 @@ private:
     BitField::Clear(m_RecordBuffer, m_NumWords);
   }
 
+  void TransferBuffer(uint tag)
+  {
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tTransferring record buffer to SDRAM:%08x",
+      m_RecordSDRAM);
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    BitField::PrintBits(IO_BUF, m_RecordBuffer, m_NumWords);
+    io_printf(IO_BUF, "\n");
+#endif
+
+    // Use DMA to transfer record buffer to SDRAM
+    if(m_NumWords > 0)
+    {
+      spin1_dma_transfer(tag, m_RecordSDRAM,
+                         m_RecordBuffer, DMA_WRITE,
+                         m_NumWords * sizeof(uint32_t));
+
+      // Advance SDRAM pointer
+      m_RecordSDRAM += m_NumWords;
+    }
+  }
+
+
+private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------

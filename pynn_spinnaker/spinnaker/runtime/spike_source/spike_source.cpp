@@ -24,6 +24,11 @@ using namespace SpikeSource;
 namespace
 {
 //----------------------------------------------------------------------------
+// Constants
+//----------------------------------------------------------------------------
+const uint DMATagOutputWrite = Source::DMATagMax;
+
+//----------------------------------------------------------------------------
 // Module level variables
 //----------------------------------------------------------------------------
 Config g_Config;
@@ -90,7 +95,11 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 void DMATransferDone(uint, uint tag)
 {
-  if(!g_SpikeSource.DMATransferDone(tag))
+  if(tag == DMATagOutputWrite)
+  {
+    g_SpikeRecording.Reset();
+  }
+  else if(!g_SpikeSource.DMATransferDone(tag))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Spike source unable to handle DMA tag %u", tag);
   }
@@ -138,7 +147,7 @@ void TimerTick(uint tick, uint)
     );
 
     // Transfer spike recording buffer to SDRAM
-    g_SpikeRecording.TransferBuffer();
+    g_SpikeRecording.TransferBuffer(DMATagOutputWrite);
   }
 }
 } // Anonymous namespace
