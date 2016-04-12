@@ -1,7 +1,6 @@
 #pragma once
 
 // Standard includes
-#include <algorithm>
 #include <cstdint>
 
 // Common includes
@@ -60,9 +59,17 @@ public:
       weightChange >>= 11;
 
       // Apply weight change and clamp
+      // **NOTE** we know that m_MinWeight is always less than m_MaxWeight so doing 
+      // this rather than calling std::min and std::max saves a couple of cycles
       int32_t newWeight = m_InitialWeight + weightChange;
-      newWeight = std::min(weightDependence.m_MaxWeight,
-                           std::max(newWeight, weightDependence.m_MinWeight));
+      if(newWeight < weightDependence.m_MinWeight)
+      {
+        newWeight = weightDependence.m_MinWeight;
+      }
+      else if(newWeight > weightDependence.m_MaxWeight)
+      {
+        newWeight = weightDependence.m_MaxWeight;
+      }
 
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tInitial weight:%d, Potentiation:%d, Depression:%d, Weight change:%d, New weight:%d",
                 m_InitialWeight, m_Potentiation, m_Depression, weightChange, newWeight);
