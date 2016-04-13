@@ -28,7 +28,7 @@ class Regions(enum.IntEnum):
     plasticity = 3
     output_buffer = 4
     delay_buffer = 5
-    spike_back_prop = 6
+    back_prop_input = 6
     profiler = 7
     statistics = 8
 
@@ -42,7 +42,6 @@ class Vertex(InputVertex):
         super(Vertex, self).__init__(post_neuron_slice, receptor_index)
 
         self.incoming_connections = defaultdict(list)
-        self.back_prop_verts = []
 
     def add_connection(self, pre_pop, pre_neuron_vertex):
         self.incoming_connections[pre_pop].append(pre_neuron_vertex)
@@ -58,6 +57,7 @@ class SynapseCluster(object):
         1:  "Multicast packet received",
         2:  "Setup next DMA row read",
         3:  "Process row",
+        4:  "Process back propagation",
     }
 
     # Names of statistics
@@ -82,7 +82,7 @@ class SynapseCluster(object):
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
-        self.regions[Regions.spike_back_prop] = regions.SpikeBackProp()
+        self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
@@ -203,8 +203,8 @@ class SynapseCluster(object):
             assert (core.stop - core.start) == 1
 
             logger.debug("\t\tVertex %s (%u, %u, %u)",
-                        v, vertex_placement[0], vertex_placement[1],
-                        core.start)
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
 
             # Partition matrices
             sub_matrix_props, sub_matrix_rows =\
@@ -223,14 +223,13 @@ class SynapseCluster(object):
                 out_buffer_bytes = len(v.post_neuron_slice) * 4
                 v.out_buffers = [
                     machine_controller.sdram_alloc(out_buffer_bytes,
-                                                    clear=True)
+                                                   clear=True)
                     for _ in range(2)]
 
                 # Get region arguments required to calculate size and write
                 region_arguments = self._get_region_arguments(
                     v.post_neuron_slice, sub_matrix_props, sub_matrix_rows,
-                    matrix_placements, weight_fixed_point, v.out_buffers,
-                    v.back_prop_verts)
+                    matrix_placements, weight_fixed_point, v.out_buffers)
                     
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
@@ -294,7 +293,7 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrix_props,
                               sub_matrix_rows, matrix_placements,
-                              weight_fixed_point, out_buffers, back_prop_verts):
+                              weight_fixed_point, out_buffers):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
@@ -324,7 +323,6 @@ class SynapseCluster(object):
         region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
             weight_fixed_point
 
-        region_arguments[Regions.spike_back_prop].kwargs["back_prop_verts"] =\
-            back_prop_verts
+        region_arguments[Regions.back_prop_input].kwargs["in_buffers"] = []
 
         return region_arguments
