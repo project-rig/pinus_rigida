@@ -39,7 +39,7 @@ public:
     // Copy key lookup entries
     if(!AllocateCopyStructArray(m_NumInputBuffers, region, m_InputBuffers))
     {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate key lookup array");
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate input buffer array");
       return false;
     }
 
@@ -62,13 +62,13 @@ public:
     return true;
   }
 
-  bool SetupBufferDMA(unsigned int inputBufferIndex, uint tick, unsigned int numNeurons, uint tag)
+  bool Fetch(unsigned int inputBufferIndex, uint tick, unsigned int numNeurons, uint tag)
   {
     // If there are input buffers outstanding
     if(inputBufferIndex < m_NumInputBuffers)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\tStarting DMA of input buffer index:%u (%u)",
-                inputBufferIndex, tick % 2);
+                inputBufferIndex, (tick + 1) % 2);
 
       // Start DMA into input buffer
       auto inputBuffer = m_InputBuffers[inputBufferIndex];
@@ -85,7 +85,7 @@ public:
   }
 
   template<typename G>
-  void ApplyDMABuffer(unsigned int inputBufferIndex, unsigned int numNeurons,
+  void Process(unsigned int inputBufferIndex, unsigned int numNeurons,
                       G applyInputFunction)
   {
     // Get corresponding input buffer

@@ -1,5 +1,8 @@
 #include "synapse_processor.h"
 
+// Standard includes
+#include <climits>
+
 // Common includes
 #include "../common/config.h"
 #include "../common/log.h"
@@ -8,7 +11,7 @@
 #include "../common/statistics.h"
 
 // Synapse processor includes
-#include "sdram_back_propagation.h"
+#include "sdram_back_propagation_input.h"
 
 // Configuration include
 #include "config.h"
@@ -60,7 +63,7 @@ KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
 Statistics<StatWordMax> g_Statistics;
 SynapseType g_Synapse;
-SDRAMBackPropagation g_SDRAMBackPropagation;
+SDRAMBackPropagationInput g_SDRAMBackPropagationInput;
 
 uint32_t g_AppWords[AppWordMax];
 
@@ -76,6 +79,9 @@ uint g_Tick = 0;
 bool g_DMABusy = false;
 DMABuffer g_DMABuffers[2];
 unsigned int g_DMARowBufferIndex = 0;
+
+unsigned int g_BackPropagationBufferBeingProcessed = UINT_MAX;
+unsigned int g_BackPropagationBufferNeuronOffset = 0;
 
 //-----------------------------------------------------------------------------
 // Module inline functions
@@ -206,9 +212,9 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
-  if(!g_SDRAMBackPropagation.ReadSDRAMData(
-    Config::GetRegionStart(baseAddress, RegionBackPropagation),
-    flags))
+  if(!g_SDRAMBackPropagationInput.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionBackPropagationInput),
+    flags, g_AppWords[AppWordNumPostNeurons]))
   {
     return false;
   }
@@ -396,8 +402,15 @@ void DMATransferDone(uint, uint tag)
     // the ring-buffer so we can now zero it
     g_RingBuffer.ClearOutputBuffer(g_Tick);
 
-    // Fetch back propagation data for this timestep
-    g_SDRAMBackPropagation.Fetch(g_Tick, DMATagBackPropagationRead);
+    // If there are no back propagation buffers to fetch, fetch delay buffer immediately
+    g_BackPropagationBufferBeingProcessed = 0;
+    g_BackPropagationBufferNeuronOffset = 0;
+    if(g_SDRAMBackPropagationInput.Fetch(g_BackPropagationBufferBeingProcessed,
+      g_Tick, DMATagBackPropagationRead))
+    {
+      // **NOTE** this will only cause a DMA if the buffer has any entries
+      g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
+    }
   }
   else if(tag == DMATagBackPropagationRead)
   {
@@ -405,15 +418,23 @@ void DMATransferDone(uint, uint tag)
     auto processSpikeLambda =
       [](unsigned int j)
       {
-        g_Synapse.AddPostSynapticSpike(g_Tick, j);
+        g_Synapse.AddPostSynapticSpike(g_Tick, g_BackPropagationBufferNeuronOffset + j);
       };
 
     // Process back propagated spikes using lambda function
-    g_SDRAMBackPropagation.Process(g_AppWords[AppWordNumPostNeurons], processSpikeLambda);
+    Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessBackPropagation);
+    g_BackPropagationBufferNeuronOffset += g_SDRAMBackPropagationInput.Process(g_BackPropagationBufferBeingProcessed,
+                                                                               processSpikeLambda);
+    Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessBackPropagation);
 
-    // Fetch delay buffer for this timestep
-    // **NOTE** this will only cause a DMA if the buffer has any entries
-    g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
+    // Attempt to fetch next back propagation buffer
+    g_BackPropagationBufferBeingProcessed++;
+    if(g_SDRAMBackPropagationInput.Fetch(g_BackPropagationBufferBeingProcessed,
+      g_Tick, DMATagBackPropagationRead))
+    {
+      // **NOTE** this will only cause a DMA if the buffer has any entries
+      g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
+    }
   }
   else if(tag == DMATagDelayBufferRead)
   {

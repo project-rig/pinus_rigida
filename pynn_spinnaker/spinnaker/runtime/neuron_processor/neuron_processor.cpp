@@ -15,7 +15,7 @@
 // Neuron processor includes
 #include "analogue_recording.h"
 #include "input_buffer.h"
-#include "sdram_back_propagation.h"
+#include "sdram_back_propagation_output.h"
 
 // Configuration include
 #include "config.h"
@@ -57,7 +57,7 @@ Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 
 InputBuffer g_InputBuffer;
 
-SDRAMBackPropagation g_BackPropagation;
+SDRAMBackPropagationOutput g_BackPropagationOutput;
 
 SpikeRecording g_SpikeRecording;
 AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax];
@@ -181,8 +181,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   }
 
   // Read back propagation region
-  if(!g_BackPropagation.ReadSDRAMData(
-    Config::GetRegionStart(baseAddress, RegionBackPropagation), flags,
+  if(!g_BackPropagationOutput.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionBackPropagationOutput), flags,
     g_AppWords[AppWordNumNeurons]))
   {
     return false;
@@ -269,7 +269,7 @@ void UpdateNeurons()
       }
 
       // Record spike in back propagation system if required
-      g_BackPropagation.RecordSpike(n);
+      g_BackPropagationOutput.RecordSpike(n);
     }
 
     // Loop through neuron model's analogue recording channels
@@ -291,7 +291,7 @@ void UpdateNeurons()
 
   // Transfer spike recording and back propagation buffers to SDRAM
   g_SpikeRecording.TransferBuffer(DMATagSpikeRecordingWrite);
-  g_BackPropagation.TransferBuffer(g_Tick, DMATagBackPropagationWrite);
+  g_BackPropagationOutput.TransferBuffer(g_Tick, DMATagBackPropagationWrite);
 }
 
 //-----------------------------------------------------------------------------
@@ -314,16 +314,16 @@ static void DMATransferDone(uint, uint tag)
 
     // Apply input in DMA buffer
     Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
-    g_InputBuffer.ApplyDMABuffer(g_InputBufferBeingProcessed,
-                                 g_AppWords[AppWordNumNeurons],
-                                 applyInputLambda);
+    g_InputBuffer.Process(g_InputBufferBeingProcessed,
+                          g_AppWords[AppWordNumNeurons],
+                          applyInputLambda);
     Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
 
     // Advance to next input buffer
     g_InputBufferBeingProcessed++;
 
     // If there aren't any more input buffers to DMA, start neuron update
-    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed, g_Tick,
+    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick,
       g_AppWords[AppWordNumNeurons], DMATagInputRead))
     {
       UpdateNeurons();
@@ -335,7 +335,7 @@ static void DMATransferDone(uint, uint tag)
   }
   else if(tag == DMATagBackPropagationWrite)
   {
-    g_BackPropagation.ClearBuffer();
+    g_BackPropagationOutput.ClearBuffer();
   }
   else
   {
@@ -381,7 +381,7 @@ static void TimerTick(uint tick, uint)
     g_InputBufferBeingProcessed = 0;
 
     // If there aren't any input buffers to DMA, start neuron update
-    if(g_InputBuffer.SetupBufferDMA(g_InputBufferBeingProcessed, g_Tick,
+    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick,
       g_AppWords[AppWordNumNeurons], DMATagInputRead))
     {
       UpdateNeurons();

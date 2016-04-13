@@ -12,14 +12,14 @@
 using namespace Common;
 
 //-----------------------------------------------------------------------------
-// NeuronProcessor::SDRAMBackPropagation
+// NeuronProcessor::SDRAMBackPropagationOutput
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
-class SDRAMBackPropagation
+class SDRAMBackPropagationOutput
 {
 public:
-  SDRAMBackPropagation() : m_NumWords(0), m_SpikeBuffer(NULL), m_SDRAMBuffers{NULL, NULL}
+  SDRAMBackPropagationOutput() : m_NumWords(0), m_SpikeBuffer(NULL), m_SDRAMBuffers{NULL, NULL}
   {
   }
 
@@ -56,7 +56,7 @@ public:
 
   bool ReadSDRAMData(uint32_t *region, uint32_t, unsigned int numNeurons)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "SDRAMBackPropagation::ReadSDRAMData");
+    LOG_PRINT(LOG_LEVEL_INFO, "SDRAMBackPropagationOutput::ReadSDRAMData");
 
     // If back propagation is enabled
     bool enabled = (*region++ != 0);

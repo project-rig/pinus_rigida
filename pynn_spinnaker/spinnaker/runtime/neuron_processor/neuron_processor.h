@@ -12,7 +12,7 @@ enum Region
   RegionNeuron,
   RegionSynapse,
   RegionInputBuffer,
-  RegionBackPropagation,
+  RegionBackPropagationOutput,
   RegionSpikeRecording,
   RegionAnalogueRecordingStart,
   RegionAnalogueRecordingEnd = RegionAnalogueRecordingStart + 4,
