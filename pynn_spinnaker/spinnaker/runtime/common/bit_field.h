@@ -195,22 +195,29 @@ inline unsigned int GetWordSize(unsigned int bits)
 
 //! \brief Loops through bitfield and calls function-like for each bit which is set
 //! \param[in] b The sequence of words representing a bit_field.
-//! \param[in] s The size of the bit_field.
+//! \param[in] begin The first bit to check.
+//! \param[in] end The bit to check up to (exclusive).
 //! \param[in] processBitFunction Function-like to call whenever a set bit is encountered
 template<typename F>
-inline void ForEach(const uint32_t *b, unsigned int s, F processBitFunction)
+inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
+                    F processBitFunction)
 {
-  // While we have bits left to process
-  unsigned int remaining_bits = s;
-  while (remaining_bits > 0)
+  // Extract bit and word component of begin
+  const unsigned int begin_word = (begin >> 5);
+  const unsigned int begin_bit = (begin & 0x1F);
+
+  // Advance b to the beginning word
+  b += (begin >> 5)
+
+  // Shift out bits above the beginning bit
+  uint32_t word = *b << begin_bit;
+
+  // Calculate how many bits remain in total and in first word
+  unsigned int remaining_bits = end - begin;
+  unsigned int remaining_word_bits = 32 - begin_bit;
+  while(true)
   {
-    // Determine how many bits are in the next word of the bitfield.
-    unsigned int remaining_word_bits = (remaining_bits > 32) ? 32 : remaining_bits;
-
-    // Load the next word of the bitfield
-    uint32_t word = *b++;
-
-    // While there are still bits left
+    // While there are still bits left in word
     while (remaining_word_bits > 0)
     {
       // Work out how many bits we can skip
@@ -219,19 +226,19 @@ inline void ForEach(const uint32_t *b, unsigned int s, F processBitFunction)
       // CLZ 0x00000000 is 32
       unsigned int skip = __builtin_clz(word);
 
-      // If `skip` is NOT less than `reamining_word_bits` then there are
+      // If `skip` is NOT less than `remaining_word_bits` then there are
       // either no bits left in the word (`skip` == 32) or the first
       // `1` in the word is beyond the range of bits we care about anyway.
       if (skip < remaining_word_bits)
       {
-        // Call process bit function
-        processBitFunction(s - remaining_bits);
-
         // Prepare to test the bit after the one we just processed.
         skip++;                       // Skip the bit we just decoded
         remaining_bits -= skip;       // Reduce the number of bits left
         remaining_word_bits -= skip;  // and the number left in this word.
         word <<= skip;                // Shift out processed bits
+
+        // Call process bit function
+        processBitFunction(end - remaining_bits - 1);
       }
       // Otherwise, there are no bits left in this word
       else
@@ -239,6 +246,21 @@ inline void ForEach(const uint32_t *b, unsigned int s, F processBitFunction)
         remaining_bits -= remaining_word_bits;  // Reduce the number of remaining bits
         break;
       }
+    }
+
+    // If there are bits remaining
+    if(remaining_bits > 0)
+    {
+      // Load the next word of the bitfield
+      word = *b++;
+
+      // Determine how many bits are in the next word of the bitfield.
+      remaining_word_bits = (remaining_bits > 32) ? 32 : remaining_bits;
+    }
+    // Otherwise, stop
+    else
+    {
+      break;
     }
   }
 }
