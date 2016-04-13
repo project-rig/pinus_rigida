@@ -598,6 +598,24 @@ class Population(common.Population):
         for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
             matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
 
+    def _allocate_out_buffers(self, placements, allocations, machine_controller):
+        logger.info("\tPopulation label:%s", self.label)
+
+         # Loop through synapse types and associated cluster
+        for s_type, s_cluster in iteritems(self._synapse_clusters):
+            logger.debug("\t\tSynapse type:%s, receptor:%s",
+                        s_type.model.__class__.__name__, s_type.receptor)
+
+            # Allocate out buffers
+            s_cluster.allocate_out_buffers(placements, allocations,
+                                           machine_controller)
+
+        # If population has a neuron cluster,
+        # allow it to allocate any output buffers
+        if self._neural_cluster is not None:
+            self._neural_cluster.allocate_out_buffers(placements, allocations,
+                                                      machine_controller)
+
     def _load_verts(self, placements, allocations, machine_controller):
         logger.info("\tPopulation label:%s", self.label)
 
@@ -614,7 +632,7 @@ class Population(common.Population):
             s_cluster.load(placements, allocations, machine_controller,
                            matrices, weight_fixed_point)
 
-        # If population has a neuron cluster, skip
+        # If population has a neuron cluster, load it
         if self._neural_cluster is not None:
             self._neural_cluster.load(placements, allocations, machine_controller)
 

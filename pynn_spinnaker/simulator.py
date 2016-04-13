@@ -299,12 +299,25 @@ class State(common.control.BaseState):
             self.machine_controller.write_struct_field("sv", "soft_wdog",
                                                        wdog, x, y)
 
+        # Allocate buffers for SDRAM-based communication between vertices
+        logger.info("Allocating population output buffers")
+        for pop in self.populations:
+            pop._allocate_out_buffers(placements, allocations,
+                                      self.machine_controller)
+        logger.info("Allocating projection output buffers")
+        for proj in self.projections:
+            proj._allocate_out_buffers(placements, allocations,
+                                       self.machine_controller)
+
         # Load vertices
-        logger.info("Loading current input vertices")
+        # **NOTE** projection vertices need to be loaded
+        # first as weight-fixed point is only calculated at
+        # load time and this is required by neuron vertices
+        logger.info("Loading projection vertices")
         for proj in self.projections:
             proj._load_verts(placements, allocations, self.machine_controller)
-            
-        logger.info("Loading vertices")
+
+        logger.info("Loading population vertices")
         for pop in self.populations:
             pop._load_verts(placements, allocations, self.machine_controller)
 

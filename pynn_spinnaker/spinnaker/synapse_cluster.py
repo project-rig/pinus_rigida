@@ -186,6 +186,33 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
+    def allocate_out_buffers(self, placements, allocations,
+                             machine_controller):
+        # Loop through synapse verts
+        for v in self.verts:
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
+
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
+
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
+
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Allocate two output buffers
+                # for this synapse population
+                out_buffer_bytes = len(v.post_neuron_slice) * 4
+                v.out_buffers = [
+                    machine_controller.sdram_alloc(out_buffer_bytes,
+                                                   clear=True)
+                    for _ in range(2)]
+
     def load(self, placements, allocations, machine_controller,
              matrices, weight_fixed_point):
         # Loop through synapse verts
@@ -218,14 +245,6 @@ class SynapseCluster(object):
             # Select placed chip
             with machine_controller(x=vertex_placement[0],
                                     y=vertex_placement[1]):
-                # Allocate two output buffers
-                # for this synapse population
-                out_buffer_bytes = len(v.post_neuron_slice) * 4
-                v.out_buffers = [
-                    machine_controller.sdram_alloc(out_buffer_bytes,
-                                                   clear=True)
-                    for _ in range(2)]
-
                 # Get region arguments required to calculate size and write
                 region_arguments = self._get_region_arguments(
                     v.post_neuron_slice, sub_matrix_props, sub_matrix_rows,

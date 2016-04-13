@@ -84,13 +84,10 @@ class CurrentInputCluster(object):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def load(self, placements, allocations, machine_controller,
-             direct_weights):
+    def allocate_out_buffers(self, placements, allocations,
+                             machine_controller):
         # Loop through synapse verts
         for v in self.verts:
-            # Use native S16.15 format
-            v.weight_fixed_point = 15
-
             # Get placement and allocation
             vertex_placement = placements[v]
             vertex_allocation = allocations[v]
@@ -113,6 +110,28 @@ class CurrentInputCluster(object):
                                                    clear=True)
                     for _ in range(2)]
 
+    def load(self, placements, allocations, machine_controller,
+             direct_weights):
+        # Loop through synapse verts
+        for v in self.verts:
+            # Use native S16.15 format
+            v.weight_fixed_point = 15
+
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
+
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
+
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
+
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
                 # Get region arguments required to calculate size and write
                 region_arguments = self._get_region_arguments(
                     v.post_neuron_slice, direct_weights, v.out_buffers)
