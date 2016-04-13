@@ -23,7 +23,7 @@ from spinnaker.utils import UnitStrideSlice
 # Import functions
 from copy import deepcopy
 from pyNN.parameters import simplify
-from six import iteritems, itervalues
+from six import iteritems, iterkeys, itervalues
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -455,12 +455,18 @@ class Population(common.Population):
                                vertex_applications, vertex_resources, keyspace):
         # Create neural cluster
         if not self._entirely_directly_connectable:
+            # Determine if any of the incoming projections
+            # to this population require back-propagation
+            requires_back_prop = any(
+                s_type.model.requires_back_propagation
+                for s_type in iterkeys(self.incoming_projections))
+
             self._neural_cluster = NeuralCluster(
                 pop_id, self.celltype, self._parameters, self.initial_values,
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
                 self.recorder.indices_to_record, self.spinnaker_config,
                 vertex_applications, vertex_resources, keyspace,
-                self.neuron_j_constraint)
+                self.neuron_j_constraint, requires_back_prop)
         else:
             self._neural_cluster = None
 
@@ -508,32 +514,12 @@ class Population(common.Population):
         logger.debug("\t\t%u post-synaptic vertices",
                         len(post_s_verts))
 
-        # Get synapse vertices associated with this
-        # population that require back propogation
-        back_prop_s_verts = list(itertools.chain.from_iterable(
-                [c.verts for t, c in iteritems(self._synapse_clusters)
-                 if t.model.requires_back_propagation]))
-
-        logger.debug("\t\t%u back-propagation vertices",
-                        len(back_prop_s_verts))
-
         # Loop through each neuron vertex that makes up population
         for n_vert in self._neural_cluster.verts:
             # Get subset of the post-synaptic synapse vertices
             # that need to be connected to this neuron vertex
             post_s_verts = [s for s in post_s_verts
                             if n_vert in s.incoming_connections[self]]
-
-            # Loop through back propagation synapse vertices
-            for s_vert in back_prop_s_verts:
-                # If the post-synaptic slice for this synapse
-                # vertex overlaps the neuron vertex, add neuron vertex to
-                # synapse vertices list of vertices which provide
-                # back-propagation input and also add synapse vertex to list of
-                # post-synaptic vertices for this neuron vertex
-                if s_vert.post_neuron_slice.overlaps(n_vert.neuron_slice):
-                    s_vert.back_prop_verts.append(n_vert)
-                    post_s_verts.append(s_vert)
 
             # If there are any post-synaptic vertices
             if len(post_s_verts) > 0:

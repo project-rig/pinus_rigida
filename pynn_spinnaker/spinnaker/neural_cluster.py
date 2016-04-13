@@ -11,7 +11,8 @@ from utils import Args
 
 # Import functions
 from six import iteritems
-from utils import (get_model_executable_filename, load_regions, split_slice)
+from utils import (calc_slice_bitfield_words, get_model_executable_filename,
+                   load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -25,8 +26,9 @@ class Regions(enum.IntEnum):
     neuron = 1
     synapse = 2
     input_buffer = 3
-    spike_recording = 4
-    analogue_recording_start = 5
+    back_prop_output = 4
+    spike_recording = 5
+    analogue_recording_start = 6
     analogue_recording_end = analogue_recording_start + 4
     profiler = analogue_recording_end
 
@@ -41,6 +43,8 @@ class Vertex(object):
         self.keyspace = parent_keyspace(population_index=population_index,
                                         vertex_index=vertex_index)
         self.input_verts = list()
+        self.back_prop_out_buffers = None
+
         self.region_memory = None
 
     @property
@@ -69,7 +73,8 @@ class NeuralCluster(object):
     def __init__(self, pop_id, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record, config, vertex_applications,
-                 vertex_resources, keyspace, post_synaptic_width):
+                 vertex_resources, keyspace, post_synaptic_width,
+                 requires_back_prop):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -78,6 +83,8 @@ class NeuralCluster(object):
             cell_type, parameters, initial_values, sim_timestep_ms)
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
+        self.regions[Regions.back_prop_output] = regions.SDRAMBackPropOutput(
+            requires_back_prop)
 
         # If cell type has any receptors i.e. any need for synaptic input
         if len(cell_type.receptor_types) > 0:
@@ -151,6 +158,16 @@ class NeuralCluster(object):
             # Select placed chip
             with machine_controller(x=vertex_placement[0],
                                     y=vertex_placement[1]):
+                # If back propagation is enabled, allocate two back
+                # propagation out buffers for this neuron vertex
+                if self.regions[Regions.back_prop_output].enabled:
+                    back_prop_buffer_bytes =\
+                        calc_slice_bitfield_words(v.neuron_slice) * 4
+                    v.back_prop_out_buffers = [
+                        machine_controller.sdram_alloc(back_prop_buffer_bytes,
+                                                       clear=True)
+                        for _ in range(2)]
+
                 # Get the input buffers from each synapse vertex
                 in_buffers = [
                     (s.get_in_buffer(v.neuron_slice), s.receptor_index,
@@ -159,7 +176,8 @@ class NeuralCluster(object):
 
                 # Get regiona arguments
                 region_arguments = self._get_region_arguments(
-                    v.key, v.neuron_slice, in_buffers)
+                    v.key, v.neuron_slice, in_buffers,
+                    v.back_prop_out_buffers)
 
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
@@ -201,7 +219,8 @@ class NeuralCluster(object):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_region_arguments(self, key, vertex_slice, in_buffers):
+    def _get_region_arguments(self, key, vertex_slice, in_buffers,
+                              back_prop_out_buffers):
         region_arguments = defaultdict(Args)
 
         analogue_recording_regions = range(Regions.analogue_recording_start,
@@ -218,5 +237,6 @@ class NeuralCluster(object):
             [key, len(vertex_slice)]
         region_arguments[Regions.input_buffer].kwargs["in_buffers"] =\
             in_buffers
-
+        region_arguments[Regions.back_prop_output].kwargs["out_buffers"] =\
+            back_prop_out_buffers
         return region_arguments
