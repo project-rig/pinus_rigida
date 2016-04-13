@@ -226,6 +226,8 @@ class State(common.control.BaseState):
         vertex_resources = {}
 
         # Allocate clusters
+        # **NOTE** neuron clusters and hence vertices need to be allocated
+        # first as synapse cluster allocateion is dependant on neuron vertices
         logger.info("Allocating neuron clusters")
         for pop_id, pop in enumerate(self.populations):
             logger.debug("\tPopulation:%s", pop.label)
@@ -298,20 +300,13 @@ class State(common.control.BaseState):
                                                        wdog, x, y)
 
         # Load vertices
-        logger.info("Loading synapse vertices")
-        for pop in self.populations:
-            pop._load_synapse_verts(placements, allocations,
-                                    self.machine_controller)
-
         logger.info("Loading current input vertices")
         for proj in self.projections:
-            proj._load_current_input_verts(placements, allocations,
-                                           self.machine_controller)
-
-        logger.info("Loading neuron vertices")
+            proj._load_verts(placements, allocations, self.machine_controller)
+            
+        logger.info("Loading vertices")
         for pop in self.populations:
-            pop._load_neuron_verts(placements, allocations,
-                                   self.machine_controller)
+            pop._load_verts(placements, allocations, self.machine_controller)
 
         # Load routing tables and applications
         logger.info("Loading routing tables")

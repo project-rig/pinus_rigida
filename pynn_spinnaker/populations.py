@@ -598,12 +598,13 @@ class Population(common.Population):
         for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
             matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
 
-    def _load_synapse_verts(self, placements, allocations, machine_controller):
+    def _load_verts(self, placements, allocations, machine_controller):
+        logger.info("\tPopulation label:%s", self.label)
+
         # Loop through synapse types and associated cluster
         for s_type, s_cluster in iteritems(self._synapse_clusters):
-            logger.info("\tPopulation label:%s, synapse type:%s, receptor:%s",
-                        self.label, s_type.model.__class__.__name__,
-                        s_type.receptor)
+            logger.info("\t\tSynapse type:%s, receptor:%s",
+                        s_type.model.__class__.__name__, s_type.receptor)
 
             # Expand any incoming connections
             matrices, weight_fixed_point =\
@@ -613,13 +614,9 @@ class Population(common.Population):
             s_cluster.load(placements, allocations, machine_controller,
                            matrices, weight_fixed_point)
 
-    def _load_neuron_verts(self, placements, allocations, machine_controller):
-        # If population has no neuron cluster, skip
-        if self._neural_cluster is None:
-            return
-
-        logger.info("\tPopulation label:%s", self.label)
-        self._neural_cluster.load(placements, allocations, machine_controller)
+        # If population has a neuron cluster, skip
+        if self._neural_cluster is not None:
+            self._neural_cluster.load(placements, allocations, machine_controller)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
