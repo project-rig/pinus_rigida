@@ -203,11 +203,11 @@ inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
                     F processBitFunction)
 {
   // Extract bit and word component of begin
-  const unsigned int begin_word = (begin >> 5);
-  const unsigned int begin_bit = (begin & 0x1F);
+  const unsigned int begin_word = (begin / 32);
+  const unsigned int begin_bit = (begin % 32);
 
   // Advance b to the beginning word
-  b += (begin >> 5)
+  b += begin_word;
 
   // Shift out bits above the beginning bit
   uint32_t word = *b << begin_bit;
