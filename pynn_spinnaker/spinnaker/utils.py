@@ -47,9 +47,11 @@ class InputVertex(object):
     # Public methods
     # ------------------------------------------------------------------------
     def get_in_buffer(self, post_slice):
-        # Check the slices involved overlap
+        # Check the slices involved overlap and that this
+        # input vertex actually has output buffers
         assert post_slice.overlaps(self.post_neuron_slice)
-
+        assert self.out_buffers is not None
+        
         # Calculate the offset
         offset_bytes = (post_slice.start - self.post_neuron_slice.start) * 4
         assert offset_bytes >= 0

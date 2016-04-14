@@ -11,8 +11,8 @@ from utils import Args
 
 # Import functions
 from six import iteritems
-from utils import (calc_slice_bitfield_words, get_model_executable_filename,
-                   load_regions, split_slice)
+from utils import (calc_bitfield_words, calc_slice_bitfield_words,
+                   get_model_executable_filename, load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -42,11 +42,52 @@ class Vertex(object):
         self.neuron_slice = neuron_slice
         self.keyspace = parent_keyspace(population_index=population_index,
                                         vertex_index=vertex_index)
-        self.input_verts = list()
+        self.input_verts = []
         self.back_prop_out_buffers = None
 
         self.region_memory = None
 
+    # ------------------------------------------------------------------------
+    # Magic methods
+    # ------------------------------------------------------------------------
+    def __str__(self):
+        return "<neuron slice:%s>" % (str(self.neuron_slice))
+
+    # ------------------------------------------------------------------------
+    # Public methods
+    # ------------------------------------------------------------------------
+    def get_back_prop_in_buffer(self, post_slice):
+        # Check the slices involved overlap and that this
+        # neuron vertex actually has back propagation buffers
+        assert post_slice.overlaps(self.neuron_slice)
+        assert self.back_prop_out_buffers is not None
+
+        # Calculate start and end bit in neuron id-space
+        neuron_start_bit = max(post_slice.start, self.neuron_slice.start)
+        neuron_end_bit = min(post_slice.stop, self.neuron_slice.stop)
+        print("Neuron start bit:%u, Neuron end bit:%u" %
+              (neuron_start_bit, neuron_end_bit))
+
+        # Calculate where in the buffer post_slice starts
+        buffer_start_bit = neuron_start_bit - self.neuron_slice.start
+        assert buffer_start_bit >= 0
+
+        # Seperate where the buffer starts in words and bits
+        buffer_start_word = buffer_start_bit // 32
+        buffer_start_bit -= (buffer_start_word * 32)
+        buffer_end_bit = (neuron_end_bit - neuron_start_bit) + buffer_start_bit
+        buffer_num_words = calc_bitfield_words(buffer_end_bit)
+        print("Buffer start word:%u, Buffer start bit:%u, Buffer end bit:%u, Buffer num words:%u" %
+              (buffer_start_word, buffer_start_word, buffer_end_bit, buffer_num_words))
+
+        # Return offset pointers into out buffers
+        return (
+            [b + (buffer_start_word * 4) for b in self.back_prop_out_buffers],
+            buffer_num_words, buffer_start_bit, buffer_end_bit)
+
+    # ------------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------------
     @property
     def key(self):
         return self.keyspace.get_value(tag="routing")
@@ -54,9 +95,6 @@ class Vertex(object):
     @property
     def mask(self):
         return self.keyspace.get_mask(tag="routing")
-
-    def __str__(self):
-        return "<neuron slice:%s>" % (str(self.neuron_slice))
 
 
 # -----------------------------------------------------------------------------
@@ -202,7 +240,7 @@ class NeuralCluster(object):
                     (s.get_in_buffer(v.neuron_slice), s.receptor_index,
                         s.weight_fixed_point)
                     for s in v.input_verts]
-                
+
                 # Get regiona arguments
                 region_arguments = self._get_region_arguments(
                     v.key, v.neuron_slice, in_buffers,

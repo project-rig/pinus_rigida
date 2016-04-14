@@ -41,6 +41,8 @@ class Vertex(InputVertex):
         # Superclass
         super(Vertex, self).__init__(post_neuron_slice, receptor_index)
 
+        self.back_prop_in_verts = []
+
         self.incoming_connections = defaultdict(list)
 
     def add_connection(self, pre_pop, pre_neuron_vertex):
@@ -245,11 +247,18 @@ class SynapseCluster(object):
             # Select placed chip
             with machine_controller(x=vertex_placement[0],
                                     y=vertex_placement[1]):
+                # Get the back propagation buffers from 
+                # each back-propagating neuron vertex
+                back_prop_in_buffers = [
+                    b.get_back_prop_in_buffer(v.post_neuron_slice)
+                    for b in v.back_prop_in_verts]
+
                 # Get region arguments required to calculate size and write
                 region_arguments = self._get_region_arguments(
                     v.post_neuron_slice, sub_matrix_props, sub_matrix_rows,
-                    matrix_placements, weight_fixed_point, v.out_buffers)
-                    
+                    matrix_placements, weight_fixed_point, v.out_buffers,
+                    back_prop_in_buffers)
+
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
                                                machine_controller, core)
@@ -312,7 +321,8 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrix_props,
                               sub_matrix_rows, matrix_placements,
-                              weight_fixed_point, out_buffers):
+                              weight_fixed_point, out_buffers,
+                              back_prop_in_buffers):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
@@ -342,6 +352,7 @@ class SynapseCluster(object):
         region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
             weight_fixed_point
 
-        region_arguments[Regions.back_prop_input].kwargs["in_buffers"] = []
+        region_arguments[Regions.back_prop_input].kwargs["back_prop_in_buffers"] =\
+            back_prop_in_buffers
 
         return region_arguments
