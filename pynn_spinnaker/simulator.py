@@ -173,6 +173,27 @@ class State(common.control.BaseState):
                     # Build same chip constraint and add to list
                     constraints.append(SameChipConstraint(n.input_verts + [n]))
 
+            # Loop through synapse clusters
+            for s_type, s_cluster in iteritems(pop._synapse_clusters):
+                # If synapse cluster doesn't require back propagation, skip
+                if not s_type.model.requires_back_propagation:
+                    continue
+
+                logger.debug("\t\tSynapse type:%s, receptor:%s",
+                             s_type.model.__class__.__name__, s_type.receptor)
+
+                # Loop through synapse vertices
+                for s_vert in s_cluster.verts:
+                    # Set synapse vetices list of back propagation
+                    # input vertices to all neural cluster vertices
+                    # whose neuron slices overlap
+                    s_vert.back_prop_in_verts = [
+                        n_vert for n_vert in pop._neural_cluster.verts
+                        if s_vert.post_neuron_slice.overlaps(n_vert.neuron_slice)]
+
+                    logger.debug("\t\t\tVertex %s has %u back propagation vertices",
+                                 s_vert, len(s_vert.back_prop_in_verts))
+
         return constraints
 
     def _read_stats(self, duration_ms):
