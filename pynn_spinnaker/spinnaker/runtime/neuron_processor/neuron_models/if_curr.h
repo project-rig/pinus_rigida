@@ -117,8 +117,9 @@ public:
     return false;
   }
 
-  static S1615 GetRecordable(RecordingChannel c, const MutableState &mutableState,
-                             const ImmutableState &)
+  static S1615 GetRecordable(RecordingChannel c,
+                             const MutableState &mutableState, const ImmutableState &,
+                             S1615, S1615, S1615)
   {
     switch(c)
     {
