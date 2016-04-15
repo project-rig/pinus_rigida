@@ -24,6 +24,18 @@ if_curr_neuron_translations = build_translations(
     ("i_offset",    "i_offset"),
 )
 
+if_cond_neuron_translations = build_translations(
+    ("tau_m",       "tau_m"),
+    ("cm",          "r_membrane", "tau_m / cm", ""),
+    ("v_rest",      "v_rest"),
+    ("e_rev_E",     "e_rev_e"),
+    ("e_rev_I",     "e_rev_i"),
+    ("v_thresh",    "v_thresh"),
+    ("v_reset",     "v_reset"),
+    ("tau_refrac",  "tau_refrac"),
+    ("i_offset",    "i_offset"),
+)
+
 izhikevich_neuron_translations = build_translations(
     ("a",         "a"),
     ("b",         "b"),
@@ -60,6 +72,23 @@ if_curr_neuron_mutable_param_map = [
     (0,   "i4"),
 ]
 
+if_cond_neuron_immutable_param_map = [
+    ("v_thresh",    "i4", lazy_param_map.s1615),
+    ("v_reset",     "i4", lazy_param_map.s1615),
+    ("v_rest",      "i4", lazy_param_map.s1615),
+    ("e_rev_e",     "i4", lazy_param_map.s1615),
+    ("e_rev_i",     "i4", lazy_param_map.s1615),
+    ("i_offset",    "i4", lazy_param_map.s1615),
+    ("r_membrane",  "i4", lazy_param_map.s1615),
+    ("tau_m",       "i4", lazy_param_map.s1615_exp_decay),
+    ("tau_refrac",  "u4", lazy_param_map.integer_time_divide),
+]
+
+if_cond_neuron_mutable_param_map = [
+    ("v", "i4", lazy_param_map.s1615),
+    (0,   "i4"),
+]
+
 # ----------------------------------------------------------------------------
 # Synapse shaping region maps
 # ----------------------------------------------------------------------------
@@ -70,11 +99,15 @@ exp_synapse_immutable_param_map = [
     ("tau_syn_i", "i4", lazy_param_map.s1615_exp_init),
 ]
 
-exp_synapse_mutable_param_map = [
+exp_synapse_curr_mutable_param_map = [
     ("isyn_exc", "i4", lazy_param_map.s1615),
     ("isyn_inh", "i4", lazy_param_map.s1615),
 ]
 
+exp_synapse_cond_mutable_param_map = [
+    ("gsyn_exc", "i4", lazy_param_map.s1615),
+    ("gsyn_inh", "i4", lazy_param_map.s1615),
+]
 
 # ----------------------------------------------------------------------------
 # Cell types
@@ -99,18 +132,32 @@ class IF_curr_exp(cells.IF_curr_exp):
     neuron_mutable_param_map = if_curr_neuron_mutable_param_map
 
     synapse_immutable_param_map = exp_synapse_immutable_param_map
-    synapse_mutable_param_map = exp_synapse_mutable_param_map
+    synapse_mutable_param_map = exp_synapse_curr_mutable_param_map
 
-'''
+
 class IF_cond_exp(cells.IF_cond_exp):
     __doc__ = cells.IF_cond_exp.__doc__
 
-    translations = deepcopiy(lif_neuron_translations)
-    translations.update(conductance_synapse_translations)
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    max_neurons_per_core = 1024
 
-    neuron_immutable_param_map = lif_neuron_immutable_param_map
-    neuron_mutable_param_map = lif_neuron_mutable_param_map
+    # JK: not necessary
+    neuron_region_class = regions.Neuron
+    synapse_region_class = regions.Synapse
 
+    directly_connectable = False
+
+    translations = deepcopy(if_cond_neuron_translations)
+    translations.update(exp_synapse_translations)
+
+    neuron_immutable_param_map = if_cond_neuron_immutable_param_map
+    neuron_mutable_param_map = if_cond_neuron_mutable_param_map
+
+    synapse_immutable_param_map = exp_synapse_immutable_param_map
+    synapse_mutable_param_map = exp_synapse_cond_mutable_param_map
+
+'''
 class Izhikevich(cells.Izhikevich):
     __doc__ = cells.Izhikevich.__doc__
 
