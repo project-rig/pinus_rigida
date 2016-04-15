@@ -225,16 +225,6 @@ class NeuralCluster(object):
             # Select placed chip
             with machine_controller(x=vertex_placement[0],
                                     y=vertex_placement[1]):
-                # If back propagation is enabled, allocate two back
-                # propagation out buffers for this neuron vertex
-                if self.regions[Regions.back_prop_output].enabled:
-                    back_prop_buffer_bytes =\
-                        calc_slice_bitfield_words(v.neuron_slice) * 4
-                    v.back_prop_out_buffers = [
-                        machine_controller.sdram_alloc(back_prop_buffer_bytes,
-                                                       clear=True)
-                        for _ in range(2)]
-
                 # Get the input buffers from each synapse vertex
                 in_buffers = [
                     (s.get_in_buffer(v.neuron_slice), s.receptor_index,
