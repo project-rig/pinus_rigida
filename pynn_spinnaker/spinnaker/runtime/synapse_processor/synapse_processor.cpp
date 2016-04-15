@@ -418,7 +418,7 @@ void DMATransferDone(uint, uint tag)
     auto processSpikeLambda =
       [](unsigned int j)
       {
-        g_Synapse.AddPostSynapticSpike(g_Tick, g_BackPropagationBufferNeuronOffset + j);
+        g_Synapse.AddPostSynapticSpike(g_Tick - 1, g_BackPropagationBufferNeuronOffset + j);
       };
 
     // Process back propagated spikes using lambda function
