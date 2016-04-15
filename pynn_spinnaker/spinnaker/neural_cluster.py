@@ -28,8 +28,12 @@ class Regions(enum.IntEnum):
     input_buffer = 3
     back_prop_output = 4
     spike_recording = 5
-    analogue_recording_start = 6
-    analogue_recording_end = analogue_recording_start + 4
+    analogue_recording_0 = 6
+    analogue_recording_1 = 7
+    analogue_recording_2 = 8
+    analogue_recording_3 = 9
+    analogue_recording_start = analogue_recording_0
+    analogue_recording_end = analogue_recording_3 + 1
     profiler = analogue_recording_end
 
 
