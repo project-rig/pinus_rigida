@@ -10,10 +10,10 @@ from six import iteritems, iterkeys, itervalues
 record_voltages = True
 num_neurons = 10
 duration = 100
-dt = 0.1
+dt = 1.0
 nest = True
 spinnaker = True
-current = False
+current = True
 record_gsyn = not current
 spinnaker_config = defaultdict(dict)
 
@@ -118,13 +118,15 @@ for l, d in iteritems(data):
 # Loop through all simulator's output data
 for d in itervalues(data):
     # Loop through recorded populations and plot spike trains
+    axis_idx = 2
     for pop_idx, p in enumerate(d[0]):
         for sig_idx, a in enumerate(p.segments[0].analogsignalarrays):
-            axis_idx = 2 + (pop_idx * 2) + sig_idx
             axes[axis_idx].set_title("Population %s %s" % ("A" if pop_idx == 0 else "B", a.name))
             axes[axis_idx].set_ylabel("%s / %s" % (a.name, a.units._dimensionality.string))
 
             plot_signal(axes[axis_idx], a, 0, **d[1])
+
+            axis_idx += 1
 
 axes[-1].set_xlim((0, duration))
 
