@@ -4,7 +4,6 @@ import itertools
 import logging
 import numpy as np
 import regions
-from os import path
 from rig import machine
 
 # Import classes
@@ -13,8 +12,7 @@ from utils import Args, InputVertex
 
 # Import functions
 from six import iteritems
-from utils import (create_app_ptr_and_region_files_named, split_slice,
-                   model_binaries, sizeof_regions_named)
+from utils import (get_model_executable_filename, load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -30,8 +28,9 @@ class Regions(enum.IntEnum):
     plasticity = 3
     output_buffer = 4
     delay_buffer = 5
-    profiler = 6
-    statistics = 7
+    back_prop_input = 6
+    profiler = 7
+    statistics = 8
 
 
 # ----------------------------------------------------------------------------
@@ -41,6 +40,8 @@ class Vertex(InputVertex):
     def __init__(self, post_neuron_slice, receptor_index):
         # Superclass
         super(Vertex, self).__init__(post_neuron_slice, receptor_index)
+
+        self.back_prop_in_verts = []
 
         self.incoming_connections = defaultdict(list)
 
@@ -58,6 +59,7 @@ class SynapseCluster(object):
         1:  "Multicast packet received",
         2:  "Setup next DMA row read",
         3:  "Process row",
+        4:  "Process back propagation",
     }
 
     # Names of statistics
@@ -78,33 +80,41 @@ class SynapseCluster(object):
         self.regions[Regions.system] = regions.System(timer_period_us,
                                                       sim_ticks)
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
-        self.regions[Regions.synaptic_matrix] = regions.SynapticMatrix(
-            synapse_model.max_dtcm_delay_slots)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             synapse_model.max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
+        self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
-        # Create start of filename for the executable to use for this cluster
-        filename = "synapse_" + synapse_model.__name__.lower()
+        # Create correct type of synaptic matrix region
+        self.regions[Regions.synaptic_matrix] =\
+            synapse_model.synaptic_matrix_region_class(synapse_model)
+
+        # **THINK** is there a nicer mechanism for this?
+        # Is there any requirement for OTHER plasticity region classes
+        if hasattr(synapse_model, "plasticity_region_class"):
+            self.regions[Regions.plasticity] =\
+                synapse_model.plasticity_region_class(
+                    synapse_model.plasticity_param_map,
+                    synapse_model.native_parameters, sim_timestep_ms)
 
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config.num_profile_samples)
-            filename += "_profiled"
 
         # Split population slice
         post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
-                     synapse_model.__name__, receptor_index)
+                     synapse_model.__class__.__name__, receptor_index)
 
         # Get synapse application name
-        # **THINK** is there any point in doing anything cleverer than this
-        synapse_app = path.join(model_binaries, filename + ".aplx")
+        synapse_app = get_model_executable_filename(
+            "synapse_", synapse_model, config.num_profile_samples is not None)
+        
         logger.debug("\t\t\tSynapse application:%s", synapse_app)
 
         # Loop through the post-slices
@@ -178,53 +188,85 @@ class SynapseCluster(object):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def partition_matrices(self, matrices, vertex_slice, in_connections):
-        # Partition matrices
-        sub_matrices =\
-            self.regions[Regions.synaptic_matrix].partition_matrices(
-                matrices, vertex_slice, in_connections)
+    def allocate_out_buffers(self, placements, allocations,
+                             machine_controller):
+        # Loop through synapse verts
+        for v in self.verts:
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
 
-        # Place them in memory
-        matrix_placements = self.regions[Regions.key_lookup].place_matrices(
-            sub_matrices)
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
 
-        # Return both
-        return sub_matrices, matrix_placements
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
 
-    def get_size(self, post_vertex_slice, sub_matrices, matrix_placements,
-                 weight_fixed_point, out_buffers):
-        region_arguments = self._get_region_arguments(
-            post_vertex_slice, sub_matrices, matrix_placements,
-            weight_fixed_point, out_buffers)
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Allocate two output buffers
+                # for this synapse population
+                out_buffer_bytes = len(v.post_neuron_slice) * 4
+                v.out_buffers = [
+                    machine_controller.sdram_alloc(out_buffer_bytes,
+                                                   clear=True)
+                    for _ in range(2)]
 
-        # Calculate region size
-        vertex_bytes, vertex_allocs = sizeof_regions_named(self.regions,
-                                                           region_arguments)
+    def load(self, placements, allocations, machine_controller,
+             matrices, weight_fixed_point):
+        # Loop through synapse verts
+        for v in self.verts:
+            # Cache weight fixed-point for
+            # this synapse point in vertex
+            v.weight_fixed_point = weight_fixed_point
 
-        logger.debug("\t\t\tRegion size = %u bytes", vertex_bytes)
-        return vertex_bytes, vertex_allocs
+            # Get placement and allocation
+            vertex_placement = placements[v]
+            vertex_allocation = allocations[v]
 
-    def write_to_file(self, post_vertex_slice, sub_matrices, matrix_placements,
-                      weight_fixed_point, out_buffers, fp):
-        region_arguments = self._get_region_arguments(
-            post_vertex_slice, sub_matrices, matrix_placements,
-            weight_fixed_point, out_buffers)
+            # Get core this vertex should be run on
+            core = vertex_allocation[machine.Cores]
+            assert (core.stop - core.start) == 1
 
-        # Layout the slice of SDRAM we have been given
-        region_memory = create_app_ptr_and_region_files_named(
-            fp, self.regions, region_arguments)
+            logger.debug("\t\tVertex %s (%u, %u, %u)",
+                         v, vertex_placement[0], vertex_placement[1],
+                         core.start)
 
-        # Write each region into memory
-        for key, region in iteritems(self.regions):
-            # Get memory
-            mem = region_memory[key]
+            # Partition matrices
+            sub_matrix_props, sub_matrix_rows =\
+                self.regions[Regions.synaptic_matrix].partition_matrices(
+                    matrices, v.post_neuron_slice, v.incoming_connections)
 
-            # Get the arguments
-            args, kwargs = region_arguments[key]
+            # Place them in memory
+            matrix_placements = self.regions[Regions.key_lookup].place_matrices(
+                sub_matrix_props)
 
-            # Perform the write
-            region.write_subregion_to_file(mem, *args, **kwargs)
-        return region_memory
+            # Select placed chip
+            with machine_controller(x=vertex_placement[0],
+                                    y=vertex_placement[1]):
+                # Get the back propagation buffers from 
+                # each back-propagating neuron vertex
+                back_prop_in_buffers = [
+                    b.get_back_prop_in_buffer(v.post_neuron_slice)
+                    for b in v.back_prop_in_verts]
+
+                # Get region arguments required to calculate size and write
+                region_arguments = self._get_region_arguments(
+                    v.post_neuron_slice, sub_matrix_props, sub_matrix_rows,
+                    matrix_placements, weight_fixed_point, v.out_buffers,
+                    back_prop_in_buffers)
+
+                # Load regions
+                v.region_memory = load_regions(self.regions, region_arguments,
+                                               machine_controller, core)
+
+                # Store sub matrix properties and placements in vertex so
+                # they can be used to subsequently read weights back
+                v.sub_matrix_props = sub_matrix_props
+                v.matrix_placements = matrix_placements
 
     def read_profile(self):
         # Get the profile recording region
@@ -250,25 +292,52 @@ class SynapseCluster(object):
         return np.core.records.fromarrays(np_stats.T, names=stat_names,
                                           formats=stat_format)
 
+    def read_synaptic_matrices(self, pre_pop, names):
+        # Get the synaptic matrix region
+        region = self.regions[Regions.synaptic_matrix]
+
+        # Loop through synapse vertices (post-synaptic)
+        sub_matrices = []
+        for post_s_vert in self.verts:
+            # If this synapse vertex has no incoming connections
+            # from pre-synaptic population, skip
+            if pre_pop not in post_s_vert.incoming_connections:
+                continue
+
+            # Get region memory for synaptic matrix
+            region_mem = post_s_vert.region_memory[Regions.synaptic_matrix]
+
+            # Loop through list of pre-synaptic vertices
+            # this synapse vertex is connected to
+            for pre_n_vert in post_s_vert.incoming_connections[pre_pop]:
+                # Read associated sub-matrix
+                sub_matrices.append(region.read_sub_matrix(
+                    pre_n_vert, post_s_vert, names, region_mem))
+
+        return sub_matrices
+
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_region_arguments(self, post_vertex_slice, sub_matrices,
-                              matrix_placements, weight_fixed_point,
-                              out_buffers):
+    def _get_region_arguments(self, post_vertex_slice, sub_matrix_props,
+                              sub_matrix_rows, matrix_placements,
+                              weight_fixed_point, out_buffers,
+                              back_prop_in_buffers):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
             [weight_fixed_point, len(post_vertex_slice)]
 
-        region_arguments[Regions.key_lookup].kwargs["sub_matrices"] =\
-            sub_matrices
+        region_arguments[Regions.key_lookup].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
         region_arguments[Regions.key_lookup].kwargs["matrix_placements"] =\
             matrix_placements
 
-        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrices"] =\
-            sub_matrices
+        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
+        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrix_rows"] =\
+            sub_matrix_rows
         region_arguments[Regions.synaptic_matrix].kwargs["matrix_placements"] =\
             matrix_placements
         region_arguments[Regions.synaptic_matrix].kwargs["weight_fixed_point"] =\
@@ -277,7 +346,13 @@ class SynapseCluster(object):
         region_arguments[Regions.output_buffer].kwargs["out_buffers"] =\
             out_buffers
 
-        region_arguments[Regions.delay_buffer].kwargs["sub_matrices"] =\
-            sub_matrices
+        region_arguments[Regions.delay_buffer].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
+
+        region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
+            weight_fixed_point
+
+        region_arguments[Regions.back_prop_input].kwargs["back_prop_in_buffers"] =\
+            back_prop_in_buffers
 
         return region_arguments

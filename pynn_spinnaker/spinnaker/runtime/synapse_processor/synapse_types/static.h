@@ -20,27 +20,27 @@ public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  // One word for a synapse-count and 1024 synapses
-  static const unsigned int MaxRowWords = 1025;
+  // Three word for a synapse-count and delay extension data; and 1024 synapses
+  static const unsigned int MaxRowWords = 1027;
     
   //-----------------------------------------------------------------------------
-  // Public static methods
+  // Public methods
   //-----------------------------------------------------------------------------
-  template<typename F, typename E>
-  static bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords],
-                         F applyInputFunction, E addDelayRowFunction)
+  template<typename F, typename E, typename R>
+  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], uint32_t *, bool,
+                  F applyInputFunction, E addDelayRowFunction, R)
   {
-    register T *synapticWords = (T*)&dmaBuffer[3];
-    register uint32_t count = dmaBuffer[0];
-
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing row with %u synapses", count);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing static row with %u synapses",
+              dmaBuffer[0]);
 
     // If this row has a delay extension, call function to add it
     if(dmaBuffer[1] != 0)
     {
       addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
     }
-    
+
+    register T *synapticWords = (T*)&dmaBuffer[3];
+    register uint32_t count = dmaBuffer[0];
     for(; count > 0; count--)
     {
       // Get the next 32 bit word from the synaptic_row
@@ -55,10 +55,20 @@ public:
     return true;
   }
   
-  static unsigned int GetRowWords(unsigned int rowSynapses)
+  void AddPostSynapticSpike(uint, unsigned int)
+  {
+  }
+
+  unsigned int GetRowWords(unsigned int rowSynapses) const
   {
     // Three header word and a synapse
     return 3 + ((rowSynapses * sizeof(T)) / 4);
+  }
+
+  bool ReadSDRAMData(uint32_t*, uint32_t)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::Static::ReadSDRAMData");
+    return true;
   }
 
 private:
@@ -71,9 +81,9 @@ private:
   //-----------------------------------------------------------------------------
   // Private static methods
   //-----------------------------------------------------------------------------
-   static T GetIndex(T word){ return (word & IndexMask); }
-   static T GetDelay(T word){ return ((word >> I) & DelayMask); }
-   static W GetWeight(T word){ return (W)(word >> (D + I)); }
+  static T GetIndex(T word){ return (word & IndexMask); }
+  static T GetDelay(T word){ return ((word >> I) & DelayMask); }
+  static W GetWeight(T word){ return (W)(word >> (D + I)); }
 };
 } // SynapseTypes
 } // SynapseProcessor

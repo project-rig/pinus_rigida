@@ -10,20 +10,25 @@ from copy import deepcopy
 
 # Create a converter function to convert from float to S1615 format
 float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
+float_to_s2211_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
-
+float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
 
 # -----------------------------------------------------------------------------
 # Functions
 # -----------------------------------------------------------------------------
-def apply(lazy_params, param_map, size, **kwargs):
+def _build_dtype(param_map):
     # Build numpy record datatype for neuron region
     # **TODO** this probably doesn't need to be a string:
     # could use np.uint8 style things throughout
-    record_datatype = ",".join(zip(*param_map)[1])
+    return np.dtype(",".join(zip(*param_map)[1]))
 
+def size(param_map, size):
+    return _build_dtype(param_map).itemsize * size
+
+def apply(lazy_params, param_map, size, **kwargs):
     # Build a numpy record array large enough for all neurons
-    params = np.empty(size, dtype=(record_datatype))
+    params = np.empty(size, dtype=_build_dtype(param_map))
 
     # Loop through parameters
     for field_name, param in zip(params.dtype.names, param_map):
@@ -42,13 +47,8 @@ def apply(lazy_params, param_map, size, **kwargs):
 
 
 def apply_indices(lazy_params, param_map, indices, **kwargs):
-    # Build numpy record datatype for neuron region
-    # **TODO** this probably doesn't need to be a string:
-    # could use np.uint8 style things throughout
-    record_datatype = ",".join(zip(*param_map)[1])
-
     # Build a numpy record array large enough for all neurons
-    params = np.empty(len(indices), dtype=(record_datatype))
+    params = np.empty(len(indices), dtype=_build_dtype(param_map))
 
     # Loop through parameters
     for field_name, param in zip(params.dtype.names, param_map):
@@ -84,9 +84,20 @@ def integer_time_divide(values, sim_timestep_ms, **kwargs):
 
 
 def s1615(values, **kwargs):
-    vals = deepcopy(values)
-    return float_to_s1615_no_copy(vals)
+    return float_to_s1615_no_copy(deepcopy(values))
 
+def s2211(values, **kwargs):
+    return float_to_s2211_no_copy(deepcopy(values))
+
+def u32_weight_fixed_point(values, weight_fixed_point, **kwargs):
+    float_to_weight_no_copy = LazyArrayFloatToFixConverter(
+        False, 32, weight_fixed_point, False)
+    return float_to_weight_no_copy(deepcopy(values))
+
+def s32_weight_fixed_point(values, weight_fixed_point, **kwargs):
+    float_to_weight_no_copy = LazyArrayFloatToFixConverter(
+        True, 32, weight_fixed_point, False)
+    return float_to_weight_no_copy(deepcopy(values))
 
 def s1615_time_multiply(values, sim_timestep_ms, **kwargs):
     # Copy values and divide by timestep
@@ -135,3 +146,17 @@ def u032_rate_exp_minus_lambda(values, sim_timestep_ms, **kwargs):
 
     # Convert to fixed point and return
     return float_to_u032_no_copy(lambda_vals)
+
+def s411_exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
+                       **kwargs):
+    # Determine the time step of the LUT in milliseconds
+    timestep_ms = sim_timestep_ms * float(2 ** time_shift)
+
+    # Build a lazy array of times to calculate decay values for
+    time_ms = la.larray(
+        np.arange(0.0, -timestep_ms * float(num_entries), -timestep_ms))
+
+    # Calculate exponential decay
+    values.shape = time_ms.shape
+    decay_vals = la.exp(time_ms / values)
+    return float_to_s411_no_copy(decay_vals)

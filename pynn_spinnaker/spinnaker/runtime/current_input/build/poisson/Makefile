@@ -1,4 +1,4 @@
-PINUS_APP = current_input_spikesourcepoisson
+PYNN_APP = current_input_spikesourcepoisson
 
 # Build object list
 SOURCES = ../../../common/config.cpp \

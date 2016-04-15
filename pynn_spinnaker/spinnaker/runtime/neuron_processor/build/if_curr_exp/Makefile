@@ -1,4 +1,4 @@
-PINUS_APP = neuron_if_curr_exp
+PYNN_APP = neuron_if_curr_exp
 
 # Build object list
 SOURCES = ../../../common/config.cpp \

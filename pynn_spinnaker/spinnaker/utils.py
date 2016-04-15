@@ -1,5 +1,8 @@
 # Import modules
+import inspect
+import itertools
 import lazyarray as la
+import logging
 import math
 import numpy as np
 import struct
@@ -13,10 +16,7 @@ from copy import (copy, deepcopy)
 from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
-
-# Determine model binaries path for models in this module
-model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
-
+logger = logging.getLogger("pynn_spinnaker")
 
 # ----------------------------------------------------------------------------
 # Args
@@ -24,7 +24,6 @@ model_binaries = path.join(path.dirname(__file__), "..", "model_binaries")
 class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
-
 
 # ----------------------------------------------------------------------------
 # InputVertex
@@ -48,9 +47,11 @@ class InputVertex(object):
     # Public methods
     # ------------------------------------------------------------------------
     def get_in_buffer(self, post_slice):
-        # Check the slices involved overlap
+        # Check the slices involved overlap and that this
+        # input vertex actually has output buffers
         assert post_slice.overlaps(self.post_neuron_slice)
-
+        assert self.out_buffers is not None
+        
         # Calculate the offset
         offset_bytes = (post_slice.start - self.post_neuron_slice.start) * 4
         assert offset_bytes >= 0
@@ -184,6 +185,96 @@ def calc_slice_bitfield_words(vertex_slice):
 def get_row_offset_length(offset, length, num_length_bits):
     return (length - 1) | (offset << num_length_bits)
 
+def get_model_executable_filename(prefix, model, profiled):
+    # Find directory in which model class is located
+    model_directory = path.dirname(inspect.getfile(model.__class__))
+
+    # Start filename with prefix
+    filename = prefix
+
+    # If executable filename is specified use it,
+    # otherwise use lowercase classname
+    filename += (model.executable_filename
+                 if hasattr(model, "executable_filename")
+                 else model.__class__.__name__.lower())
+
+    # If profiling is enabled, add prefix
+    if profiled:
+        filename += "_profiled"
+
+    # Join filename to path and add extension
+    return path.join(model_directory, "binaries", filename + ".aplx")
+
+def get_homogeneous_param(param_space, param_name):
+    # Extract named parameter lazy array from parameter
+    # space and check that it's homogeneous
+    param_array = param_space[param_name]
+    assert param_array.is_homogeneous
+
+    # Set it's shape to 1
+    # **NOTE** for homogeneous arrays this is a)free and b)works
+    param_array.shape = 1
+
+    # Evaluate param array, simplifying it to a scalar
+    return param_array.evaluate(simplify=True)
+
+# Recursively build a tuple containing basic python types allowing an
+# (annotated) PyNN StandardModelType to compared/hashed for compatibility)
+def get_model_comparable(value):
+    # **YUCK** if this isn't a class object - model classes will have
+    # have the same attributes, they'll just be property object
+    if not inspect.isclass(value):
+        # If model type has a list of param names to use for hash
+        if hasattr(value, "comparable_param_names"):
+            # Start tuple with class type - various STDP components
+            # are likely to have similarly named parameters
+            # with simular values so this is important 1st check
+            comp = (value.__class__,)
+
+            # Loop through names of parameters which much match for objects
+            # to be equal and read them from parameter space into tuple
+            for p in value.comparable_param_names:
+                comp += (get_homogeneous_param(value.parameter_space, p),)
+            return comp
+        # Otherwise, if model type has a collection of comparable properties,
+        # Loop through the properties and recursively call this function
+        elif hasattr(value, "comparable_properties"):
+            return tuple(itertools.chain.from_iterable(
+                get_model_comparable(p) for p in value.comparable_properties))
+    # Otherwise, return value itself
+    return (value,)
+
+def load_regions(regions, region_arguments, machine_controller, core):
+    # Calculate region size
+    size, allocs = sizeof_regions_named(regions, region_arguments)
+
+    logger.debug("\t\t\tRegion size = %u bytes", size)
+
+    # Allocate a suitable memory block
+    # for this vertex and get memory io
+    # **NOTE** this is tagged by core
+    memory_io = machine_controller.sdram_alloc_as_filelike(
+        size, tag=core.start)
+    logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+                    core.start, memory_io.address)
+
+    # Layout the slice of SDRAM we have been given
+    region_memory = create_app_ptr_and_region_files_named(
+        memory_io, regions, region_arguments)
+
+    # Write each region into memory
+    for key, region in iteritems(regions):
+        # Get memory
+        mem = region_memory[key]
+
+        # Get the arguments
+        args, kwargs = region_arguments[key]
+
+        # Perform the write
+        region.write_subregion_to_file(mem, *args, **kwargs)
+
+    # Return region memory
+    return region_memory
 
 # **FUTUREFRONTEND** with a bit of word to add magic number
 # to the start, this is common with Nengo SpiNNaker

@@ -14,6 +14,7 @@ enum Region
   RegionPlasticity,
   RegionOutputBuffer,
   RegionDelayBuffer,
+  RegionBackPropagationInput,
   RegionProfiler,
   RegionStatistics,
 };
@@ -32,6 +33,7 @@ enum ProfilerTag
   ProfilerTagMCPacketReceived,
   ProfilerTagSetupNextDMARowRead,
   ProfilerTagProcessRow,
+  ProfilerTagProcessBackPropagation,
 
 };
 

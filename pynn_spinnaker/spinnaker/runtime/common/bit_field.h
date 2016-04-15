@@ -70,7 +70,7 @@ namespace BitField
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] n The index of the bit.
 //! \return The function returns true if the bit is set or false otherwise.
-inline bool TestBit(uint32_t *b, unsigned int i)
+inline bool TestBit(const uint32_t *b, unsigned int i)
 {
   return ((b [i >> 5] & (1 << (i & 0x1F))) != 0);
 }
@@ -107,7 +107,7 @@ inline void Flip(uint32_t *b, unsigned int s)
 //! the result is returned in this parameter.
 //! \param[in] b2 The sequence of words representing the second bit_field.
 //! \param[in] s The size of the bit_field.
-inline void And(uint32_t *b1, uint32_t *b2, unsigned int s)
+inline void And(uint32_t *b1, const uint32_t *b2, unsigned int s)
 {
     for ( ; s > 0; s--)
     {
@@ -120,7 +120,7 @@ inline void And(uint32_t *b1, uint32_t *b2, unsigned int s)
 //! the result is returned in this parameter.
 //! \param[in] b2 The sequence of words representing the second bit_field.
 //! \param[in] s The size of the bit_field.
-inline void Or(uint32_t *b1, uint32_t *b2, unsigned int s)
+inline void Or(uint32_t *b1, const uint32_t *b2, unsigned int s)
 {
     for ( ; s > 0; s--)
     {
@@ -154,10 +154,9 @@ inline void Set(uint32_t *b, unsigned int s)
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 //! \return The function returns true if every bit is zero, or false otherwise.
-inline bool IsEmpty(uint32_t *b, unsigned int s)
+inline bool IsEmpty(const uint32_t *b, unsigned int s)
 {
     bool empty = true;
-
     for ( ; s > 0; s--)
     {
         empty = empty && (b [s-1] == 0);
@@ -171,7 +170,7 @@ inline bool IsEmpty(uint32_t *b, unsigned int s)
 //! \param[in] b The sequence of words representing a bit_field.
 //! \param[in] s The size of the bit_field.
 //! \return The function returns true if at least one bit is set; otherwise false.
-inline bool IsNonEmpty(uint32_t *b, unsigned int s)
+inline bool IsNonEmpty(const uint32_t *b, unsigned int s)
 {
     return !IsEmpty(b, s);
 }
@@ -192,6 +191,69 @@ inline unsigned int GetWordSize(unsigned int bits)
     }
 
     return words;
+}
+
+//! \brief Loops through bitfield and calls function-like for each bit which is set
+//! \param[in] b The sequence of words representing a bit_field.
+//! \param[in] begin The first bit to check.
+//! \param[in] end The bit to check up to (exclusive).
+//! \param[in] processBitFunction Function-like to call whenever a set bit is encountered
+template<typename F>
+inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
+                    F processBitFunction)
+{
+  // Extract bit and word component of begin
+  const unsigned int begin_word = (begin / 32);
+  const unsigned int begin_bit = (begin % 32);
+
+  // Extract word component of end
+  const unsigned int end_word = (end / 32);
+
+  // Advance b to the beginning word
+  b += begin_word;
+
+  // Get first word and shift out bits before the start
+  uint32_t word = *b++ >> begin_bit;
+
+  // Calculate how many bits remain in total
+  unsigned int remaining_bits = end - begin;
+  unsigned int remaining_word_bits = (begin_word != end_word) ? (32 - begin_bit) : remaining_bits;
+
+  while(true)
+  {
+    // While there are still bits left in word
+    while (remaining_word_bits > 0)
+    {
+      // If lowest bit is set, call process bit function
+      if(word & 0x1)
+      {
+        processBitFunction(end - remaining_bits);
+      }
+
+      // Shift out processed bit
+      word >>= 1;
+
+      // Decrement bits in word and total
+      // **OPTIMISE** this loop could be exited as soon as word == 0
+      remaining_word_bits--;
+      remaining_bits--;
+    }
+
+    // If there are bits remaining
+    if(remaining_bits > 0)
+    {
+      // Load the next word of the bitfield
+      word = *b++;
+
+      // Determine how many bits are in the next word of the bitfield.
+      remaining_word_bits = (remaining_bits > 32) ? 32 : remaining_bits;
+    }
+    // Otherwise, stop
+    else
+    {
+      break;
+    }
+  }
 }
 
 //! \brief Prints a bit_field as ones and zeros.

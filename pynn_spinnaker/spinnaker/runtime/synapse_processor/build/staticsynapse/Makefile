@@ -1,7 +1,8 @@
-PINUS_APP = synapse_staticsynapse
+PYNN_APP = synapse_staticsynapse
 
 # Build object list
-SOURCES = ../../../common/config.cpp \
+SOURCES = ../../../common/bit_field.cpp \
+	../../../common/config.cpp \
 	../../../common/profiler.cpp \
 	../../synapse_processor.cpp
 

@@ -22,7 +22,11 @@ namespace
 //----------------------------------------------------------------------------
 // Constants
 //----------------------------------------------------------------------------
-const uint DMATagOutputWrite = Source::DMATagMax;
+enum DMATag
+{
+  DMATagOutputWrite = Source::DMATagMax,
+  DMATagSpikeRecordingWrite,
+};
 
 //----------------------------------------------------------------------------
 // Module level variables
@@ -147,7 +151,11 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 void DMATransferDone(uint, uint tag)
 {
-  if(tag != DMATagOutputWrite && !g_SpikeSource.DMATransferDone(tag))
+  if(tag == DMATagSpikeRecordingWrite)
+  {
+    g_SpikeRecording.Reset();
+  }
+  else if(tag != DMATagOutputWrite && !g_SpikeSource.DMATransferDone(tag))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Spike source unable to handle DMA tag %u", tag);
   }
@@ -169,9 +177,7 @@ void TimerTick(uint tick, uint)
     // Finalise profiling
     Profiler::Finalise();
     
-    // Finalise any recordings that are in progress, writing
-    // back the final amounts of samples recorded to SDRAM
-    //recording_finalise();
+    // Exit simulation
     spin1_exit(0);
   }
   // Otherwise
@@ -197,7 +203,7 @@ void TimerTick(uint tick, uint)
       g_AppWords[AppWordNumCurrentSources]);
 
     // Transfer spike recording buffer to SDRAM
-    g_SpikeRecording.TransferBuffer();
+    g_SpikeRecording.TransferBuffer(DMATagSpikeRecordingWrite);
 
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
@@ -210,8 +216,8 @@ void TimerTick(uint tick, uint)
 
     // DMA output buffer into correct output buffer for this timer tick
     spin1_dma_transfer(DMATagOutputWrite, g_OutputBuffers[tick % 2],
-                      g_OutputBuffer, DMA_WRITE,
-                      g_AppWords[AppWordNumCurrentSources] * sizeof(uint32_t));
+                       g_OutputBuffer, DMA_WRITE,
+                       g_AppWords[AppWordNumCurrentSources] * sizeof(uint32_t));
   }
 }
 } // anonymous namespace

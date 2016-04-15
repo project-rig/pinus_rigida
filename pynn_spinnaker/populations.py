@@ -3,6 +3,7 @@ import itertools
 import logging
 import math
 import numpy as np
+from rig import machine
 import sys
 from pyNN import common
 
@@ -13,6 +14,7 @@ from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace
 from . import simulator
 from .recording import Recorder
+from rig.netlist import Net
 from spinnaker.neural_cluster import NeuralCluster
 from spinnaker.synapse_cluster import SynapseCluster
 from spinnaker.spinnaker_population_config import SpinnakerPopulationConfig
@@ -21,12 +23,14 @@ from spinnaker.utils import UnitStrideSlice
 # Import functions
 from copy import deepcopy
 from pyNN.parameters import simplify
-from six import iteritems, itervalues
+from six import iteritems, iterkeys, itervalues
 
 logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
+row_dtype = [("weight", np.float32), ("delay", np.uint32),
+             ("index", np.uint32)]
 
 # --------------------------------------------------------------------------
 # WeightRange
@@ -61,7 +65,9 @@ class WeightRange(object):
                             self.min, self.max)
 
         # Calculate where the weight format fixed-point lies
-        return (16 - int(max_msb))
+        # **NOTE** we clamp so that there is at least a 1-bit overlap with
+        # The bottom of the S16.15 format used by the neuron processors
+        return min(30, (16 - int(max_msb)))
 
 
 
@@ -244,15 +250,60 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
+    def _read_synaptic_matrices(self, pre_pop, synapse_type, names):
+        # Return synaptic weights from correct synapse cluster
+        synapse_cluster = self._synapse_clusters[synapse_type]
+        return synapse_cluster.read_synaptic_matrices(pre_pop, names)
+
+    def _read_recorded_vars(self, vars_to_read):
+        spike_times = {}
+        signals = {}
+
+        # If we have a neuron clusters
+        if self._neural_cluster is not None:
+            # Loop through all variables to read
+            for var in vars_to_read:
+                # If this variable is a spike recording, update the
+                # spike times dictionary with spikes from this vertex
+                if var == "spikes":
+                    spike_times = self._neural_cluster.read_recorded_spikes()
+                # Otherwise
+                else:
+                    # Convert variable name to channel number
+                    # **HACK** subtract one assuming first entry is spikes
+                    channel = self.celltype.recordable.index(var) - 1
+
+                    # Read signal from this channel and add to dictionary
+                    sig = self._neural_cluster.read_recorded_signal(channel)
+                    signals[var] = sig
+        # Otherwise, if we're recording spikes
+        elif "spikes" in vars_to_read:
+            # Loop through outgoing connections
+            for o in self.outgoing_projections:
+                # If this connection isn't directly connectable skip
+                if not o._directly_connectable:
+                    continue
+
+                # Read spike times from the current input
+                # cluster associated with this projection
+                spike_times = o._current_input_cluster.read_recorded_spikes()
+                break
+
+
+        return spike_times, signals
+
     def _estimate_constraints(self, hardware_timestep_us):
         # Determine the fraction of 1ms that the hardware timestep is.
         # This is used to scale all time-driven estimates
-        timestep_multiplier = min(1.0, float(hardware_timestep_us) / 1000.0)
-        logger.debug("\t\tTimestep multiplier:%f", timestep_multiplier)
+        timestep_mul = min(1.0, float(hardware_timestep_us) / 1000.0)
+        logger.debug("\t\tTimestep multiplier:%f", timestep_mul)
 
         # Apply timestep multipliers to the hard maximum specified in celltype
-        self.neuron_j_constraint = int(self.celltype.max_neurons_per_core *
-                                       timestep_multiplier)
+        max_neurons_per_core = (
+            self.spinnaker_config.max_neurons_per_core
+            if self.spinnaker_config.max_neurons_per_core is not None
+            else self.celltype.max_neurons_per_core)
+        self.neuron_j_constraint = int(max_neurons_per_core * timestep_mul)
 
         # Clamp constraint to actual size of population
         self.neuron_j_constraint = min(self.neuron_j_constraint, self.size)
@@ -272,7 +323,7 @@ class Population(common.Population):
             # If there's any non-directly connectable projections of this type
             if len(projections) != len(directly_connectable_projections):
                 # Get hard maximum from synapse type
-                synapse_constraint = s_type[0].max_post_neurons_per_core
+                synapse_constraint = s_type.model.max_post_neurons_per_core
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
@@ -280,7 +331,8 @@ class Population(common.Population):
                 self.synapse_j_constraints[s_type] = synapse_constraint
 
                 logger.debug("\t\tSynapse type:%s, receptor:%s - j constraint:%u",
-                             s_type[0].__name__, s_type[1], synapse_constraint)
+                             s_type.model.__class__.__name__, s_type.receptor,
+                             synapse_constraint)
 
             # Loop through directly connectable projections
             for p in directly_connectable_projections:
@@ -288,7 +340,7 @@ class Population(common.Population):
                 # hard maximum specified in celltype
                 current_input_constraint =\
                     int(p.pre.celltype.max_current_inputs_per_core *
-                        timestep_multiplier)
+                        timestep_mul)
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
@@ -352,9 +404,9 @@ class Population(common.Population):
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     total_synaptic_event_rate += total_synapses * pre_mean_rate
 
-                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type[0].max_synaptic_event_rate)))
+                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model.max_synaptic_event_rate)))
                 logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
-                            s_type[0].__name__, s_type[1],
+                            s_type.model.__class__.__name__, s_type.receptor,
                             total_synaptic_event_rate, num_i_cores)
 
                 # Add number of i cores to dictionary
@@ -390,7 +442,8 @@ class Population(common.Population):
         logger.debug("\t\tNeuron j constraint:%u", self.neuron_j_constraint)
         for s_type, constraint in iteritems(self.synapse_j_constraints):
             logger.debug("\t\tSynapse type:%s, receptor:%s - J constraint:%u",
-                         s_type[0].__name__, s_type[1], constraint)
+                         s_type.model.__class__.__name__,
+                         s_type.receptor, constraint)
         for proj, constraint in iteritems(current_input_j_constraints):
             logger.debug("\t\tDirect input projection:%s - J constraint:%u",
                          proj.label, constraint)
@@ -402,18 +455,24 @@ class Population(common.Population):
                                vertex_applications, vertex_resources, keyspace):
         # Create neural cluster
         if not self._entirely_directly_connectable:
+            # Determine if any of the incoming projections
+            # to this population require back-propagation
+            requires_back_prop = any(
+                s_type.model.requires_back_propagation
+                for s_type in iterkeys(self.incoming_projections))
+
             self._neural_cluster = NeuralCluster(
                 pop_id, self.celltype, self._parameters, self.initial_values,
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
                 self.recorder.indices_to_record, self.spinnaker_config,
                 vertex_applications, vertex_resources, keyspace,
-                self.neuron_j_constraint)
+                self.neuron_j_constraint, requires_back_prop)
         else:
             self._neural_cluster = None
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
                                  vertex_applications, vertex_resources):
-        # Loop through newly partioned incoming projections_load_synapse_verts
+        # Loop through newly partioned incoming projections
         self._synapse_clusters = {}
         for s_type, pre_pop_projs in iteritems(self.incoming_projections):
             # Chain together incoming projections from all populations
@@ -424,20 +483,57 @@ class Population(common.Population):
             # If there are any synaptic projections
             if len(synaptic_projs) > 0:
                 # Find index of receptor type
-                receptor_index = self.celltype.receptor_types.index(s_type[1])
+                receptor_index = self.celltype.receptor_types.index(s_type.receptor)
 
                 # Create synapse cluster
                 c = SynapseCluster(self._simulator.state.dt, timer_period_us,
                                    simulation_ticks,
                                    self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
-                                   s_type[0], receptor_index,
+                                   s_type.model, receptor_index,
                                    synaptic_projs, vertex_applications,
                                    vertex_resources,
                                    self.synapse_j_constraints[s_type])
 
                 # Add cluster to dictionary
                 self._synapse_clusters[s_type] = c
+
+    def _build_nets(self, nets, net_keys):
+        # If population has no  neural cluster, skip
+        if self._neural_cluster is None:
+            return
+
+        logger.debug("\tPopulation label:%s", self.label)
+
+        # Get synapse vertices associated
+        # with post-synaptic population
+        post_s_verts = list(itertools.chain.from_iterable(
+            [o.post._synapse_clusters[o._synapse_cluster_type].verts
+            for o in self.outgoing_projections]))
+
+        logger.debug("\t\t%u post-synaptic vertices",
+                        len(post_s_verts))
+
+        # Loop through each neuron vertex that makes up population
+        for n_vert in self._neural_cluster.verts:
+            # Get subset of the post-synaptic synapse vertices
+            # that need to be connected to this neuron vertex
+            post_s_verts = [s for s in post_s_verts
+                            if n_vert in s.incoming_connections[self]]
+
+            # If there are any post-synaptic vertices
+            if len(post_s_verts) > 0:
+                # Create a key for this source neuron vertex
+                net_key = (n_vert.key, n_vert.mask)
+
+                # Create a net connecting neuron vertex to synapse vertices
+                mean_firing_rate = self.spinnaker_config.mean_firing_rate
+                net = Net(n_vert, post_s_verts,
+                          mean_firing_rate * len(n_vert.neuron_slice))
+
+                # Add net to list and associate with key
+                nets.append(net)
+                net_keys[net] = net_key
 
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of
@@ -448,24 +544,23 @@ class Population(common.Population):
         # **NOTE** this will result to multiple calls to convergent_connect
         pop_matrix_rows = {}
         for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
-            # Create an array to hold matrix rows
-            # and initialize each one with an empty list
-            # **YUCK** her be syntactic dragons
-            pop_matrix_rows[pre_pop] = np.empty(pre_pop.size, dtype=object)
-            for r in range(pre_pop.size):
-                pop_matrix_rows[pre_pop][r] = []
+            # Create list of lists to contain matrix rows
+            matrix_rows = [[] for _ in range(pre_pop.size)]
 
             # Loop through projections and build
             for projection in projections:
-                projection._build(matrix_rows=pop_matrix_rows[pre_pop],
+                projection._build(matrix_rows=matrix_rows,
                                   weight_range=weight_range,
                                   directly_connect=False)
 
-            # Sort each row in matrix by post-synaptic neuron
-            # **THINK** is this necessary or does
-            # PyNN always move left to right
-            #for r in pop_matrix_rows[pre_pop]:
-            #    r.sort(key=itemgetter(2))
+
+            # Convert completed rows to numpy arrays and add to list
+            pop_matrix_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
+                                        for r in matrix_rows]
+
+        # If the synapse model has a function to update weight range
+        if hasattr(synapse_type.model, "update_weight_range"):
+            synapse_type.model.update_weight_range(weight_range)
 
         # Calculate where the weight format fixed-point lies
         weight_fixed_point = weight_range.fixed_point
@@ -500,9 +595,46 @@ class Population(common.Population):
             weight = itertools.repeat(weight)
 
         # Add synapse to each row
-        presynaptic_rows = matrix_rows[presynaptic_indices]
-        for p, w, d in zip(presynaptic_rows, weight, delay_timesteps):
-            p.append(Synapse(w, d, postsynaptic_index))
+        for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
+            matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
+
+    def _allocate_out_buffers(self, placements, allocations, machine_controller):
+        logger.info("\tPopulation label:%s", self.label)
+
+         # Loop through synapse types and associated cluster
+        for s_type, s_cluster in iteritems(self._synapse_clusters):
+            logger.debug("\t\tSynapse type:%s, receptor:%s",
+                        s_type.model.__class__.__name__, s_type.receptor)
+
+            # Allocate out buffers
+            s_cluster.allocate_out_buffers(placements, allocations,
+                                           machine_controller)
+
+        # If population has a neuron cluster,
+        # allow it to allocate any output buffers
+        if self._neural_cluster is not None:
+            self._neural_cluster.allocate_out_buffers(placements, allocations,
+                                                      machine_controller)
+
+    def _load_verts(self, placements, allocations, machine_controller):
+        logger.info("\tPopulation label:%s", self.label)
+
+        # Loop through synapse types and associated cluster
+        for s_type, s_cluster in iteritems(self._synapse_clusters):
+            logger.info("\t\tSynapse type:%s, receptor:%s",
+                        s_type.model.__class__.__name__, s_type.receptor)
+
+            # Expand any incoming connections
+            matrices, weight_fixed_point =\
+                self._build_incoming_connection(s_type)
+
+            # Load vertices that make up cluster
+            s_cluster.load(placements, allocations, machine_controller,
+                           matrices, weight_fixed_point)
+
+        # If population has a neuron cluster, load it
+        if self._neural_cluster is not None:
+            self._neural_cluster.load(placements, allocations, machine_controller)
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties

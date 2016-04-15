@@ -1,4 +1,4 @@
-PINUS_APP = current_input_spikesourcearray
+PYNN_APP = current_input_spikesourcearray
 
 # Build object list
 SOURCES = ../../../common/array_source.cpp \
