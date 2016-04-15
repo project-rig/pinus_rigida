@@ -1,7 +1,8 @@
 PYNN_APP = synapse_stdpmechanism_additiveweightdependence_spikepairrule
 
 # Build object list
-SOURCES = ../../../common/config.cpp \
+SOURCES = ../../../common/bit_field.cpp \
+	../../../common/config.cpp \
 	../../../common/profiler.cpp \
 	../../synapse_processor.cpp
 
