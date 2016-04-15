@@ -73,7 +73,7 @@ public:
     {
       // Point this delay buffer
       m_SDRAMRowBuffers[d] = delayBuffer;
-      LOG_PRINT(LOG_LEVEL_TRACE, "Delay buffer %u at %08x",
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tDelay buffer %u at %08x",
                 d, m_SDRAMRowBuffers[d] );
 
       // Zero entry counter
