@@ -81,20 +81,17 @@ public:
   {
     // Get time of event relative to last post-synaptic event
     uint32_t elapsedTicksSinceLastPost = time - lastPostTime;
-    if (elapsedTicksSinceLastPost > 0)
-    {
-        S2011 decayedPostTrace = Mul16S2011(
-          lastPostTrace, m_TauLUT.Get(elapsedTicksSinceLastPost));
+    S2011 decayedPostTrace = Mul16S2011(
+      lastPostTrace, m_TauLUT.Get(elapsedTicksSinceLastPost));
 
-        // Subtract rho
-        decayedPostTrace -= m_Rho;
+    // Subtract rho
+    decayedPostTrace -= m_Rho;
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
-                  elapsedTicksSinceLastPost, lastPostTrace, decayedPostTrace);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
+              elapsedTicksSinceLastPost, lastPostTrace, decayedPostTrace);
 
-        // Apply potentiation
-        applyPotentiation(decayedPostTrace);
-    }
+    // Apply potentiation
+    applyPotentiation(decayedPostTrace);
   }
 
   template<typename D, typename P>
@@ -105,17 +102,14 @@ public:
   {
     // Get time of event relative to last pre-synaptic event
     uint32_t elapsedTicksSinceLastPre = time - lastPreTime;
-    if (elapsedTicksSinceLastPre > 0)
-    {
-        S2011 decayedPreTrace = Mul16S2011(
-          lastPreTrace, m_TauLUT.Get(elapsedTicksSinceLastPre));
+    S2011 decayedPreTrace = Mul16S2011(
+      lastPreTrace, m_TauLUT.Get(elapsedTicksSinceLastPre));
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tElapsed ticks since last pre:%u, last pre trace:%d, decayed pre trace=%d",
-                  elapsedTicksSinceLastPre, lastPreTrace, decayedPreTrace);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tElapsed ticks since last pre:%u, last pre trace:%d, decayed pre trace=%d",
+              elapsedTicksSinceLastPre, lastPreTrace, decayedPreTrace);
 
-        // Apply potentiation
-        applyPotentiation(decayedPreTrace);
-    }
+    // Apply potentiation
+    applyPotentiation(decayedPreTrace);
   }
 
   bool ReadSDRAMData(uint32_t *&region, uint32_t)
