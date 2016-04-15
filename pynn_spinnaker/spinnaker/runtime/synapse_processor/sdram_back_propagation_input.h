@@ -116,6 +116,11 @@ public:
 
     LOG_PRINT(LOG_LEVEL_TRACE, "\tApplying back propagation buffer:%u", inputBufferIndex);
 
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    BitField::PrintBits(IO_BUF, m_DMABuffer, inputBuffer.m_BufferWords);
+    io_printf(IO_BUF, "\n");
+#endif
+
     BitField::ForEach(m_DMABuffer,
                       inputBuffer.m_StartNeuronBit, inputBuffer.m_EndNeuronBit,
                       processSpikeFunction);
