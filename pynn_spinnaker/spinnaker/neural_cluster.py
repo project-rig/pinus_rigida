@@ -65,8 +65,8 @@ class Vertex(object):
         # Calculate start and end bit in neuron id-space
         neuron_start_bit = max(post_slice.start, self.neuron_slice.start)
         neuron_end_bit = min(post_slice.stop, self.neuron_slice.stop)
-        print("Neuron start bit:%u, Neuron end bit:%u" %
-              (neuron_start_bit, neuron_end_bit))
+        logger.debug("\t\t\tNeuron start bit:%u, Neuron end bit:%u",
+                     neuron_start_bit, neuron_end_bit)
 
         # Calculate where in the buffer post_slice starts
         buffer_start_bit = neuron_start_bit - self.neuron_slice.start
@@ -77,8 +77,9 @@ class Vertex(object):
         buffer_start_bit -= (buffer_start_word * 32)
         buffer_end_bit = (neuron_end_bit - neuron_start_bit) + buffer_start_bit
         buffer_num_words = calc_bitfield_words(buffer_end_bit)
-        print("Buffer start word:%u, Buffer start bit:%u, Buffer end bit:%u, Buffer num words:%u" %
-              (buffer_start_word, buffer_start_word, buffer_end_bit, buffer_num_words))
+        logger.debug("\t\t\tBuffer start word:%u, Buffer start bit:%u, Buffer end bit:%u, Buffer num words:%u",
+                     buffer_start_word, buffer_start_word,
+                     buffer_end_bit, buffer_num_words)
 
         # Return offset pointers into out buffers
         return (
