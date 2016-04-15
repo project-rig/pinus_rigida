@@ -241,86 +241,78 @@ void SetupNextDMARowRead()
 {
   Profiler::TagDisableFIQ<ProfilerTagSetupNextDMARowRead> p;
 
-  // While there's the possibility that there might be a DMA we can start
-  while(true)
+  // If there's another spike in the input buffer
+  uint32_t key;
+  if(g_SpikeInputBuffer.GetNextSpike(key))
   {
-    // If there's another spike in the input buffer
-    uint32_t key;
-    if(g_SpikeInputBuffer.GetNextSpike(key))
-    {
-      LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
+    LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
 
-      // Create lambda function to convert number of synapses to a row length in words
-      auto getRowWordsLambda =
-        [](unsigned int rowSynapses)
-        {
-          return g_Synapse.GetRowWords(rowSynapses);
-        };
-
-      // Decode key to get address and length of destination synaptic row
-      unsigned int rowWords;
-      uint32_t *rowAddress;
-      if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress, getRowWordsLambda,
-        rowWords, rowAddress))
+    // Create lambda function to convert number of synapses to a row length in words
+    auto getRowWordsLambda =
+      [](unsigned int rowSynapses)
       {
-        LOG_PRINT(LOG_LEVEL_TRACE, "\tRow words:%u, Row address:%08x",
-                  rowWords, rowAddress);
+        return g_Synapse.GetRowWords(rowSynapses);
+      };
 
-        // Store SDRAM address of row in buffer
-        // so it can be written back if required
-        DMANextRowBuffer().m_SDRAMAddress = rowAddress;
-        DMANextRowBuffer().m_Flush = false;
-
-        // Start a DMA transfer to fetch this synaptic row into next buffer
-        g_Statistics[StatRowRequested]++;
-        spin1_dma_transfer(DMATagRowRead, rowAddress, DMANextRowBuffer().m_Data,
-                          DMA_READ, rowWords * sizeof(uint32_t));
-
-        // Flip DMA buffers and stop
-        DMASwapRowBuffers();
-        return;
-      }
-      else
-      {
-        LOG_PRINT(LOG_LEVEL_TRACE, "Population associated with spike key %08x not found in key lookup", key);
-        g_Statistics[StatWordKeyLookupFail]++;
-      }
-    }
-    // Otherwise, if a delay row buffer is present for this tick and all rows in it haven't been processed
-    else if(g_DelayRowBufferFetched && g_CurrentDelayRowIndex < g_DelayBuffer.GetRowCount(g_Tick))
+    // Decode key to get address and length of destination synaptic row
+    unsigned int rowWords;
+    uint32_t *rowAddress;
+    if(g_KeyLookup.LookupRow(key, g_SynapticMatrixBaseAddress, getRowWordsLambda,
+      rowWords, rowAddress))
     {
-      // Get next delay row from buffer
-      auto delayRow = g_DelayBuffer.GetRow(g_CurrentDelayRowIndex++);
-
-      // Convert number of synapses to words and get address from synaptic matrix base
-      unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
-      uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
-
-      LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row index:%u, synapse:%u, words:%u, address:%08x",
-                g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tRow words:%u, Row address:%08x",
+                rowWords, rowAddress);
 
       // Store SDRAM address of row in buffer
       // so it can be written back if required
-      DMANextRowBuffer().m_SDRAMAddress = delayRowAddress;
+      DMANextRowBuffer().m_SDRAMAddress = rowAddress;
       DMANextRowBuffer().m_Flush = false;
 
       // Start a DMA transfer to fetch this synaptic row into next buffer
-      g_Statistics[StatDelayRowRequested]++;
-      spin1_dma_transfer(DMATagRowRead, delayRowAddress, DMANextRowBuffer().m_Data,
-                        DMA_READ, delayRowWords * sizeof(uint32_t));
+      g_Statistics[StatRowRequested]++;
+      spin1_dma_transfer(DMATagRowRead, rowAddress, DMANextRowBuffer().m_Data,
+                        DMA_READ, rowWords * sizeof(uint32_t));
 
       // Flip DMA buffers and stop
       DMASwapRowBuffers();
       return;
     }
-    // Otherwise, there's nothing more to DMA
-    // so flag the pipeline as idle and stop
     else
     {
-      g_DMABusy = false;
-      return;
+      LOG_PRINT(LOG_LEVEL_TRACE, "Population associated with spike key %08x not found in key lookup", key);
+      g_Statistics[StatWordKeyLookupFail]++;
     }
   }
+  // Otherwise, if a delay row buffer is present for this tick and all rows in it haven't been processed
+  else if(g_DelayRowBufferFetched && g_CurrentDelayRowIndex < g_DelayBuffer.GetRowCount(g_Tick))
+  {
+    // Get next delay row from buffer
+    auto delayRow = g_DelayBuffer.GetRow(g_CurrentDelayRowIndex++);
+
+    // Convert number of synapses to words and get address from synaptic matrix base
+    unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
+    uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
+
+    LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row index:%u, synapse:%u, words:%u, address:%08x",
+              g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
+
+    // Store SDRAM address of row in buffer
+    // so it can be written back if required
+    DMANextRowBuffer().m_SDRAMAddress = delayRowAddress;
+    DMANextRowBuffer().m_Flush = false;
+
+    // Start a DMA transfer to fetch this synaptic row into next buffer
+    g_Statistics[StatDelayRowRequested]++;
+    spin1_dma_transfer(DMATagRowRead, delayRowAddress, DMANextRowBuffer().m_Data,
+                      DMA_READ, delayRowWords * sizeof(uint32_t));
+
+    // Flip DMA buffers and stop
+    DMASwapRowBuffers();
+    return;
+  }
+
+  // Stop pipeline
+  g_DMABusy = false;
 }
 
 //-----------------------------------------------------------------------------
