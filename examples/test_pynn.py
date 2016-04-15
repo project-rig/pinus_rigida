@@ -10,24 +10,33 @@ from six import iteritems, iterkeys, itervalues
 record_voltages = True
 num_neurons = 10
 duration = 100
-dt = 1.0
-nest = False
+dt = 0.1
+nest = True
 spinnaker = True
-legacy = False
+current = False
+record_gsyn = not current
 spinnaker_config = defaultdict(dict)
 
 def simulate(sim, setup_kwargs):
     sim.setup(timestep=dt, **setup_kwargs)
     
-    pop_a = sim.Population(num_neurons, sim.IF_curr_exp(i_offset=2.0, tau_refrac=2.0),
-                           label="pop_a")
+    # Define neuron models
+    neuron_a = (sim.IF_curr_exp(i_offset=2.0, tau_refrac=2.0) if current
+                else sim.IF_cond_exp(i_offset=2.0, tau_refrac=2.0))
+    neuron_b = (sim.IF_curr_exp(tau_refrac=2.0) if current
+                else sim.IF_cond_exp(tau_refrac=2.0))
+
+    pop_a = sim.Population(num_neurons, neuron_a, label="pop_a")
     pop_a.record("spikes")
     #spinnaker_config[pop_a] = { "profile_samples": 2000 }
 
     if record_voltages:
         pop_a.sample(1).record("v")
 
-    pop_b = sim.Population(num_neurons, sim.IF_curr_exp(tau_refrac=2.0),
+    if record_gsyn:
+        pop_a.sample(1).record("gsyn_exc")
+
+    pop_b = sim.Population(num_neurons, neuron_b,
                            label="pop_b")
     pop_b.record("spikes")
     #spinnaker_config[pop_b] = { "profile_samples": 2000 }
@@ -35,9 +44,12 @@ def simulate(sim, setup_kwargs):
     if record_voltages:
         pop_b.sample(1).record("v")
 
+    if record_gsyn:
+        pop_b.sample(1).record("gsyn_exc")
+
     # Build list connector that sweeps delay space
     proj = sim.Projection(pop_a, pop_b, sim.OneToOneConnector(),
-                          sim.StaticSynapse(weight=2.0, delay=dt),
+                          sim.StaticSynapse(weight=2.0 if current else 0.2, delay=dt),
                           receptor_type="excitatory")
 
     sim.run(duration)
@@ -57,10 +69,7 @@ def simulate_spinnaker():
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler())
 
-    setup_kwargs = {
-        "spinnaker_hostname": "192.168.1.1",
-        "spinnaker_width": 8,
-        "spinnaker_height": 8}
+    setup_kwargs = {"spinnaker_hostname": "192.168.1.1"}
 
     return simulate(sim, setup_kwargs)
 
@@ -87,7 +96,13 @@ if spinnaker:
 
 legacy_kwargs = { "color": "green", "alpha": 0.5 }
 
-figure, axes = plt.subplots(4 if record_voltages else 2, sharex=True)
+num_axes = 2
+if record_voltages:
+    num_axes += 2
+if record_gsyn:
+    num_axes += 2
+
+figure, axes = plt.subplots(num_axes, sharex=True)
 
 axes[0].set_title("Population A spikes")
 axes[1].set_title("Population B spikes")
@@ -100,41 +115,22 @@ for l, d in iteritems(data):
     for i, p in enumerate(d[0]):
         plot_spiketrains(axes[i], p.segments[0], **d[1])
 
-if legacy:
-    pop_a_spikes = np.load("pop_a_pacman_spikes.npy")
-    pop_b_spikes = np.load("pop_b_pacman_spikes.npy")
+# Loop through all simulator's output data
+for d in itervalues(data):
+    # Loop through recorded populations and plot spike trains
+    for pop_idx, p in enumerate(d[0]):
+        for sig_idx, a in enumerate(p.segments[0].analogsignalarrays):
+            axis_idx = 2 + (pop_idx * 2) + sig_idx
+            axes[axis_idx].set_title("Population %s %s" % ("A" if pop_idx == 0 else "B", a.name))
+            axes[axis_idx].set_ylabel("%s / %s" % (a.name, a.units._dimensionality.string))
 
-    axes[0].scatter(pop_a_spikes[:,1], pop_a_spikes[:,0], linewidths=0.0, s=4, **legacy_kwargs)
-    axes[1].scatter(pop_b_spikes[:,1], pop_b_spikes[:,0], linewidths=0.0, s=4, **legacy_kwargs)
-
-if record_voltages:
-    axes[2].set_title("Population A membrane voltage")
-    axes[3].set_title("Population B membrane voltage")
-    axes[2].set_ylabel("Membrane voltage [mV]")
-    axes[3].set_ylabel("Membrane voltage [mV]")
-
-    # Loop through all simulator's output data
-    for d in itervalues(data):
-        # Loop through recorded populations and plot spike trains
-        for i, p in enumerate(d[0]):
-            plot_signal(axes[2 + i], p.segments[0].analogsignalarrays[0], 0, **d[1])
-
-    if legacy:
-        pop_a_voltage = np.load("pop_a_pacman_voltage.npy")
-        pop_b_voltage = np.load("pop_b_pacman_voltage.npy")
-
-        axes[2].plot(pop_a_voltage[:,1], pop_a_voltage[:,2], **legacy_kwargs)
-        axes[3].plot(pop_b_voltage[:,1], pop_b_voltage[:,2], **legacy_kwargs)
+            plot_signal(axes[axis_idx], a, 0, **d[1])
 
 axes[-1].set_xlim((0, duration))
 
 # Build legend
 legend_handles = [plt.Line2D([], [], **d[1]) for d in itervalues(data)]
 legend_labels = list(iterkeys(data))
-
-if legacy:
-    legend_handles.append(plt.Line2D([], [], **legacy_kwargs))
-    legend_labels.append("PACMAN")
 
 figure.legend(legend_handles, legend_labels)
 plt.show()
