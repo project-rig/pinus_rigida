@@ -212,8 +212,8 @@ inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
   // Advance b to the beginning word
   b += begin_word;
 
-  // Shift out bits below the beginning bit
-  uint32_t word = *b >> begin_bit;
+  // Get first word and shift out bits before the start
+  uint32_t word = *b++ >> begin_bit;
 
   // Calculate how many bits remain in total
   unsigned int remaining_bits = end - begin;
@@ -222,7 +222,7 @@ inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
   while(true)
   {
     // While there are still bits left in word
-    while (word != 0)
+    while (remaining_word_bits > 0)
     {
       // If lowest bit is set, call process bit function
       if(word & 0x1)
@@ -234,12 +234,10 @@ inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
       word >>= 1;
 
       // Decrement bits in word and total
+      // **OPTIMISE** this loop could be exited as soon as word == 0
       remaining_word_bits--;
       remaining_bits--;
     }
-
-    // Subtract any bits at the top of the word that weren't processed
-    remaining_bits -= remaining_word_bits;
 
     // If there are bits remaining
     if(remaining_bits > 0)
