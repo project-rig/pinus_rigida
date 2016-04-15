@@ -206,47 +206,40 @@ inline void ForEach(const uint32_t *b, unsigned int begin, unsigned end,
   const unsigned int begin_word = (begin / 32);
   const unsigned int begin_bit = (begin % 32);
 
+  // Extract word component of end
+  const unsigned int end_word = (end / 32);
+
   // Advance b to the beginning word
   b += begin_word;
 
-  // Shift out bits above the beginning bit
-  uint32_t word = *b << begin_bit;
+  // Shift out bits below the beginning bit
+  uint32_t word = *b >> begin_bit;
 
-  // Calculate how many bits remain in total and in first word
+  // Calculate how many bits remain in total
   unsigned int remaining_bits = end - begin;
-  unsigned int remaining_word_bits = 32 - begin_bit;
+  unsigned int remaining_word_bits = (begin_word != end_word) ? (32 - begin_bit) : remaining_bits;
+
   while(true)
   {
     // While there are still bits left in word
-    while (remaining_word_bits > 0)
+    while (word != 0)
     {
-      // Work out how many bits we can skip
-      // XXX: The GCC documentation claims that `__builtin_clz(0)` is
-      // undefined, but the ARM instruction it uses is defined such that:
-      // CLZ 0x00000000 is 32
-      unsigned int skip = __builtin_clz(word);
-
-      // If `skip` is NOT less than `remaining_word_bits` then there are
-      // either no bits left in the word (`skip` == 32) or the first
-      // `1` in the word is beyond the range of bits we care about anyway.
-      if (skip < remaining_word_bits)
+      // If lowest bit is set, call process bit function
+      if(word & 0x1)
       {
-        // Prepare to test the bit after the one we just processed.
-        skip++;                       // Skip the bit we just decoded
-        remaining_bits -= skip;       // Reduce the number of bits left
-        remaining_word_bits -= skip;  // and the number left in this word.
-        word <<= skip;                // Shift out processed bits
+        processBitFunction(end - remaining_bits);
+      }
 
-        // Call process bit function
-        processBitFunction(end - remaining_bits - 1);
-      }
-      // Otherwise, there are no bits left in this word
-      else
-      {
-        remaining_bits -= remaining_word_bits;  // Reduce the number of remaining bits
-        break;
-      }
+      // Shift out processed bit
+      word >>= 1;
+
+      // Decrement bits in word and total
+      remaining_word_bits--;
+      remaining_bits--;
     }
+
+    // Subtract any bits at the top of the word that weren't processed
+    remaining_bits -= remaining_word_bits;
 
     // If there are bits remaining
     if(remaining_bits > 0)
