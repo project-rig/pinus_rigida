@@ -238,6 +238,8 @@ class State(common.control.BaseState):
         keyspace = BitField(32)
         keyspace.add_field("population_index", tags="routing")
         keyspace.add_field("vertex_index", tags="routing")
+        keyspace.add_field("flush", length=1, start_at=10,
+                           tags="application")
         keyspace.add_field("neuron_id", length=10, start_at=0,
                            tags="application")
 
