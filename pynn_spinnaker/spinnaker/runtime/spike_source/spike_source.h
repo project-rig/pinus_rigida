@@ -10,14 +10,16 @@ enum Region
 {
   RegionSystem,
   RegionSpikeSource,
-  RegionSpikeRecording = 4,
+  RegionFlush = 4,
+  RegionSpikeRecording,
   RegionProfiler,
 };
 
 // Indexes of application words
 enum AppWord
 {
-  AppWordKey,
+  AppWordSpikeKey,
+  AppWordNumNeurons,
   AppWordNumSpikeSources,
   AppWordMax,
 };

@@ -6,6 +6,7 @@
 // Common includes
 #include "../common/config.h"
 #include "../common/fixed_point_number.h"
+#include "../common/flush.h"
 #include "../common/log.h"
 #include "../common/profiler.h"
 #include "../common/spike_recording.h"
@@ -58,6 +59,8 @@ Synapse::ImmutableState *g_SynapseImmutableState = NULL;
 InputBuffer g_InputBuffer;
 
 SDRAMBackPropagationOutput g_BackPropagationOutput;
+
+Flush g_Flush;
 
 SpikeRecording g_SpikeRecording;
 AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax];
@@ -154,8 +157,8 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "\tkey=%08x, num neurons=%u",
-      g_AppWords[AppWordKey], g_AppWords[AppWordNumNeurons]);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tspike key=%08x, flush key=%x08x, num neurons=%u",
+      g_AppWords[AppWordSpikeKey], g_AppWords[AppWordFlushKey], g_AppWords[AppWordNumNeurons]);
   }
   
   // Read neuron region
@@ -180,9 +183,18 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  
   // Read back propagation region
   if(!g_BackPropagationOutput.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionBackPropagationOutput), flags,
+  g_AppWords[AppWordNumNeurons]))
+  {
+    return false;
+  }
+  
+  // Read flush region
+  if(!g_Flush.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionFlush), flags,
     g_AppWords[AppWordNumNeurons]))
   {
     return false;
@@ -256,13 +268,14 @@ void UpdateNeurons()
     // Record spike
     g_SpikeRecording.RecordSpike(n, spiked);
 
-    // If it spikes
-    if(spiked)
+    // If it spikes or should flush
+    if(spiked || g_Flush.ShouldFlush(n, spiked))
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
 
-      // Send spike
-      uint32_t key = g_AppWords[AppWordKey] | n;
+      // Send spike/flush
+      uint32_t key = g_AppWords[spiked ? AppWordSpikeKey : AppWordFlushKey] | n;
+
       while(!spin1_send_mc_packet(key, 0, NO_PAYLOAD))
       {
         spin1_delay_us(1);

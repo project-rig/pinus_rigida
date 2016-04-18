@@ -5,6 +5,7 @@
 
 // Common includes
 #include "../common/config.h"
+#include "../common/flush.h"
 #include "../common/log.h"
 #include "../common/profiler.h"
 #include "../common/spike_recording.h"
@@ -36,6 +37,8 @@ uint32_t g_AppWords[AppWordMax];
 
 SpikeRecording g_SpikeRecording;
 
+Flush g_Flush;
+
 Source g_SpikeSource;
 
 //----------------------------------------------------------------------------
@@ -58,13 +61,21 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "\tkey=%08x, num spike sources=%u",
-      g_AppWords[AppWordKey], g_AppWords[AppWordNumSpikeSources]);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tspike key=%08x, flush key=%08x, num spike sources=%u",
+      g_AppWords[AppWordSpikeKey], g_AppWords[AppWordFlushKey], g_AppWords[AppWordNumSpikeSources]);
   }
 
   // Read source region
   if(!g_SpikeSource.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionSpikeSource), flags,
+    g_AppWords[AppWordNumSpikeSources]))
+  {
+    return false;
+  }
+
+  // Read flush region
+  if(!g_Flush.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionFlush), flags,
     g_AppWords[AppWordNumSpikeSources]))
   {
     return false;
