@@ -34,9 +34,11 @@ public:
               dmaBuffer[0]);
 
     // If this row has a delay extension, call function to add it
+    // **NOTE** static rows have no need for flush so
+    // set it to false so codepath can be optimised away
     if(dmaBuffer[1] != 0)
     {
-      addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
+      addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2], false);
     }
 
     register T *synapticWords = (T*)&dmaBuffer[3];

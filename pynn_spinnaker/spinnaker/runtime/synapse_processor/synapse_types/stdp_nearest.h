@@ -56,7 +56,7 @@ public:
     // If this row has a delay extension, call function to add it
     if(dmaBuffer[1] != 0)
     {
-      addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
+      addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2], flush);
     }
 
     // Get time of last update from DMA buffer and write back updated time
