@@ -61,20 +61,27 @@ public:
       addDelayRowFunction(dmaBuffer[1] + tick, dmaBuffer[2]);
     }
 
-    // Get last pre-synaptic event from event history and write back current time
-    // **IMPORTANT TODO** seperate lastPreTick from last update
-    // Therefore, flushes update later but not former allowing nearest neighbour to be trivially implemented
-    const uint32_t lastPreTick = dmaBuffer[3];
-    dmaBuffer[3] = tick;
+    // Get time of last update from DMA buffer and write back updated time
+    const uint32_t lastUpdateTick = dmaBuffer[4];
+    dmaBuffer[4] = tick;
 
-    // Calculate new pre-trace
+    // Get time of last actual presynaptic spike from DMA buffer
+    const uint32_t lastPreTick = dmaBuffer[5]
+
+    // If this is an actual spike (rather than a flush event)
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tUpdating pre-synaptic trace with spike at tick:%u (flush:%u)",
               tick, flush);
-    const PreTrace lastPreTrace = GetPreTrace(dmaBuffer);
-    const PreTrace newPreTrace = m_TimingDependence.UpdatePreTrace(tick, lastPreTrace,
-                                                                   lastPreTick, flush);
-    // Write back updated trace to row
-    SetPreTrace(dmaBuffer, newPreTrace);
+    if(!flush)
+    {
+      // Calculate new pre-trace
+      const PreTrace lastPreTrace = GetPreTrace(dmaBuffer);
+      const PreTrace newPreTrace = m_TimingDependence.UpdatePreTrace(
+        tick, lastPreTrace, lastPreTick);
+      
+      // Write back updated last presynaptic spike time and trace to row
+      dmaBuffer[5] = tick;
+      SetPreTrace(dmaBuffer, newPreTrace);
+    }
 
     // Extract first plastic and control words; and loop through synapses
     uint32_t count = dmaBuffer[0];
@@ -94,12 +101,14 @@ public:
       // Create update state from next plastic word
       SynapseStructure updateState(*plasticWords);
 
-      // Apply axonal delay to last presynaptic spike tick
+      // Apply axonal delay to last presynaptic spike and update tick
       const uint32_t delayedLastPreTick = lastPreTick + delayAxonal;
+      const uint32_t delayedLastUpdateTick = lastUpdateTick + delayAxonal;
 
       // Get the post-synaptic window of events to be processed
-      const uint32_t windowBeginTick = (delayedLastPreTick >= delayDendritic) ?
-        (delayedLastPreTick - delayDendritic) : 0;
+      // **NOTE** this is the window since the last UPDATE rather than the last presynaptic spike
+      const uint32_t windowBeginTick = (delayedLastUpdateTick >= delayDendritic) ?
+        (delayedLastUpdateTick - delayDendritic) : 0;
       const uint32_t windowEndTick = tick + delayAxonal - delayDendritic;
 
       // Get post event history within this window
@@ -252,7 +261,7 @@ private:
     // **NOTE** GCC will optimise this memcpy out it
     // is simply strict-aliasing-safe solution
     PreTrace preTrace;
-    memcpy(&preTrace, &dmaBuffer[4], sizeof(PreTrace));
+    memcpy(&preTrace, &dmaBuffer[5], sizeof(PreTrace));
     return preTrace;
   }
 
@@ -260,17 +269,17 @@ private:
   {
     // **NOTE** GCC will optimise this memcpy out it
     // is simply strict-aliasing-safe solution
-    memcpy(&dmaBuffer[4], &preTrace, sizeof(PreTrace));
+    memcpy(&dmaBuffer[5], &preTrace, sizeof(PreTrace));
   }
 
   static PlasticSynapse *GetPlasticWords(uint32_t (&dmaBuffer)[MaxRowWords])
   {
-    return reinterpret_cast<PlasticSynapse*>(&dmaBuffer[4 + PreTraceWords]);
+    return reinterpret_cast<PlasticSynapse*>(&dmaBuffer[5 + PreTraceWords]);
   }
 
   static const C *GetControlWords(uint32_t (&dmaBuffer)[MaxRowWords], unsigned int numSynapses)
   {
-    return reinterpret_cast<C*>(&dmaBuffer[4 + PreTraceWords + GetNumPlasticWords(numSynapses)]);
+    return reinterpret_cast<C*>(&dmaBuffer[5 + PreTraceWords + GetNumPlasticWords(numSynapses)]);
   }
 
   //-----------------------------------------------------------------------------
