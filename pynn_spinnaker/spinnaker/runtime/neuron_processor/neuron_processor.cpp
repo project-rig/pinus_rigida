@@ -183,7 +183,6 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
-  
   // Read back propagation region
   if(!g_BackPropagationOutput.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionBackPropagationOutput), flags,
@@ -191,7 +190,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   {
     return false;
   }
-  
+
   // Read flush region
   if(!g_Flush.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionFlush), flags,

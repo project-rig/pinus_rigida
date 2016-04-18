@@ -1,7 +1,6 @@
 #pragma once
 
 // Standard includes
-#include <algorithm>
 #include <climits>
 #include <cstdint>
 
@@ -39,38 +38,41 @@ public:
     if(m_FlushTime != UINT32_MAX)
     {
       // Allocate array to hold time since last spike
-      g_TimeSinceLastSpike = spin1_malloc(sizeof(uint16_t) * numNeurons);
-      if(g_TimeSinceLastSpike == NULL)
+      m_TimeSinceLastSpike = (uint16_t*)spin1_malloc(sizeof(uint16_t) * numNeurons);
+      if(m_TimeSinceLastSpike == NULL)
       {
         LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate time since last spike array");
         return false;
       }
 
       // Initially zero all counts
-      std::fill_n(g_TimeSinceLastSpike, g_AppWords[AppWordNumNeurons], 0);
+      for(unsigned int n = 0; n < numNeurons; n++)
+      {
+        m_TimeSinceLastSpike = 0;
+      }
     }
     return true;
   }
 
-  bool ShouldFlush(unsigned int neuron, bool spiked)
+  bool ShouldFlush(unsigned int neuronIndex, bool spiked)
   {
     if(m_TimeSinceLastSpike != NULL)
     {
       // If neuron's spiked, reset time since last spike
       if(spiked)
       {
-        m_TimeSinceLastSpike[n] = 0;
+        m_TimeSinceLastSpike[neuronIndex] = 0;
       }
       // Otherwise
       else
       {
         // Increment time since last spike
-        m_TimeSinceLastSpike[n]++;
+        m_TimeSinceLastSpike[neuronIndex]++;
 
         // If flush time has elapsed, clear timer and return true
-        if(m_TimeSinceLastSpike[n] > m_FlushTime)
+        if(m_TimeSinceLastSpike[neuronIndex] > m_FlushTime)
         {
-          m_TimeSinceLastSpike[n] = 0;
+          m_TimeSinceLastSpike[neuronIndex] = 0;
           return true;
         }
       }
