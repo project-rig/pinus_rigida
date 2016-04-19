@@ -55,7 +55,7 @@ public:
     m_RowCount = (uint8_t*)spin1_malloc(sizeof(uint8_t) * numDelaySlots);
     if(m_RowCount == NULL)
     {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to row counts");
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate row counts");
       return false;
     }
 
