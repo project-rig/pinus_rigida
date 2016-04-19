@@ -37,9 +37,6 @@ class SDRAMBackPropInput(Region):
 
         Parameters
         ----------
-        vertex_slice : :py:func:`slice`
-            A slice object which indicnamedtupleates which rows,
-            columns or other elements of the region should be included.
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
