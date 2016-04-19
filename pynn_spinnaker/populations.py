@@ -524,7 +524,7 @@ class Population(common.Population):
             # If there are any post-synaptic vertices
             if len(post_s_verts) > 0:
                 # Create a key for this source neuron vertex
-                net_key = (n_vert.key, n_vert.mask)
+                net_key = (n_vert.routing_key, n_vert.routing_mask)
 
                 # Create a net connecting neuron vertex to synapse vertices
                 mean_firing_rate = self.spinnaker_config.mean_firing_rate
