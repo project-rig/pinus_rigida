@@ -10,7 +10,7 @@ enum Region
 {
   RegionSystem,
   RegionSpikeSource,
-  RegionFlush = 4,
+  RegionFlush = 5,
   RegionSpikeRecording,
   RegionProfiler,
 };
@@ -19,7 +19,7 @@ enum Region
 enum AppWord
 {
   AppWordSpikeKey,
-  AppWordNumNeurons,
+  AppWordFlushKey,
   AppWordNumSpikeSources,
   AppWordMax,
 };

@@ -24,8 +24,8 @@ enum Region
 enum AppWord
 {
   AppWordSpikeKey,
-  AppWordNumNeurons,
   AppWordFlushKey,
+  AppWordNumNeurons,
   AppWordMax,
 };
 

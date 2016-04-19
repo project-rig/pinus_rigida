@@ -143,7 +143,7 @@ void TimerTick(uint tick, uint)
       [](unsigned int n)
       {
         // Send spike
-        uint32_t key = g_AppWords[AppWordKey] | n;
+        uint32_t key = g_AppWords[AppWordSpikeKey] | n;
         while(!spin1_send_mc_packet(key, 0, NO_PAYLOAD))
         {
           spin1_delay_us(1);

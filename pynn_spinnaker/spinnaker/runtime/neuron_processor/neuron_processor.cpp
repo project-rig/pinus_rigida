@@ -157,7 +157,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "\tspike key=%08x, flush key=%x08x, num neurons=%u",
+    LOG_PRINT(LOG_LEVEL_INFO, "\tspike key=%08x, flush key=%08x, num neurons=%u",
       g_AppWords[AppWordSpikeKey], g_AppWords[AppWordFlushKey], g_AppWords[AppWordNumNeurons]);
   }
   
