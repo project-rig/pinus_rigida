@@ -334,13 +334,15 @@ class State(common.control.BaseState):
         # **NOTE** projection vertices need to be loaded
         # first as weight-fixed point is only calculated at
         # load time and this is required by neuron vertices
-        logger.info("Loading projection vertices")
+        logger.info("Loading projection vertices_load_verts")
         for proj in self.projections:
             proj._load_verts(placements, allocations, self.machine_controller)
 
         logger.info("Loading population vertices")
+        flush_mask = keyspace.get_mask(field="flush")
         for pop in self.populations:
-            pop._load_verts(placements, allocations, self.machine_controller)
+            pop._load_verts(placements, allocations,
+                            self.machine_controller, flush_mask)
 
         # Load routing tables and applications
         logger.info("Loading routing tables")

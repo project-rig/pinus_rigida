@@ -216,7 +216,7 @@ class SynapseCluster(object):
                     for _ in range(2)]
 
     def load(self, placements, allocations, machine_controller,
-             matrices, weight_fixed_point):
+             matrices, weight_fixed_point, flush_mask):
         # Loop through synapse verts
         for v in self.verts:
             # Cache weight fixed-point for
@@ -257,7 +257,7 @@ class SynapseCluster(object):
                 region_arguments = self._get_region_arguments(
                     v.post_neuron_slice, sub_matrix_props, sub_matrix_rows,
                     matrix_placements, weight_fixed_point, v.out_buffers,
-                    back_prop_in_buffers)
+                    back_prop_in_buffers, flush_mask)
 
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
@@ -322,12 +322,12 @@ class SynapseCluster(object):
     def _get_region_arguments(self, post_vertex_slice, sub_matrix_props,
                               sub_matrix_rows, matrix_placements,
                               weight_fixed_point, out_buffers,
-                              back_prop_in_buffers):
+                              back_prop_in_buffers, flush_mask):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
-            [weight_fixed_point, len(post_vertex_slice)]
+            [weight_fixed_point, len(post_vertex_slice), flush_mask]
 
         region_arguments[Regions.key_lookup].kwargs["sub_matrix_props"] =\
             sub_matrix_props
