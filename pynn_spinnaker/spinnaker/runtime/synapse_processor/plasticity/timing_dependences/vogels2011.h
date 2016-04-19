@@ -83,7 +83,7 @@ public:
     // Subtract rho
     decayedPostTrace -= m_Rho;
 
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
               elapsedTicksSinceLastPost, lastPostTrace, decayedPostTrace);
 
     // Apply potentiation

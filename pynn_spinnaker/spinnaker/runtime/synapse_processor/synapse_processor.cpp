@@ -353,7 +353,7 @@ void DMATransferDone(uint, uint tag)
     auto addWeightLambda = 
       [](unsigned int tick, unsigned int index, uint32_t weight) 
       {
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding weight %u to neuron %u for tick %u",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tAdding weight %u to neuron %u for tick %u",
                   weight, index, tick);
         g_RingBuffer.AddWeight(tick, index, weight);
       };

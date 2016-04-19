@@ -83,7 +83,7 @@ public:
         S2011 decayedPostTrace = Mul16S2011(
           lastPostTrace, m_TauMinusLUT.Get(elapsedTicksSinceLastPost));
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
                   elapsedTicksSinceLastPost, lastPostTrace, decayedPostTrace);
 
         // Apply depression
