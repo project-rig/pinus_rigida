@@ -60,11 +60,19 @@ public:
     }
 
     // Get time of last update from DMA buffer and write back updated time
-    const uint32_t lastUpdateTick = dmaBuffer[4];
-    dmaBuffer[4] = tick;
+    const uint32_t lastUpdateTick = dmaBuffer[3];
+    dmaBuffer[3] = tick;
 
-    // Get time of last actual presynaptic spike from DMA buffer
-    const uint32_t lastPreTick = dmaBuffer[5];
+    // If this is an actual spike (rather than a flush event)
+    const uint32_t lastPreTick = dmaBuffer[4];
+    if(!flush)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding post-synaptic event to trace at tick:%u",
+              tick);
+
+      // Write back updated last presynaptic spike time to row
+      dmaBuffer[4] = tick;
+    }
 
     // Extract first plastic and control words; and loop through synapses
     uint32_t count = dmaBuffer[0];
@@ -120,7 +128,7 @@ public:
       {
         const uint32_t delayedPostTick = postWindow.GetNextTime() + delayDendritic;
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tApplying post-synaptic event at delayed tick:%u",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying post-synaptic event at delayed tick:%u",
                   delayedPostTick);
 
         // Apply post-synaptic spike to state
@@ -134,12 +142,6 @@ public:
       // If this isn't a flush
       if(!flush)
       {
-        LOG_PRINT(LOG_LEVEL_TRACE, "Adding post-synaptic event to trace at tick:%u",
-                tick);
-
-         // Write back updated last presynaptic spike time to row
-        dmaBuffer[5] = tick;
-
         const uint32_t delayedPreTick = tick + delayAxonal;
         LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying pre-synaptic event at tick:%u, last post tick:%u",
                   delayedPreTick, postWindow.GetPrevTime());
@@ -167,7 +169,7 @@ public:
 
     // Write back row and all plastic data to SDRAM
     writeBackRowFunction(&sdramRowAddress[3], &dmaBuffer[3],
-      1 + GetNumPlasticWords(dmaBuffer[0]));
+      2 + GetNumPlasticWords(dmaBuffer[0]));
     return true;
   }
 
@@ -192,7 +194,7 @@ public:
 
   bool ReadSDRAMData(uint32_t *region, uint32_t flags)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::STDP::ReadSDRAMData");
+    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::STDPNearest::ReadSDRAMData");
 
     // Read timing dependence data
     if(!m_TimingDependence.ReadSDRAMData(region, flags))
