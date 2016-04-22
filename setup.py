@@ -93,4 +93,11 @@ setup(
     install_requires=["pynn>=0.8", "rig>=1.1.0, <2.0.0",
                       "bitarray>=0.8.1, <1.0.0"],
     zip_safe=False,  # Partly for performance reasons
+
+    # Scripts
+    entry_points={
+        "console_scripts": [
+            "pynn_spinnaker_path = pynn_spinnaker.scripts.pynn_spinnaker_path:main",
+        ],
+    }
 )
