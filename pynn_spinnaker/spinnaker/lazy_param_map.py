@@ -9,7 +9,8 @@ from utils import LazyArrayFloatToFixConverter
 from copy import deepcopy
 from functools import partial
 
-# Create a converter function to convert from float to S1615 format
+# Create a converter functions to convert from float to
+# various fixed-point formats used by PyNN SpiNNaker
 float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
 float_to_s2211_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
