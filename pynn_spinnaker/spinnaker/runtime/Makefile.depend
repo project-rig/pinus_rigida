@@ -17,6 +17,8 @@ RUNTIME := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 LIBRARIES = -lspin1_api
 CFLAGS += -Wall -Wextra -Ofast -fno-rtti -fno-exceptions
 LFLAGS += -nodefaultlibs
-APP_DIR = $(RUNTIME)/../../standardmodels/binaries
+
+# If it is not set already, use standard app directory
+APP_DIR ?= $(RUNTIME)/../../standardmodels/binaries
 
 include $(RUNTIME)/Makefile.common
