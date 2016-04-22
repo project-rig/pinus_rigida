@@ -7,6 +7,7 @@ from utils import LazyArrayFloatToFixConverter
 
 # Import functions
 from copy import deepcopy
+from functools import partial
 
 # Create a converter function to convert from float to S1615 format
 float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
@@ -147,8 +148,8 @@ def u032_rate_exp_minus_lambda(values, sim_timestep_ms, **kwargs):
     # Convert to fixed point and return
     return float_to_u032_no_copy(lambda_vals)
 
-def s411_exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
-                       **kwargs):
+def exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
+                  float_to_fixed, **kwargs):
     # Determine the time step of the LUT in milliseconds
     timestep_ms = sim_timestep_ms * float(2 ** time_shift)
 
@@ -159,4 +160,7 @@ def s411_exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
     # Calculate exponential decay
     values.shape = time_ms.shape
     decay_vals = la.exp(time_ms / values)
-    return float_to_s411_no_copy(decay_vals)
+    return float_to_fixed(decay_vals)
+
+# Partially bound version of exp_decay_lut to generate LUTs in standard STDP format
+s411_exp_decay_lut = partial(exp_decay_lut, float_to_fixed=float_to_s411_no_copy)
