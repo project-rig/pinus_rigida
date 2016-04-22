@@ -83,10 +83,12 @@ public:
     return true;
   }
 
-  bool AddRow(unsigned int tick, R rowOffsetLength)
+  bool AddRow(unsigned int tick, R rowOffsetLength, bool flush)
   {
     // Calculate index of buffer to use
     const unsigned int d = tick & m_DelayMask;
+
+    // **TODO** stash flushness SOMEHOW in rowOffsetLength
 
     // If there is space in this delay buffer, add row
     // offset length to SDRAM delay buffer and increment counter

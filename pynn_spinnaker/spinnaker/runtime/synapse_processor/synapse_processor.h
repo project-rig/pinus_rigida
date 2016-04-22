@@ -24,6 +24,7 @@ enum AppWord
 {
   AppWordWeightFixedPoint,
   AppWordNumPostNeurons,
+  AppWordFlushMask,
   AppWordMax,
 };
 

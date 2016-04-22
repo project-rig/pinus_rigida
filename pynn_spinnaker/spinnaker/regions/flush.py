@@ -6,13 +6,16 @@ from region import Region
 
 
 # ------------------------------------------------------------------------------
-# SDRAMBackPropInput
+# Flush
 # ------------------------------------------------------------------------------
-class SDRAMBackPropInput(Region):
+class Flush(Region):
+    def __init__(self, flush_time):
+        self.flush_time = flush_time
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, back_prop_in_buffers):
+    def sizeof(self):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -20,19 +23,16 @@ class SDRAMBackPropInput(Region):
         vertex_slice : :py:func:`slice`
             A slice object which indicates which rows, columns or other
             elements of the region should be included.
-        back_prop_in_buffers : list of 5-tuples containing pointers to
-            two memory regions, their size and start and stop neuron bits
-
         Returns
         -------
         int
             The number of bytes required to store the data in the given slice
             of the region.
         """
-        # A count followed by five words for each buffer
-        return (1 + (5 * len(back_prop_in_buffers))) * 4
+        # Flush time
+        return 4
 
-    def write_subregion_to_file(self, fp, back_prop_in_buffers):
+    def write_subregion_to_file(self, fp):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -40,16 +40,6 @@ class SDRAMBackPropInput(Region):
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        back_prop_in_buffers : list of 5-tuples containing pointers to
-            two memory regions, their size and start and stop neuron bits
         """
-        # Write header
-        data = b''
-        data += struct.pack("I", len(back_prop_in_buffers))
-
-        # Write each buffer entry
-        for p, w, s, e in back_prop_in_buffers:
-            data += struct.pack("IIIII", p[0], p[1], w, s, e)
-
         # Write data to filelike
-        fp.write(data)
+        fp.write(struct.pack("I", self.flush_time))

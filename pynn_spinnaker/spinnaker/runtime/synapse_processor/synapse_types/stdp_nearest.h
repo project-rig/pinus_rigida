@@ -8,10 +8,10 @@
 #include "../../common/log.h"
 
 // Synapse processor includes
-#include "../plasticity/post_events.h"
+#include "../plasticity/post_events_nearest.h"
 
 //-----------------------------------------------------------------------------
-// SynapseProcessor::SynapseTypes::STDP
+// SynapseProcessor::SynapseTypes::STDPNearest
 //-----------------------------------------------------------------------------
 namespace SynapseProcessor
 {
@@ -20,21 +20,18 @@ namespace SynapseTypes
 template<typename C, unsigned int D, unsigned int I,
          typename TimingDependence, typename WeightDependence, typename SynapseStructure,
          unsigned int T>
-class STDP
+class STDPNearest
 {
 private:
   //-----------------------------------------------------------------------------
   // Typedefines
   //-----------------------------------------------------------------------------
   typedef typename SynapseStructure::PlasticSynapse PlasticSynapse;
-  typedef typename TimingDependence::PreTrace PreTrace;
-  typedef typename TimingDependence::PostTrace PostTrace;
-  typedef Plasticity::PostEventHistory<PostTrace, T> PostEventHistory;
+  typedef Plasticity::PostEventHistoryNearest<T> PostEventHistory;
 
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  static const unsigned int PreTraceWords = (sizeof(PreTrace) / 4) + (((sizeof(PreTrace) % 4) == 0) ? 0 : 1);
   static const uint32_t DelayMask = ((1 << D) - 1);
   static const uint32_t IndexMask = ((1 << I) - 1);
 
@@ -42,9 +39,9 @@ public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  // One word for a synapse-count, two delay words, a time of last update, 
-  // time and trace associated with last presynaptic spike and 512 synapses
-  static const unsigned int MaxRowWords = 517 + PreTraceWords;
+  // One word for a synapse-count, two delay words, a time of last update,
+  // time associated with last presynaptic spike and 512 synapses
+  static const unsigned int MaxRowWords = 517;
 
   //-----------------------------------------------------------------------------
   // Public methods
@@ -66,23 +63,15 @@ public:
     const uint32_t lastUpdateTick = dmaBuffer[3];
     dmaBuffer[3] = tick;
 
-    // Get time of last presynaptic spike and associated trace entry from DMA buffer
-    const uint32_t lastPreTick = dmaBuffer[4];
-    const PreTrace lastPreTrace = GetPreTrace(dmaBuffer);
-
     // If this is an actual spike (rather than a flush event)
-    PreTrace newPreTrace;
+    const uint32_t lastPreTick = dmaBuffer[4];
     if(!flush)
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding pre-synaptic event to trace at tick:%u",
-                tick);
-      // Calculate new pre-trace
-      newPreTrace = m_TimingDependence.UpdatePreTrace(
-        tick, lastPreTrace, lastPreTick);
-      
-      // Write back updated last presynaptic spike time and trace to row
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding post-synaptic event to trace at tick:%u",
+              tick);
+
+      // Write back updated last presynaptic spike time to row
       dmaBuffer[4] = tick;
-      SetPreTrace(dmaBuffer, newPreTrace);
     }
 
     // Extract first plastic and control words; and loop through synapses
@@ -118,7 +107,7 @@ public:
                                                                 windowEndTick);
 
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tPerforming deferred synapse update for post neuron:%u", postIndex);
-      LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tWindow begin tick:%u, window end tick:%u: Previous time:%u, Num events:%u",
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tWindow begin tick:%u, window end tick:%u: Previous time:%u, Num events:%u",
           windowBeginTick, windowEndTick, postWindow.GetPrevTime(), postWindow.GetNumEvents());
 
       // Create lambda functions to apply depression
@@ -139,14 +128,12 @@ public:
       {
         const uint32_t delayedPostTick = postWindow.GetNextTime() + delayDendritic;
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tApplying post-synaptic event at delayed tick:%u",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying post-synaptic event at delayed tick:%u",
                   delayedPostTick);
 
         // Apply post-synaptic spike to state
         m_TimingDependence.ApplyPostSpike(applyDepression, applyPotentiation,
-                                          delayedPostTick, postWindow.GetNextTrace(),
-                                          delayedLastPreTick, lastPreTrace,
-                                          postWindow.GetPrevTime(), postWindow.GetPrevTrace());
+                                          delayedPostTick, delayedLastPreTick, postWindow.GetPrevTime());
 
         // Go onto next event
         postWindow.Next(delayedPostTick);
@@ -156,15 +143,14 @@ public:
       if(!flush)
       {
         const uint32_t delayedPreTick = tick + delayAxonal;
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tApplying pre-synaptic event at tick:%u, last post tick:%u",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tApplying pre-synaptic event at tick:%u, last post tick:%u",
                   delayedPreTick, postWindow.GetPrevTime());
 
         // Apply pre-synaptic spike to state
         m_TimingDependence.ApplyPreSpike(applyDepression, applyPotentiation,
-                                         delayedPreTick, newPreTrace,
-                                         delayedLastPreTick, lastPreTrace,
-                                         postWindow.GetPrevTime(), postWindow.GetPrevTrace());
+                                          delayedPreTick, delayedLastPreTick, postWindow.GetPrevTime());
       }
+
 
       // Calculate final state after all updates
       auto finalState = updateState.CalculateFinalState(m_WeightDependence);
@@ -174,6 +160,7 @@ public:
       {
         applyInputFunction(delayDendritic + delayAxonal + tick,
           postIndex, finalState.GetWeight());
+
       }
 
       // Write back updated synaptic word to plastic region
@@ -182,7 +169,7 @@ public:
 
     // Write back row and all plastic data to SDRAM
     writeBackRowFunction(&sdramRowAddress[3], &dmaBuffer[3],
-      2 + PreTraceWords + GetNumPlasticWords(dmaBuffer[0]));
+      2 + GetNumPlasticWords(dmaBuffer[0]));
     return true;
   }
 
@@ -194,26 +181,20 @@ public:
       LOG_PRINT(LOG_LEVEL_TRACE, "Adding post-synaptic event to trace at tick:%u",
                 tick);
 
-      // Get neuron's post history
-      auto &postHistory = m_PostEventHistory[neuronID];
-
-      // Update last trace entry based on spike at tick
-      // and add new trace and time to post history
-      PostTrace trace = m_TimingDependence.UpdatePostTrace(
-        tick, postHistory.GetLastTrace(), postHistory.GetLastTime());
-      postHistory.Add(tick, trace);
+      // Add time to post event history
+      m_PostEventHistory[neuronID].Add(tick);
     }
   }
 
   unsigned int GetRowWords(unsigned int rowSynapses) const
   {
     // Three header word and a synapse
-    return 5 + PreTraceWords + GetNumPlasticWords(rowSynapses) + GetNumControlWords(rowSynapses);
+    return 5 + GetNumPlasticWords(rowSynapses) + GetNumControlWords(rowSynapses);
   }
 
   bool ReadSDRAMData(uint32_t *region, uint32_t flags)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::STDP::ReadSDRAMData");
+    LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::STDPNearest::ReadSDRAMData");
 
     // Read timing dependence data
     if(!m_TimingDependence.ReadSDRAMData(region, flags))
@@ -256,30 +237,14 @@ private:
     return (controlBytes / 4) + (((controlBytes % 4) == 0) ? 0 : 1);
   }
 
-  static PreTrace GetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords])
-  {
-    // **NOTE** GCC will optimise this memcpy out it
-    // is simply strict-aliasing-safe solution
-    PreTrace preTrace;
-    memcpy(&preTrace, &dmaBuffer[5], sizeof(PreTrace));
-    return preTrace;
-  }
-
-  static void SetPreTrace(uint32_t (&dmaBuffer)[MaxRowWords], PreTrace preTrace)
-  {
-    // **NOTE** GCC will optimise this memcpy out it
-    // is simply strict-aliasing-safe solution
-    memcpy(&dmaBuffer[5], &preTrace, sizeof(PreTrace));
-  }
-
   static PlasticSynapse *GetPlasticWords(uint32_t (&dmaBuffer)[MaxRowWords])
   {
-    return reinterpret_cast<PlasticSynapse*>(&dmaBuffer[5 + PreTraceWords]);
+    return reinterpret_cast<PlasticSynapse*>(&dmaBuffer[5]);
   }
 
   static const C *GetControlWords(uint32_t (&dmaBuffer)[MaxRowWords], unsigned int numSynapses)
   {
-    return reinterpret_cast<C*>(&dmaBuffer[5 + PreTraceWords + GetNumPlasticWords(numSynapses)]);
+    return reinterpret_cast<C*>(&dmaBuffer[5 + GetNumPlasticWords(numSynapses)]);
   }
 
   //-----------------------------------------------------------------------------

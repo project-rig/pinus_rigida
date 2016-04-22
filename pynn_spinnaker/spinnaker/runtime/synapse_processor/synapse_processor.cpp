@@ -254,6 +254,12 @@ void SetupNextDMARowRead()
         return g_Synapse.GetRowWords(rowSynapses);
       };
 
+    // Use flush mask to determine if this key is a flush event
+    bool flush = ((key & g_AppWords[AppWordFlushMask]) != 0);
+
+    // Then clear these bit(s)
+    key &= ~g_AppWords[AppWordFlushMask];
+      
     // Decode key to get address and length of destination synaptic row
     unsigned int rowWords;
     uint32_t *rowAddress;
@@ -266,7 +272,7 @@ void SetupNextDMARowRead()
       // Store SDRAM address of row in buffer
       // so it can be written back if required
       DMANextRowBuffer().m_SDRAMAddress = rowAddress;
-      DMANextRowBuffer().m_Flush = false;
+      DMANextRowBuffer().m_Flush = flush;
 
       // Start a DMA transfer to fetch this synaptic row into next buffer
       g_Statistics[StatRowRequested]++;
@@ -347,19 +353,21 @@ void DMATransferDone(uint, uint tag)
     auto addWeightLambda = 
       [](unsigned int tick, unsigned int index, uint32_t weight) 
       {
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding weight %u to neuron %u for tick %u",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tAdding weight %u to neuron %u for tick %u",
                   weight, index, tick);
         g_RingBuffer.AddWeight(tick, index, weight);
       };
 
     // Create lambda function to add a delay extension to the delay buffer
     auto addDelayRowLambda =
-      [](unsigned int tick, uint32_t word)
+      [](unsigned int tick, uint32_t word, bool flush)
       {
+        // **TODO** add flushness to word
+        // **THINK** there IS at least one extra bit as plastic rows are limited to 512 synapses rather than 1024
         auto rowOffsetLength = DelayBuffer::R(word);
         LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding delay extension row for tick %u, num synapses:%u, offset word:%u",
           tick, rowOffsetLength.GetNumSynapses(), rowOffsetLength.GetWordOffset());
-        g_DelayBuffer.AddRow(tick, rowOffsetLength);
+        g_DelayBuffer.AddRow(tick, rowOffsetLength, flush);
       };
 
     // Create lambda function to write back row

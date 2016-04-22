@@ -236,10 +236,10 @@ class State(common.control.BaseState):
 
         # Create a 32-bit keyspace
         keyspace = BitField(32)
-        keyspace.add_field("population_index", tags="routing")
-        keyspace.add_field("vertex_index", tags="routing")
-        keyspace.add_field("neuron_id", length=10, start_at=0,
-                           tags="application")
+        keyspace.add_field("pop_index", tags=("routing", "transmission"))
+        keyspace.add_field("vert_index", tags=("routing", "transmission"))
+        keyspace.add_field("flush", length=1, start_at=10, tags="transmission")
+        keyspace.add_field("neuron_id", length=10, start_at=0)
 
         # Create empty dictionaries to contain Rig mappings
         # of vertices to  applications and resources
@@ -334,13 +334,15 @@ class State(common.control.BaseState):
         # **NOTE** projection vertices need to be loaded
         # first as weight-fixed point is only calculated at
         # load time and this is required by neuron vertices
-        logger.info("Loading projection vertices")
+        logger.info("Loading projection vertices_load_verts")
         for proj in self.projections:
             proj._load_verts(placements, allocations, self.machine_controller)
 
         logger.info("Loading population vertices")
+        flush_mask = keyspace.get_mask(field="flush")
         for pop in self.populations:
-            pop._load_verts(placements, allocations, self.machine_controller)
+            pop._load_verts(placements, allocations,
+                            self.machine_controller, flush_mask)
 
         # Load routing tables and applications
         logger.info("Loading routing tables")

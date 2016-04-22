@@ -13,6 +13,7 @@ enum Region
   RegionSynapse,
   RegionInputBuffer,
   RegionBackPropagationOutput,
+  RegionFlush,
   RegionSpikeRecording,
   RegionAnalogueRecordingStart,
   RegionAnalogueRecordingEnd = RegionAnalogueRecordingStart + 4,
@@ -22,7 +23,8 @@ enum Region
 // Indexes of application words
 enum AppWord
 {
-  AppWordKey,
+  AppWordSpikeKey,
+  AppWordFlushKey,
   AppWordNumNeurons,
   AppWordMax,
 };

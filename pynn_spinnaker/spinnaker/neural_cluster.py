@@ -27,11 +27,12 @@ class Regions(enum.IntEnum):
     synapse = 2
     input_buffer = 3
     back_prop_output = 4
-    spike_recording = 5
-    analogue_recording_0 = 6
-    analogue_recording_1 = 7
-    analogue_recording_2 = 8
-    analogue_recording_3 = 9
+    flush = 5
+    spike_recording = 6
+    analogue_recording_0 = 7
+    analogue_recording_1 = 8
+    analogue_recording_2 = 9
+    analogue_recording_3 = 10
     analogue_recording_start = analogue_recording_0
     analogue_recording_end = analogue_recording_3 + 1
     profiler = analogue_recording_end
@@ -41,14 +42,20 @@ class Regions(enum.IntEnum):
 # Vertex
 # ----------------------------------------------------------------------------
 class Vertex(object):
-    def __init__(self, parent_keyspace, neuron_slice,
-                 population_index, vertex_index):
+    def __init__(self, parent_keyspace, neuron_slice, pop_index, vert_index):
         self.neuron_slice = neuron_slice
-        self.keyspace = parent_keyspace(population_index=population_index,
-                                        vertex_index=vertex_index)
+
+        # Build child keyspaces for spike and
+        # flush packets coming from this vertex
+        self.spike_keyspace = parent_keyspace(pop_index=pop_index,
+                                              vert_index=vert_index,
+                                              flush=0)
+        self.flush_keyspace = parent_keyspace(pop_index=pop_index,
+                                              vert_index=vert_index,
+                                              flush=1)
+
         self.input_verts = []
         self.back_prop_out_buffers = None
-
         self.region_memory = None
 
     # ------------------------------------------------------------------------
@@ -94,12 +101,32 @@ class Vertex(object):
     # Properties
     # ------------------------------------------------------------------------
     @property
-    def key(self):
-        return self.keyspace.get_value(tag="routing")
+    def spike_tx_key(self):
+        return self.spike_keyspace.get_value(tag="transmission")
 
     @property
-    def mask(self):
-        return self.keyspace.get_mask(tag="routing")
+    def flush_tx_key(self):
+        return self.flush_keyspace.get_value(tag="transmission")
+
+    @property
+    def routing_key(self):
+        # Check that routing key for the spike and flush keyspace are the same
+        spike_key = self.spike_keyspace.get_value(tag="routing")
+        flush_key = self.flush_keyspace.get_value(tag="routing")
+        assert spike_key == flush_key
+
+        # Return the spike key (arbitarily)
+        return spike_key
+
+    @property
+    def routing_mask(self):
+        # Check that routing mask for the spike and flush keyspace are the same
+        spike_mask = self.spike_keyspace.get_mask(tag="routing")
+        flush_mask = self.flush_keyspace.get_mask(tag="routing")
+        assert spike_mask == flush_mask
+
+        # Return the spike mask (arbitarily)
+        return spike_mask
 
 
 # -----------------------------------------------------------------------------
@@ -124,10 +151,12 @@ class NeuralCluster(object):
             timer_period_us, sim_ticks)
         self.regions[Regions.neuron] = cell_type.neuron_region_class(
             cell_type, parameters, initial_values, sim_timestep_ms)
-        self.regions[Regions.spike_recording] = regions.SpikeRecording(
-            indices_to_record, sim_timestep_ms, sim_ticks)
         self.regions[Regions.back_prop_output] = regions.SDRAMBackPropOutput(
             requires_back_prop)
+        self.regions[Regions.flush] = regions.Flush(0)
+
+        self.regions[Regions.spike_recording] = regions.SpikeRecording(
+            indices_to_record, sim_timestep_ms, sim_ticks)
 
         # If cell type has any receptors i.e. any need for synaptic input
         if len(cell_type.receptor_types) > 0:
@@ -223,9 +252,9 @@ class NeuralCluster(object):
             core = vertex_allocation[machine.Cores]
             assert (core.stop - core.start) == 1
 
-            logger.debug("\t\tVertex %s (%u, %u, %u): Key:%08x",
+            logger.debug("\t\tVertex %s (%u, %u, %u): Spike key:%08x, Flush key:%08x",
                             v, vertex_placement[0], vertex_placement[1],
-                            core.start, v.key)
+                            core.start, v.spike_tx_key, v.flush_tx_key)
 
             # Select placed chip
             with machine_controller(x=vertex_placement[0],
@@ -238,8 +267,8 @@ class NeuralCluster(object):
 
                 # Get regiona arguments
                 region_arguments = self._get_region_arguments(
-                    v.key, v.neuron_slice, in_buffers,
-                    v.back_prop_out_buffers)
+                    v.spike_tx_key, v.flush_tx_key, v.neuron_slice,
+                    in_buffers, v.back_prop_out_buffers)
 
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
@@ -281,8 +310,8 @@ class NeuralCluster(object):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
-    def _get_region_arguments(self, key, vertex_slice, in_buffers,
-                              back_prop_out_buffers):
+    def _get_region_arguments(self, spike_tx_key, flush_tx_key, vertex_slice,
+                              in_buffers, back_prop_out_buffers):
         region_arguments = defaultdict(Args)
 
         analogue_recording_regions = range(Regions.analogue_recording_start,
@@ -296,7 +325,7 @@ class NeuralCluster(object):
 
         # Add kwargs for regions that require them
         region_arguments[Regions.system].kwargs["application_words"] =\
-            [key, len(vertex_slice)]
+            [spike_tx_key, flush_tx_key, len(vertex_slice)]
         region_arguments[Regions.input_buffer].kwargs["in_buffers"] =\
             in_buffers
         region_arguments[Regions.back_prop_output].kwargs["out_buffers"] =\

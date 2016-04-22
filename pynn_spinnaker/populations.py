@@ -524,7 +524,7 @@ class Population(common.Population):
             # If there are any post-synaptic vertices
             if len(post_s_verts) > 0:
                 # Create a key for this source neuron vertex
-                net_key = (n_vert.key, n_vert.mask)
+                net_key = (n_vert.routing_key, n_vert.routing_mask)
 
                 # Create a net connecting neuron vertex to synapse vertices
                 mean_firing_rate = self.spinnaker_config.mean_firing_rate
@@ -616,7 +616,8 @@ class Population(common.Population):
             self._neural_cluster.allocate_out_buffers(placements, allocations,
                                                       machine_controller)
 
-    def _load_verts(self, placements, allocations, machine_controller):
+    def _load_verts(self, placements, allocations,
+                    machine_controller, flush_mask):
         logger.info("\tPopulation label:%s", self.label)
 
         # Loop through synapse types and associated cluster
@@ -630,7 +631,7 @@ class Population(common.Population):
 
             # Load vertices that make up cluster
             s_cluster.load(placements, allocations, machine_controller,
-                           matrices, weight_fixed_point)
+                           matrices, weight_fixed_point, flush_mask)
 
         # If population has a neuron cluster, load it
         if self._neural_cluster is not None:

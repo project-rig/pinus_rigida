@@ -52,8 +52,7 @@ public:
     return (PostTrace)newTrace;
   }
 
-  PreTrace UpdatePreTrace(uint32_t tick, PreTrace lastTrace, uint32_t lastTick,
-                          bool flush) const
+  PreTrace UpdatePreTrace(uint32_t tick, PreTrace lastTrace, uint32_t lastTick) const
   {
     // Get time since last spike
     uint32_t elapsedTicks = tick - lastTick;
@@ -61,11 +60,8 @@ public:
     // Decay previous trace
     int32_t newTrace = Mul16S2011(lastTrace, m_TauPlusLUT.Get(elapsedTicks));
 
-    // If this isn't a flush, add energy caused by new spike to trace
-    if(!flush)
-    {
-      newTrace += S2011One;
-    }
+    // Add energy caused by new spike to trace
+    newTrace += S2011One;
 
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks:%d, New trace:%d",
               elapsedTicks, newTrace);
@@ -87,7 +83,7 @@ public:
         S2011 decayedPostTrace = Mul16S2011(
           lastPostTrace, m_TauMinusLUT.Get(elapsedTicksSinceLastPost));
 
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tElapsed ticks since last post:%u, last post trace:%d, decayed post trace=%d",
                   elapsedTicksSinceLastPost, lastPostTrace, decayedPostTrace);
 
         // Apply depression

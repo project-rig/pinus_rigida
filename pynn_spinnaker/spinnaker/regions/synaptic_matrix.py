@@ -232,8 +232,8 @@ class SynapticMatrix(Region):
 
                         # Add sub matrix to list
                         sub_matrix_props.append(
-                            SubMatrix(pre_neuron_vertex.key,
-                                      pre_neuron_vertex.mask,
+                            SubMatrix(pre_neuron_vertex.routing_key,
+                                      pre_neuron_vertex.routing_mask,
                                       size_words, max_cols))
                         sub_matrix_rows.append(sub_rows)
 
@@ -245,7 +245,7 @@ class SynapticMatrix(Region):
         vert_matrix_prop, vert_matrix_placement = next((
             (s, p) for s, p in zip(post_s_vert.sub_matrix_props,
                                    post_s_vert.matrix_placements)
-            if s.key == pre_n_vert.key),
+            if s.key == pre_n_vert.routing_key),
             (None, None))
         assert vert_matrix_prop is not None
         assert vert_matrix_placement is not None
