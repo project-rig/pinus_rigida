@@ -185,14 +185,14 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     )
 
     slow_immutable_param_map = [
-        (None, "u4"),
+        (lazy_param_map.Indices, "u4"),
         ("start_time", "u4", lazy_param_map.integer_time_divide),
         ("end_time", "u4", lazy_param_map.integer_time_divide),
         ("rate", "i4", lazy_param_map.s1615_rate_isi),
     ]
 
     fast_immutable_param_map = [
-        (None, "u4"),
+        (lazy_param_map.Indices, "u4"),
         ("start_time", "u4", lazy_param_map.integer_time_divide),
         ("end_time", "u4", lazy_param_map.integer_time_divide),
         ("rate", "u4", lazy_param_map.u032_rate_exp_minus_lambda),

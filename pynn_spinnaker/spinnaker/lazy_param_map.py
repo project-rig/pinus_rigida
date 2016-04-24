@@ -1,6 +1,7 @@
 # Import modules
 import lazyarray as la
 import numpy as np
+import sentinel
 
 # Import classes
 from utils import LazyArrayFloatToFixConverter
@@ -15,6 +16,9 @@ float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
 float_to_s2211_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
 float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
+
+# Sentinel used to indicate that a constant field should be used for Indices
+Indices = sentinel.create("Indices")
 
 # -----------------------------------------------------------------------------
 # Functions
@@ -35,10 +39,16 @@ def apply(lazy_params, param_map, size, **kwargs):
     # Loop through parameters
     for field_name, param in zip(params.dtype.names, param_map):
         # If this map entry has a constant value,
-        # Write it into field for all neurons
         if len(param) == 2:
             param_value, _ = param
-            params[field_name][:] = param_value
+
+            # If parameter value is a lazy array,
+            # evaluate it and copy into field
+            if isinstance(param_value, la.larray):
+                params[field_name] = param_value.evaluate()
+            # Otherwise, assuming it's a scalar, copy it into all fields
+            else:
+                params[field_name][:] = param_value
         # Otherwise, apply lazy transformation and evaluate
         else:
             param_name, _, param_mapping = param
@@ -54,12 +64,18 @@ def apply_indices(lazy_params, param_map, indices, **kwargs):
 
     # Loop through parameters
     for field_name, param in zip(params.dtype.names, param_map):
-        # If this map entry has a constant value,
-        # Write it into field for all neurons
+        # If this map entry has a constant value
         if len(param) == 2:
             param_value, _ = param
-            if param_value is None:
+
+            # If parameter should be used for indices, copy them in
+            if param_value is Indices:
                 params[field_name] = indices
+            # Otherwise, if parameter value is a lazy array,
+            # evaluate it and copy into field
+            elif isinstance(param_value, la.larray):
+                params[field_name] = param_value.evaluate()
+            # Otherwise, assuming it's a scalar, copy it into all fields
             else:
                 params[field_name][:] = param_value
         # Otherwise, apply lazy transformation and evaluate slice
