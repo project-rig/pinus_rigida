@@ -33,8 +33,9 @@ class PlasticSynapticMatrix(SynapticMatrix):
         # should be rounded up to keep them word aligned
         num_array_words = int(math.ceil(float(num_synapses) / 2.0))
 
-        # Complete row consists of standard header, time of last update, time of last
-        # pre-synaptic spike, pre-synaptic trace and arrays of control words and plastic weights
+        # Complete row consists of standard header, time of last update,
+        # time of last pre-synaptic spike, pre-synaptic trace and
+        # arrays of control words and plastic weights
         return self.NumHeaderWords + 2 + self.pre_trace_words +\
             (2 * num_array_words)
 
