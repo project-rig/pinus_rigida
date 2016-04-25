@@ -1,5 +1,6 @@
 from analogue_recording import AnalogueRecording
 from delay_buffer import DelayBuffer
+from extended_plastic_synaptic_matrix import ExtendedPlasticSynapticMatrix
 from flush import Flush
 from input_buffer import InputBuffer
 from key_lookup_binary_search import KeyLookupBinarySearch
