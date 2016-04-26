@@ -90,10 +90,12 @@ class STDPMechanism(synapses.STDPMechanism):
     def update_weight_range(self, weight_range):
         self.weight_dependence.update_weight_range(weight_range)
 
-    # The pre-trace
+    # The presynaptic state for STDP synapses consists of a uint32 containing
+    # time of last update a uint32 containing time of last presynaptic spike
+    # and the presynaptic trace required by the timing dependence
     @property
-    def pre_trace_bytes(self):
-        return self.timing_dependence.pre_trace_bytes
+    def pre_state_bytes(self):
+        return 8 + self.timing_dependence.pre_trace_bytes
 
     # STDP mechanisms should be compared based on their class, timing
     # dependence (parameters) and weight dependence (parameters)
@@ -161,7 +163,7 @@ class SpikePairRule(synapses.SpikePairRule):
 
     comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
 
-    # How many byte does this
+    # Single int16 to contain trace
     pre_trace_bytes = 2
 
 # ------------------------------------------------------------------------------
@@ -186,5 +188,5 @@ class Vogels2011Rule(synapses.Vogels2011Rule):
 
     comparable_param_names = ("tau", "eta", "rho")
 
-    # How many byte does this
+    # Single int16 to contain trace
     pre_trace_bytes = 2

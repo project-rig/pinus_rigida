@@ -20,9 +20,9 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         # Superclass
         super(ExtendedPlasticSynapticMatrix, self).__init__(synapse_type)
 
-        # Round up number of bytes required by pre-trace to words
-        self.pre_trace_words = int(math.ceil(
-            float(synapse_type.pre_trace_bytes) / 4.0))
+        # Round up number of bytes required by presynaptic state to words
+        self.pre_state_words = int(math.ceil(
+            float(synapse_type.pre_state_bytes) / 4.0))
 
         # Add number of extra bytes associated
         # with each synapse to 2 bytes weight
@@ -39,7 +39,7 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         # Complete row consists of standard header, time of last update,
         # time of last pre-synaptic spike, pre-synaptic trace and
         # arrays of control words and plastic weights
-        return self.NumHeaderWords + 2 + self.pre_trace_words +\
+        return self.NumHeaderWords + self.pre_state_words +\
             num_control_words + num_plastic_words
 
     def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
@@ -57,22 +57,21 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         # Number of synapses in all but 1st delay
         # slot and header for each extension row to total
         return num_control_words + num_plastic_words +\
-            ((self.NumHeaderWords + 2 + self.pre_trace_words) * (num_sub_rows - 1))
+            ((self.NumHeaderWords + self.pre_state_words) * (num_sub_rows - 1))
 
     def _write_synapses(self, dtcm_delay, weight_fixed, indices, destination):
         # Zero time of last pre-synaptic spike and pre-synaptic trace
-        num_pre_state_words = 2 + self.pre_trace_words
-        destination[0: num_pre_state_words] = 0
+        destination[0: self.pre_state_words] = 0
 
         # Re-calculate size of control and plastic word arrays
         num_control_words, num_plastic_words =\
             self._get_num_array_words(len(indices))
 
         # Based on this get index of where control words begin
-        control_start_idx = num_pre_state_words + num_plastic_words
+        control_start_idx = self.pre_state_words + num_plastic_words
 
         # Create 8-bit view of plastic section of row
-        plastic_view = destination[num_pre_state_words: control_start_idx]
+        plastic_view = destination[self.pre_state_words: control_start_idx]
         plastic_view = plastic_view.view(dtype=np.uint8)
 
         # Reshape into a 2D array where each synapse is a row
@@ -99,11 +98,10 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
             self._get_num_array_words(len(synapses))
 
         # Based on this get index of where control words begin
-        num_pre_state_words = 2 + self.pre_trace_words
-        control_start_idx = num_pre_state_words + num_control_words
+        control_start_idx = self.pre_state_words + num_control_words
 
         # Create 8-bit view of plastic section of row
-        plastic_view = destination[num_pre_state_words: control_start_idx]
+        plastic_view = destination[self.pre_state_words: control_start_idx]
         plastic_view = plastic_view.view(dtype=np.uint8)
 
         # Reshape into a 2D array where each synapse is a row

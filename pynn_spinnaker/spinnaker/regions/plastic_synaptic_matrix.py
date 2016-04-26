@@ -20,9 +20,9 @@ class PlasticSynapticMatrix(SynapticMatrix):
         # Superclass
         super(PlasticSynapticMatrix, self).__init__(synapse_type)
 
-        # Round up number of bytes required by pre-trace to words
-        self.pre_trace_words = int(math.ceil(
-            float(synapse_type.pre_trace_bytes) / 4.0))
+        # Round up number of bytes required by presynaptic state to words
+        self.pre_state_words = int(math.ceil(
+            float(synapse_type.pre_state_bytes) / 4.0))
 
     # --------------------------------------------------------------------------
     # Private methods
@@ -33,10 +33,9 @@ class PlasticSynapticMatrix(SynapticMatrix):
         # should be rounded up to keep them word aligned
         num_array_words = int(math.ceil(float(num_synapses) / 2.0))
 
-        # Complete row consists of standard header, time of last update,
-        # time of last pre-synaptic spike, pre-synaptic trace and
-        # arrays of control words and plastic weights
-        return self.NumHeaderWords + 2 + self.pre_trace_words +\
+        # Complete row consists of standard header, presynaptic state
+        # and arrays of control words and plastic weights
+        return self.NumHeaderWords + self.pre_state_words +\
             (2 * num_array_words)
 
     def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
@@ -48,22 +47,21 @@ class PlasticSynapticMatrix(SynapticMatrix):
         # Number of synapses in all but 1st delay
         # slot and header for each extension row to total
         return (2 * num_array_words) +\
-            ((self.NumHeaderWords + 2 + self.pre_trace_words) * (num_sub_rows - 1))
+            ((self.NumHeaderWords + self.pre_state_words) * (num_sub_rows - 1))
 
     def _write_synapses(self, dtcm_delay, weight_fixed, indices, destination):
-        # Zero time of last pre-synaptic spike and pre-synaptic trace
-        num_pre_state_words = 2 + self.pre_trace_words
-        destination[0: num_pre_state_words] = 0
+        # Zero presynaptic state
+        destination[0: self.pre_state_words] = 0
 
         # Re-calculate size of control and plastic arrays in words
         num_array_words = int(math.ceil(float(len(indices)) / 2.0))
 
         # Based on this get index of where control words begin
-        control_start_idx = num_pre_state_words + num_array_words
+        control_start_idx = self.pre_state_words + num_array_words
 
         # Create 16-bit view of plastic weight
         # section of destination and copy them in
-        weight_view = destination[num_pre_state_words: control_start_idx]
+        weight_view = destination[self.pre_state_words: control_start_idx]
         weight_view = weight_view.view(dtype=np.uint16)[:len(weight_fixed)]
         weight_view[:] = weight_fixed
 
@@ -79,13 +77,12 @@ class PlasticSynapticMatrix(SynapticMatrix):
         num_array_words = int(math.ceil(float(len(synapses)) / 2.0))
 
         # Based on this get index of where control words begin
-        num_pre_state_words = 2 + self.pre_trace_words
-        control_start_idx = num_pre_state_words + num_array_words
+        control_start_idx = self.pre_state_words + num_array_words
 
         # If weights are required
         if "weight" in dtype.names:
             # Create 16-bit view of plastic weight section of synapse words
-            weight_view = synapse_words[num_pre_state_words: control_start_idx]
+            weight_view = synapse_words[self.pre_state_words: control_start_idx]
             weight_view = weight_view.view(dtype=np.uint16)[:len(synapses)]
 
             # Convert the weight view to floating point
