@@ -76,22 +76,25 @@ class SpikeSourceArray(Region):
                                  vertex_words * 32), dtype=np.uint8)
 
         # Loop through neurons
+        num_multiple_spikes = 0
         for i, s in enumerate(slice_spike_times):
             # Round spiketimes to nearest timestep and
             # bin to create spike vector
             n_spike_vector = np.bincount(
                 np.rint(s.value / self.sim_timestep_ms).astype(int))
 
-            # Warn if there are any timesteps in
-            # which multiple spikes are specified
-            if np.any(n_spike_vector > 1):
-                logger.warn("Neuron %u in spike source array spikes "
-                            "multiples times in one %f ms timestep, this "
-                            "will be treated as a single spike",
-                            i, self.sim_timestep_ms)
+            # Add count of timesteps in which multiple
+            # spikes are specified to total
+            num_multiple_spikes += (n_spike_vector > 1).sum()
 
             # Copy bit vector into mask array
             spike_vector[0:len(n_spike_vector), i] = (n_spike_vector > 0)
+
+        if num_multiple_spikes > 0:
+            logger.warn("Spike source array spike data contains %u "
+                        "%f ms timesteps, in which there are multiple spikes. "
+                        "These will each be treated as single spikes",
+                        num_multiple_spikes, self.sim_timestep_ms)
 
         # Determine which columns have any spike blocks associated
         timestep_mask = np.any(spike_vector, axis=1)
