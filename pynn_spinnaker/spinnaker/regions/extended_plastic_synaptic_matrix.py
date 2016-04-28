@@ -98,10 +98,10 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
             self._get_num_array_words(len(synapses))
 
         # Based on this get index of where control words begin
-        control_start_idx = self.pre_state_words + num_control_words
+        control_start_idx = self.pre_state_words + num_plastic_words
 
         # Create 8-bit view of plastic section of row
-        plastic_view = destination[self.pre_state_words: control_start_idx]
+        plastic_view = synapse_words[self.pre_state_words: control_start_idx]
         plastic_view = plastic_view.view(dtype=np.uint8)
 
         # Reshape into a 2D array where each synapse is a row
@@ -111,8 +111,8 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         if "weight" in dtype.names:
             # Create 16-bit weight view of first two bytes in each synapse,
             # reshape this back into a 1D view and convert weights to float
-            weight_view = plastic_view[:,0:2].view(dtype=np.uint16)
-            weight_view = weight_view.reshapse(-1)[:len(synapses)]
+            weight_view = plastic_view[:,0:2].reshape(-1)[:2 * len(synapses)]
+            weight_view = weight_view.view(dtype=np.int16)
 
             # Convert the weight view to floating point
             synapses["weight"] = weight_to_float(weight_view)
