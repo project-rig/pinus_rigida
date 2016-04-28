@@ -317,7 +317,7 @@ class SynapticMatrix(Region):
         # If post-synaptic indices are required,
         # add post-synaptic slice start to them
         if "postsynaptic_index" in dtype.names:
-            synapses["presynaptic_index"] += post_slice.start
+            synapses["postsynaptic_index"] += post_slice.start
 
         return synapses
 
