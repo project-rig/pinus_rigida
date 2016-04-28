@@ -7,13 +7,13 @@ spinnaker = False
 duration = 1000.0
 
 if spinnaker:
-    import pinus_rigida as sim
+    import pynn_spinnaker as sim
 
-    logger = logging.getLogger("pinus_rigida")
+    logger = logging.getLogger("pynn_spinnaker")
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler())
 
-    setup_kwargs = { "spinnaker_hostname" : "circe.cs.man.ac.uk" }
+    setup_kwargs = { "spinnaker_hostname" : "192.168.1.1" }
 else:
     import pyNN.nest as sim
 
