@@ -143,9 +143,9 @@ class NeuralCluster(object):
 
     def __init__(self, pop_id, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
-                 indices_to_record, config, vertex_applications,
-                 vertex_resources, keyspace, post_synaptic_width,
-                 requires_back_prop, pop_size):
+                 record_sample_interval, indices_to_record, config,
+                 vertex_applications, vertex_resources, keyspace,
+                 post_synaptic_width, requires_back_prop, pop_size):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -190,6 +190,7 @@ class NeuralCluster(object):
         for i, v in enumerate(cell_type.recordable[1:]):
             self.regions[Regions(Regions.analogue_recording_start + i)] =\
                 regions.AnalogueRecording(indices_to_record, v,
+                                          record_sample_interval,
                                           sim_timestep_ms, sim_ticks)
 
         # Add profiler region if required

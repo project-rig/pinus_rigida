@@ -463,7 +463,8 @@ class Population(common.Population):
 
             self._neural_cluster = NeuralCluster(
                 pop_id, self.celltype, self._parameters, self.initial_values,
-                self._simulator.state.dt, timer_period_us, simulation_ticks,
+                self._simulator.state.dt, timer_period_us,
+                simulation_ticks, self.recorder.sampling_interval,
                 self.recorder.indices_to_record, self.spinnaker_config,
                 vertex_applications, vertex_resources, keyspace,
                 self.neuron_j_constraint, requires_back_prop, self.size)

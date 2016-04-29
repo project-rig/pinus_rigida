@@ -23,7 +23,8 @@ namespace NeuronProcessor
 class AnalogueRecording
 {
 public:
-  AnalogueRecording() : m_IndicesToRecord(NULL), m_RecordSDRAM(NULL)  {}
+  AnalogueRecording() : m_IndicesToRecord(NULL), m_SamplingIntervalTick(0),
+    m_TicksUntilRecord(0), m_RecordSDRAM(NULL)  {}
 
   //-----------------------------------------------------------------------------
   // Public API
@@ -32,7 +33,12 @@ public:
   {
     LOG_PRINT(LOG_LEVEL_INFO, "\tAnalogueRecording::ReadSDRAMData");
 
-     // Calculate number of words that are required to build a bitfield for ALL neurons
+    // Read sampling interval from region
+    m_SamplingIntervalTick = *region++;
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tSampling interval:%u (ticks)",
+              m_SamplingIntervalTick);
+
+    // Calculate number of words that are required to build a bitfield for ALL neurons
     unsigned int numWords = BitField::GetWordSize(numNeurons);
     LOG_PRINT(LOG_LEVEL_INFO, "\t\tNum words per population:%u", numWords);
 
@@ -57,8 +63,8 @@ public:
 
   void RecordValue(unsigned int neuron, S1615 value)
   {
-    // If we should record this channel for this neuron in this channel
-    if(BitField::TestBit(m_IndicesToRecord, neuron))
+    // If we should record this neuron this tick
+    if(m_TicksUntilRecord == 0 && BitField::TestBit(m_IndicesToRecord, neuron))
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tRecording neuron:%u, value:%k",
                 neuron,  value);
@@ -68,12 +74,32 @@ public:
     }
   }
 
+
+  void EndTick()
+  {
+    // If we've been recording this tick, reset
+    // ticks until record to sampling interval
+    if(m_TicksUntilRecord == 0)
+    {
+      m_TicksUntilRecord = m_SamplingIntervalTick;
+    }
+
+    // Decrement counter
+    m_TicksUntilRecord--;
+  }
+
 private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
   // Bit field specifying which neurons to record
   uint32_t *m_IndicesToRecord;
+
+  // How often should we record
+  uint32_t m_SamplingIntervalTick;
+
+  // How many ticks until we should record next sample
+  uint32_t m_TicksUntilRecord;
 
   // Pointer to SDRAM to write next value to
   S1615 *m_RecordSDRAM;

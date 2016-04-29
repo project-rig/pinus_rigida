@@ -32,9 +32,14 @@ class Recorder(recording.Recorder, ContextMixin):
             lambda: bitarray(itertools.repeat(0, population.size),
                              endian="little"))
 
-    def _record(self, variable, new_ids, sampling_interval=None):
+    def _record(self, variable, new_ids, sampling_interval):
         # Get bitarray of indices to record for this variable
         indices = self.indices_to_record[variable]
+
+        # **YUCK** update sampling interval if one is specified
+        # (no idea why this has to be done in derived class)
+        if sampling_interval is not None:
+            self.sampling_interval = sampling_interval
 
         # Loop through the new ids
         for new_id in new_ids:

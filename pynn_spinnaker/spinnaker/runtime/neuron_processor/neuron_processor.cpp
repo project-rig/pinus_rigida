@@ -349,6 +349,14 @@ void UpdateNeurons()
   // Transfer spike recording and back propagation buffers to SDRAM
   g_SpikeRecording.TransferBuffer(DMATagSpikeRecordingWrite);
   g_BackPropagationOutput.TransferBuffer(g_Tick, DMATagBackPropagationWrite);
+
+  // Loop through all analogue recording regions and
+  // end tick (updates sampling interval mechanism)
+  for(unsigned int r = 0;
+      r < (Neuron::RecordingChannelMax + IntrinsicPlasticity::RecordingChannelMax); r++)
+  {
+    g_AnalogueRecording[r].EndTick();
+  }
 }
 
 //-----------------------------------------------------------------------------

@@ -1,5 +1,7 @@
 # Import modules
+import math
 import numpy as np
+import struct
 
 # Import classes
 from region import Region
@@ -13,11 +15,17 @@ from ..utils import calc_slice_bitfield_words
 # AnalogueRecording
 # ------------------------------------------------------------------------------
 class AnalogueRecording(Region):
-    def __init__(self, indices_to_record, channel,
+    def __init__(self, indices_to_record, channel, record_sample_interval,
                  sim_timestep_ms, simulation_ticks):
         self.indices_to_record = indices_to_record[channel]
-        self.sim_timestep_ms = sim_timestep_ms
-        self.simulation_ticks = simulation_ticks
+
+        # Convert recording sample intervals to ticks
+        self.record_sample_ticks = int(math.ceil(
+            float(record_sample_interval) / float(sim_timestep_ms)))
+
+        # Convert simulation duration into a number of these ticks
+        self.record_ticks = int(math.ceil(
+            float(simulation_ticks) / float(self.record_sample_ticks)))
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -48,8 +56,8 @@ class AnalogueRecording(Region):
         sample_bytes = vertex_indices.count() * 4
 
         # Header word specifiying how many words are in each sample, indices
-        # bit field and a sample bit field for each simulation tick
-        return indices_bytes + (sample_bytes * self.simulation_ticks)
+        # bit field and a sample bit field for each tick we're recording
+        return 4 + indices_bytes + (sample_bytes * self.record_ticks)
 
     def write_subregion_to_file(self, fp, vertex_slice):
         """Write a portion of the region to a file applying the formatter.
@@ -65,6 +73,9 @@ class AnalogueRecording(Region):
         """
         # Slice out the vertex indices to record
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
+
+        # Write record sample ticks
+        fp.write(struct.pack("I", self.record_sample_ticks))
 
         # Write bitfield to file
         # **NOTE** as there's no neurons after this,
@@ -89,7 +100,7 @@ class AnalogueRecording(Region):
         region_memory.seek(calc_slice_bitfield_words(vertex_slice) * 4)
 
         # Read data from memory
-        data = region_memory.read(sample_words * 4 * self.simulation_ticks)
+        data = region_memory.read(sample_words * 4 * self.record_ticks)
 
         # Load into numpy
         data = np.fromstring(data, dtype=np.int32)
