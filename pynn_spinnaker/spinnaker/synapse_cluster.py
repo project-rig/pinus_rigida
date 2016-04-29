@@ -92,13 +92,12 @@ class SynapseCluster(object):
         self.regions[Regions.synaptic_matrix] =\
             synapse_model.synaptic_matrix_region_class(synapse_model)
 
-        # **THINK** is there a nicer mechanism for this?
-        # Is there any requirement for OTHER plasticity region classes
-        if hasattr(synapse_model, "plasticity_region_class"):
+        # If synapse mode has a plasticity parameter map
+        if hasattr(synapse_model, "plasticity_param_map"):
             self.regions[Regions.plasticity] =\
-                synapse_model.plasticity_region_class(
-                    synapse_model.plasticity_param_map,
-                    synapse_model.native_parameters, sim_timestep_ms)
+                regions.Plasticity(synapse_model.plasticity_param_map,
+                                   synapse_model.native_parameters,
+                                   sim_timestep_ms)
 
         # Add profiler region if required
         if config.num_profile_samples is not None:

@@ -70,7 +70,6 @@ class STDPMechanism(synapses.STDPMechanism):
     max_synaptic_event_rate = 1.2E6
 
     synaptic_matrix_region_class = regions.PlasticSynapticMatrix
-    plasticity_region_class = regions.Plasticity
 
     # How many timesteps of delay can DTCM ring-buffer handle
     # **NOTE** only 7 timesteps worth of delay can be handled by
