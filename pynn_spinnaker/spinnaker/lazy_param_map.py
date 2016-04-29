@@ -117,44 +117,44 @@ def s32_weight_fixed_point(values, weight_fixed_point, **kwargs):
         True, 32, weight_fixed_point, False)
     return float_to_weight_no_copy(deepcopy(values))
 
-def s1615_time_multiply(values, sim_timestep_ms, **kwargs):
+def time_multiply(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and divide by timestep
     scaled_vals = deepcopy(values)
     scaled_vals /= sim_timestep_ms
 
     # Convert to fixed-point and return
-    return float_to_s1615_no_copy(scaled_vals)
+    return float_to_fixed(scaled_vals)
 
 
-def s1615_exp_decay(values, sim_timestep_ms, **kwargs):
+def exp_decay(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and calculate exponential decay
     exp_decay_vals = deepcopy(values)
     exp_decay_vals = la.exp(-sim_timestep_ms / exp_decay_vals)
 
     # Convert to fixed-point and return
-    return float_to_s1615_no_copy(exp_decay_vals)
+    return float_to_fixed(exp_decay_vals)
 
 
-def s1615_exp_init(values, sim_timestep_ms, **kwargs):
+def exp_init(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and calculate exponential init
     exp_init_vals = deepcopy(values)
     exp_init_vals = 1.0 - la.exp(-sim_timestep_ms / exp_init_vals)
     exp_init_vals *= (values / sim_timestep_ms)
 
     # Convert to fixed-point and return
-    return float_to_s1615_no_copy(exp_init_vals)
+    return float_to_fixed(exp_init_vals)
 
 
-def s1615_rate_isi(values, sim_timestep_ms, **kwargs):
+def rate_isi(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and convert rates to isis
     isi_vals = deepcopy(values)
     isi_vals = 1000.0 / (isi_vals * sim_timestep_ms)
 
     # Convert to fixed-point and return
-    return float_to_s1615_no_copy(isi_vals)
+    return float_to_fixed(isi_vals)
 
 
-def u032_rate_exp_minus_lambda(values, sim_timestep_ms, **kwargs):
+def rate_exp_minus_lambda(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and convert to spikes per-tick
     lambda_vals = deepcopy(values)
     lambda_vals = (lambda_vals * sim_timestep_ms) / 1000.0
@@ -163,7 +163,7 @@ def u032_rate_exp_minus_lambda(values, sim_timestep_ms, **kwargs):
     lambda_vals = la.exp(-1.0 / lambda_vals)
 
     # Convert to fixed point and return
-    return float_to_u032_no_copy(lambda_vals)
+    return float_to_fixed(lambda_vals)
 
 def exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
                   float_to_fixed, **kwargs):
@@ -179,5 +179,10 @@ def exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
     decay_vals = la.exp(time_ms / values)
     return float_to_fixed(decay_vals)
 
-# Partially bound version of exp_decay_lut to generate LUTs in standard STDP format
+# Various functions bound to standard fixed point types
+s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)
+s1615_exp_decay = partial(exp_decay, float_to_fixed=float_to_s1615_no_copy)
+s1615_exp_init = partial(exp_init, float_to_fixed=float_to_s1615_no_copy)
+s1615_rate_isi = partial(rate_isi, float_to_fixed=float_to_s1615_no_copy)
+u032_rate_exp_minus_lambda = partial(rate_exp_minus_lambda, float_to_fixed=float_to_u032_no_copy)
 s411_exp_decay_lut = partial(exp_decay_lut, float_to_fixed=float_to_s411_no_copy)
