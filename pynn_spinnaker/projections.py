@@ -184,7 +184,7 @@ class Projection(common.Projection, ContextMixin):
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
                 self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
                 receptor_index, vertex_applications, vertex_resources,
-                self.current_input_j_constraint)
+                self.current_input_j_constraint, self.pre.size)
         # Otherwise, null current input cluster
         else:
             self._current_input_cluster = None

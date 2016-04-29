@@ -29,7 +29,8 @@ class SpikeSourcePoisson(Region):
     MaxSlowPerTick = 0.25
     SeedWords = 4
 
-    def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
+    def __init__(self, cell_type, parameters, initial_values,
+                 sim_timestep_ms, pop_size):
         # Calculate mean spikes per-timestep each spike source will emit
         rates = deepcopy(parameters["rate"])
         spikes_per_timestep = (rates * sim_timestep_ms) / 1000.0
@@ -38,6 +39,10 @@ class SpikeSourcePoisson(Region):
         # simulated using the slow rather than fast model
         slow_mask = (spikes_per_timestep <= SpikeSourcePoisson.MaxSlowPerTick)
         fast_mask = la.logical_not(slow_mask)
+
+        # Set mask shapes so they can be evaluated
+        slow_mask.shape = (pop_size,)
+        fast_mask.shape = (pop_size,)
 
         # Evaluate indices and turn to masks
         slow_indices = np.where(slow_mask.evaluate())[0]

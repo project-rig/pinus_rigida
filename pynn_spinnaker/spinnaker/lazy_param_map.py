@@ -49,11 +49,15 @@ def apply(lazy_params, param_map, size, **kwargs):
             # Otherwise, assuming it's a scalar, copy it into all fields
             else:
                 params[field_name][:] = param_value
-        # Otherwise, apply lazy transformation and evaluate
+        # Otherwise
         else:
             param_name, _, param_mapping = param
-            params[field_name] =\
-                param_mapping(lazy_params[param_name], **kwargs).evaluate()
+
+            # Set parameter size
+            lazy_params[param_name].shape = (size,)
+
+            # Apply lazy transformation and evaluate
+            params[field_name] = param_mapping(lazy_params[param_name], **kwargs).evaluate()
 
     return params
 
@@ -78,9 +82,14 @@ def apply_indices(lazy_params, param_map, indices, **kwargs):
             # Otherwise, assuming it's a scalar, copy it into all fields
             else:
                 params[field_name][:] = param_value
-        # Otherwise, apply lazy transformation and evaluate slice
+        # Otherwise
         elif len(indices) > 0:
             param_name, _, param_mapping = param
+
+            # Set parameter size
+            lazy_params[param_name].shape = (max(indices) + 1,)
+
+            # Apply lazy transformation and evaluate slice
             params[field_name] = param_mapping(lazy_params[param_name],
                                                **kwargs)[indices]
 

@@ -40,13 +40,13 @@ class CurrentInputCluster(object):
     def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms,
                  timer_period_us, sim_ticks, indices_to_record, config,
                  receptor_index, vertex_applications, vertex_resources,
-                 post_synaptic_width):
+                 post_synaptic_width, pop_size):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
             timer_period_us, sim_ticks)
         self.regions[Regions.neuron] = cell_type.neuron_region_class(
-            cell_type, parameters, initial_values, sim_timestep_ms)
+            cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.output_weight] = regions.OutputWeight()
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
@@ -58,7 +58,7 @@ class CurrentInputCluster(object):
                 regions.Profiler(config.num_profile_samples)
 
         # Slice current input
-        post_slices = split_slice(parameters.shape[0], post_synaptic_width)
+        post_slices = split_slice(pop_size, post_synaptic_width)
 
         current_input_app = get_model_executable_filename(
             "current_input_", cell_type, config.num_profile_samples is not None)

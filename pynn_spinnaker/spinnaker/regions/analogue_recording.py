@@ -99,7 +99,7 @@ class AnalogueRecording(Region):
 
         # Convert to fixed point
         data = NumpyFixToFloatConverter(15)(data)
-
+        
         # Loop through bits of vertex indices
         # **YUCK** this seems mega-innefficient
         signals = {}

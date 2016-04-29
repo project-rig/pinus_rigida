@@ -12,18 +12,16 @@ from region import Region
 # ------------------------------------------------------------------------------
 class ParameterSpace(Region):
     def __init__(self, mutable_param_map, immutable_param_map,
-                 parameters, initial_values, **kwargs):
+                 parameters, initial_values, pop_size, **kwargs):
         # Use mutable parameter map to
         # transform lazy array of mutable parameters
         self.mutable_params = lazy_param_map.apply(
-            initial_values, mutable_param_map,
-            parameters.shape[0], **kwargs)
+            initial_values, mutable_param_map, pop_size, **kwargs)
 
         # Use neurons immutable parameter map to transform
         # lazy array of immutable parameters
         self.immutable_params = lazy_param_map.apply(
-            parameters, immutable_param_map,
-            parameters.shape[0], **kwargs)
+            parameters, immutable_param_map, pop_size, **kwargs)
 
     # --------------------------------------------------------------------------
     # Region methods

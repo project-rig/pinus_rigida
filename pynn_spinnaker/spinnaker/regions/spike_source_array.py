@@ -16,10 +16,14 @@ logger = logging.getLogger("pynn_spinnaker")
 # SpikeSourceArray
 # ----------------------------------------------------------------------------
 class SpikeSourceArray(Region):
-    def __init__(self, cell_type, parameters, initial_values, sim_timestep_ms):
+    def __init__(self, cell_type, parameters, initial_values,
+                 sim_timestep_ms, pop_size):
         # Cache spike times and timestep
         self.spike_times = parameters["spike_times"]
         self.sim_timestep_ms = sim_timestep_ms
+        
+        # Set shape of spike times
+        self.spike_times.shape = (pop_size,)
 
     # --------------------------------------------------------------------------
     # Region methods

@@ -145,13 +145,13 @@ class NeuralCluster(object):
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  indices_to_record, config, vertex_applications,
                  vertex_resources, keyspace, post_synaptic_width,
-                 requires_back_prop):
+                 requires_back_prop, pop_size):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
             timer_period_us, sim_ticks)
         self.regions[Regions.neuron] = cell_type.neuron_region_class(
-            cell_type, parameters, initial_values, sim_timestep_ms)
+            cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.back_prop_output] = regions.SDRAMBackPropOutput(
             requires_back_prop)
         self.regions[Regions.flush] = regions.Flush(0)
@@ -165,7 +165,7 @@ class NeuralCluster(object):
             self.regions[Regions.synapse] = regions.ParameterSpace(
                 cell_type.synapse_mutable_param_map,
                 cell_type.synapse_immutable_param_map,
-                parameters, initial_values,
+                parameters, initial_values, pop_size,
                 sim_timestep_ms=sim_timestep_ms)
 
             self.regions[Regions.input_buffer] = regions.InputBuffer()
@@ -198,7 +198,7 @@ class NeuralCluster(object):
                 regions.Profiler(config.num_profile_samples)
 
         # Split population slice
-        neuron_slices = split_slice(parameters.shape[0], post_synaptic_width)
+        neuron_slices = split_slice(pop_size, post_synaptic_width)
 
         # Build neuron vertices for each slice,
         # allocating a keyspace for each vertex
