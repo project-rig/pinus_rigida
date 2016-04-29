@@ -162,8 +162,11 @@ class NeuralCluster(object):
         # If cell type has any receptors i.e. any need for synaptic input
         if len(cell_type.receptor_types) > 0:
             # Add a synapse region and an input buffer
-            self.regions[Regions.synapse] = cell_type.synapse_region_class(
-                cell_type, parameters, initial_values, sim_timestep_ms)
+            self.regions[Regions.synapse] = regions.ParameterSpace(
+                cell_type.synapse_mutable_param_map,
+                cell_type.synapse_immutable_param_map,
+                parameters, initial_values,
+                sim_timestep_ms=sim_timestep_ms)
 
             self.regions[Regions.input_buffer] = regions.InputBuffer()
 

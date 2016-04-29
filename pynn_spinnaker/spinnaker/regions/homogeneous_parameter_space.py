@@ -8,11 +8,11 @@ from region import Region
 
 
 # ------------------------------------------------------------------------------
-# Plasticity
+# HomogeneousParameterSpace
 # ------------------------------------------------------------------------------
-class Plasticity(Region):
-    def __init__(self, plasticity_param_map, parameters, sim_timestep_ms):
-        self.plasticity_param_map = plasticity_param_map
+class HomogeneousParameterSpace(Region):
+    def __init__(self, param_map, parameters, sim_timestep_ms):
+        self.param_map = param_map
         self.parameters = parameters
         self.sim_timestep_ms = sim_timestep_ms
 
@@ -37,7 +37,7 @@ class Plasticity(Region):
 
 
         # Return size of parameter map when it's evaluated
-        return lazy_param_map.size(self.plasticity_param_map, 1)
+        return lazy_param_map.size(self.param_map, 1)
 
 
     def write_subregion_to_file(self, fp, weight_fixed_point):
@@ -54,7 +54,7 @@ class Plasticity(Region):
         """
         # Evaluate parameters
         parameters = lazy_param_map.apply(self.parameters,
-                                          self.plasticity_param_map, 1,
+                                          self.param_map, 1,
                                           weight_fixed_point=weight_fixed_point,
                                           sim_timestep_ms=self.sim_timestep_ms)
         # Write to file

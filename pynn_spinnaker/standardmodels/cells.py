@@ -121,8 +121,7 @@ class IF_curr_exp(cells.IF_curr_exp):
 
     # JK: not necessary
     neuron_region_class = regions.Neuron
-    synapse_region_class = regions.Synapse
-
+    
     directly_connectable = False
 
     translations = deepcopy(if_curr_neuron_translations)
@@ -142,9 +141,7 @@ class IF_cond_exp(cells.IF_cond_exp):
     # a SpiNNaker neuron processor handle
     max_neurons_per_core = 1024
 
-    # JK: not necessary
     neuron_region_class = regions.Neuron
-    synapse_region_class = regions.Synapse
 
     directly_connectable = False
 

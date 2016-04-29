@@ -95,9 +95,10 @@ class SynapseCluster(object):
         # If synapse mode has a plasticity parameter map
         if hasattr(synapse_model, "plasticity_param_map"):
             self.regions[Regions.plasticity] =\
-                regions.Plasticity(synapse_model.plasticity_param_map,
-                                   synapse_model.native_parameters,
-                                   sim_timestep_ms)
+                regions.HomogeneousParameterSpace(
+                    synapse_model.plasticity_param_map,
+                    synapse_model.native_parameters,
+                    sim_timestep_ms)
 
         # Add profiler region if required
         if config.num_profile_samples is not None:
