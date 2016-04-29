@@ -14,6 +14,7 @@ enum Region
   RegionInputBuffer,
   RegionBackPropagationOutput,
   RegionFlush,
+  RegionIntrinsicPlasticity,
   RegionSpikeRecording,
   RegionAnalogueRecordingStart,
   RegionAnalogueRecordingEnd = RegionAnalogueRecordingStart + 4,

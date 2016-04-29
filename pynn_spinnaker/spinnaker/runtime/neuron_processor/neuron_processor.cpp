@@ -62,8 +62,10 @@ SDRAMBackPropagationOutput g_BackPropagationOutput;
 
 Flush g_Flush;
 
+IntrinsicPlasticity g_IntrinsicPlasticity;
+
 SpikeRecording g_SpikeRecording;
-AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax];
+AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax + IntrinsicPlasticity::RecordingChannelMax];
 
 unsigned int g_InputBufferBeingProcessed = UINT_MAX;
 
@@ -199,6 +201,14 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read intrinsic plasticity region
+  if(!g_IntrinsicPlasticity.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionFlush), flags,
+    g_AppWords[AppWordNumNeurons]))
+  {
+    return false;
+  }
+
   // Read spike recording region
   if(!g_SpikeRecording.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionSpikeRecording), flags,
@@ -208,13 +218,28 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
   }
 
   // Check that there are enough analogue recording regions for this neuron model
-  static_assert(RegionAnalogueRecordingEnd - RegionAnalogueRecordingStart >= Neuron::RecordingChannelMax,
-                "Not enough analogue recording regions for neuron models channels");
+  static_assert(RegionAnalogueRecordingEnd - RegionAnalogueRecordingStart >= (Neuron::RecordingChannelMax + IntrinsicPlasticity::RecordingChannelMax),
+                "Not enough analogue recording regions for neuron and intrinsic plasticity model channels");
 
   // Loop through neuron model's recording channels
   for(unsigned int r = 0; r < Neuron::RecordingChannelMax; r++)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "Analogue recording channel %u", r);
+    LOG_PRINT(LOG_LEVEL_INFO, "Neuron analogue recording channel %u", r);
+
+    // Read analogue recording region
+    if(!g_AnalogueRecording[r].ReadSDRAMData(
+      Config::GetRegionStart(baseAddress, RegionAnalogueRecordingStart + r), flags,
+      g_AppWords[AppWordNumNeurons]))
+    {
+      return false;
+    }
+  }
+
+  // Loop through intrinsic plasticity model's recording channels
+  for(unsigned int r = Neuron::RecordingChannelMax;
+      r < (Neuron::RecordingChannelMax + IntrinsicPlasticity::RecordingChannelMax); r++)
+  {
+    LOG_PRINT(LOG_LEVEL_INFO, "Intrinsic plasticity analogue recording channel %u", r);
 
     // Read analogue recording region
     if(!g_AnalogueRecording[r].ReadSDRAMData(
@@ -255,8 +280,10 @@ void UpdateNeurons()
     S1615 excInput = Synapse::GetExcInput(synMutable, synImmutable);
     S1615 inhInput = Synapse::GetInhInput(synMutable, synImmutable);
 
+    // Get intrinsic plasticity input
+    S1615 extCurrent = g_IntrinsicPlasticity.GetIntrinsicCurrent(n);
+
     // Update neuron
-    S1615 extCurrent = 0;
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\tExcitatory input:%k, Inhibitory input:%k, External current:%knA",
               excInput, inhInput, extCurrent);
     auto &neuronMutable = *neuronMutableState++;
@@ -266,6 +293,15 @@ void UpdateNeurons()
 
     // Record spike
     g_SpikeRecording.RecordSpike(n, spiked);
+
+    // Update intrinsic plasticity based on new spike
+    g_IntrinsicPlasticity.ApplySpike(n, spiked);
+
+    // If this is an actual spike, record in back propagation system
+    if(spiked)
+    {
+      g_BackPropagationOutput.RecordSpike(n);
+    }
 
     // If it spikes or should flush
     if(spiked || g_Flush.ShouldFlush(n, spiked))
@@ -279,9 +315,6 @@ void UpdateNeurons()
       {
         spin1_delay_us(1);
       }
-
-      // Record spike in back propagation system if required
-      g_BackPropagationOutput.RecordSpike(n);
     }
 
     // Loop through neuron model's analogue recording channels
@@ -292,6 +325,17 @@ void UpdateNeurons()
         Neuron::GetRecordable((Neuron::RecordingChannel)r,
                               neuronMutable, neuronImmutable,
                               excInput, inhInput, extCurrent)
+      );
+    }
+
+    // Loop through intrinsic plasticity model's analogue recording channels
+    for(unsigned int r = Neuron::RecordingChannelMax;
+        r < (Neuron::RecordingChannelMax + IntrinsicPlasticity::RecordingChannelMax); r++)
+    {
+      // Record the value from each one
+      g_AnalogueRecording[r].RecordValue(n,
+        g_IntrinsicPlasticity.GetRecordable(
+          (IntrinsicPlasticity::RecordingChannel)(r - Neuron::RecordingChannelMax), n)
       );
     }
 
