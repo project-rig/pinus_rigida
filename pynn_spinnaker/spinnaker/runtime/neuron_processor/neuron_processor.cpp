@@ -203,7 +203,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 
   // Read intrinsic plasticity region
   if(!g_IntrinsicPlasticity.ReadSDRAMData(
-    Config::GetRegionStart(baseAddress, RegionFlush), flags,
+    Config::GetRegionStart(baseAddress, RegionIntrinsicPlasticity), flags,
     g_AppWords[AppWordNumNeurons]))
   {
     return false;
