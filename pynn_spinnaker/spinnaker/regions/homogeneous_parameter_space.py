@@ -19,7 +19,7 @@ class HomogeneousParameterSpace(Region):
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, weight_fixed_point):
+    def sizeof(self, **kwargs):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -40,7 +40,7 @@ class HomogeneousParameterSpace(Region):
         return lazy_param_map.size(self.param_map, 1)
 
 
-    def write_subregion_to_file(self, fp, weight_fixed_point):
+    def write_subregion_to_file(self, fp, **kwargs):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -55,7 +55,7 @@ class HomogeneousParameterSpace(Region):
         # Evaluate parameters
         parameters = lazy_param_map.apply(self.parameters,
                                           self.param_map, 1,
-                                          weight_fixed_point=weight_fixed_point,
-                                          sim_timestep_ms=self.sim_timestep_ms)
+                                          sim_timestep_ms=self.sim_timestep_ms,
+                                          **kwargs)
         # Write to file
         fp.write(parameters.tostring())

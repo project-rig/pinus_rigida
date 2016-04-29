@@ -170,6 +170,14 @@ class NeuralCluster(object):
 
             self.regions[Regions.input_buffer] = regions.InputBuffer()
 
+         # If cell type has an intrinsic plasticity parameter map
+        if hasattr(cell_type, "intrinsic_plasticity_param_map"):
+            self.regions[Regions.intrinsic_plasticity] =\
+                regions.HomogeneousParameterSpace(
+                    cell_type.intrinsic_plasticity_param_map,
+                    parameters,
+                    sim_timestep_ms)
+
         # Assert that there are sufficient analogue
         # recording regions for this celltype's needs
         num_analogue_rec_regions = Regions.analogue_recording_end -\
