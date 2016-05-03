@@ -37,7 +37,12 @@ def apply(lazy_params, param_map, size, **kwargs):
     params = np.empty(size, dtype=_build_dtype(param_map))
 
     # Loop through parameters
-    for field_name, param in zip(params.dtype.names, param_map):
+    # **YUCK** if there is only a single parameter,
+    # numpy won't bother assigning a name
+    param_names = (params.dtype.names
+                   if params.dtype.names is not None
+                   else (slice(None, None, None),))
+    for field_name, param in zip(param_names, param_map):
         # If this map entry has a constant value,
         if len(param) == 2:
             param_value, _ = param
