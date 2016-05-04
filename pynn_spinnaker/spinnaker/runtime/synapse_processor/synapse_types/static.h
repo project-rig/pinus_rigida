@@ -27,9 +27,16 @@ public:
   // Public methods
   //-----------------------------------------------------------------------------
   template<typename F, typename E, typename R>
-  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], uint32_t *, bool,
+  bool ProcessRow(uint tick, uint32_t (&dmaBuffer)[MaxRowWords], uint32_t *, bool flush,
                   F applyInputFunction, E addDelayRowFunction, R)
   {
+    // Flushes are irrelevant to static synapses
+    // **NOTE** ideally they shouldn't be routed to these cores
+    if(flush)
+    {
+      return true;
+    }
+
     LOG_PRINT(LOG_LEVEL_TRACE, "\tProcessing static row with %u synapses",
               dmaBuffer[0]);
 
