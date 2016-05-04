@@ -11,7 +11,7 @@ enum Region
   RegionSystem,
   RegionSpikeSource,
   RegionFlush = 5,
-  RegionSpikeRecording,
+  RegionSpikeRecording = 7,
   RegionProfiler,
 };
 
