@@ -9,3 +9,4 @@ class SpinnakerPopulationConfig(object):
         self.mean_firing_rate = 10.0
         self.num_profile_samples = None
         self.max_neurons_per_core = None
+        self.flush_time = None

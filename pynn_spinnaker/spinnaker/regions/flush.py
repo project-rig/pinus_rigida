@@ -1,4 +1,5 @@
 # Import modules
+import math
 import struct
 
 # Import classes
@@ -9,8 +10,12 @@ from region import Region
 # Flush
 # ------------------------------------------------------------------------------
 class Flush(Region):
-    def __init__(self, flush_time):
-        self.flush_time = flush_time
+    def __init__(self, flush_time_ms, sim_timestep_ms):
+        if flush_time_ms is None:
+            self.flush_timesteps = 0xFFFFFFFF
+        else:
+            self.flush_timesteps = int(
+                math.ceil(float(flush_time_ms) / float(sim_timestep_ms)))
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -42,4 +47,4 @@ class Flush(Region):
             This must support a `write` method.
         """
         # Write data to filelike
-        fp.write(struct.pack("I", self.flush_time))
+        fp.write(struct.pack("I", self.flush_timesteps))

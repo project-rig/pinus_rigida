@@ -154,7 +154,8 @@ class NeuralCluster(object):
             cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.back_prop_output] = regions.SDRAMBackPropOutput(
             requires_back_prop)
-        self.regions[Regions.flush] = regions.Flush(0)
+        self.regions[Regions.flush] = regions.Flush(config.flush_time,
+                                                    sim_timestep_ms)
 
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
