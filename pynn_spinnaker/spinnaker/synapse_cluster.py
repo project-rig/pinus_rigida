@@ -125,6 +125,7 @@ class SynapseCluster(object):
             # Loop through all non-directly connectable
             # projections of this type
             vert_event_rate = 0.0
+            vert_sdram_bytes = 0
             vert = Vertex(post_slice, receptor_index)
             for proj in synaptic_projections:
                 logger.debug("\t\t\t\tProjection:%s", proj.label)
@@ -149,26 +150,33 @@ class SynapseCluster(object):
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     pre_rate = total_synapses * pre_mean_rate
 
-                    # **TODO** SDRAM estimation
+                    # Synapses are approximately 4 bytes
+                    # **TODO** more generic
+                    sdram_bytes = total_synapses * 4
+
                     logger.debug("\t\t\t\t\t\tTotal synapses:%d, "
-                                 "synaptic event rate:%f",
-                                 total_synapses, pre_rate)
+                                 "synaptic event rate:%f Hz, sdram:%u bytes",
+                                 total_synapses, pre_rate, sdram_bytes)
 
                     # Add this connection to the synapse vertex
                     vert.add_connection(proj.pre, pre_vertex)
 
-                    # Add event rate to total for current synapse processor
+                    # Add event rate and SDRAM to totals
+                    # for current synapse processor
                     vert_event_rate += pre_rate
+                    vert_sdram_bytes += sdram_bytes
 
                     # If it's more than this type of
                     # synapse processor can handle
-                    if vert_event_rate > synapse_model.max_synaptic_event_rate:
+                    if (vert_event_rate > synapse_model.max_synaptic_event_rate
+                        or vert_sdram_bytes > (8 * 1024 * 1024)):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
 
-                        # Create replacement and reset event rate
+                        # Create replacement and reset event rate and SDRAM
                         vert = Vertex(post_slice, receptor_index)
                         vert_event_rate = 0.0
+                        vert_sdram_bytes = 0
 
             # If the last synapse vertex created had any incoming connections
             if len(vert.incoming_connections) > 0:

@@ -334,7 +334,7 @@ class State(common.control.BaseState):
         # **NOTE** projection vertices need to be loaded
         # first as weight-fixed point is only calculated at
         # load time and this is required by neuron vertices
-        logger.info("Loading projection vertices_load_verts")
+        logger.info("Loading projection vertices")
         for proj in self.projections:
             proj._load_verts(placements, allocations, self.machine_controller)
 

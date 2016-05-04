@@ -183,6 +183,9 @@ def calc_slice_bitfield_words(vertex_slice):
 
 
 def get_row_offset_length(offset, length, num_length_bits):
+    assert length >= 1 and length < ((2 ** num_length_bits) - 1)
+    assert offset >= 0 and offset < (2 ** (32 - num_length_bits))
+
     return (length - 1) | (offset << num_length_bits)
 
 def get_model_executable_filename(prefix, model, profiled):
