@@ -49,7 +49,8 @@ class SpikeSourceArray(Region):
 
         # Find the largest number of spikes in any of the neurons in the slice
         slice_spike_times = self.spike_times[vertex_slice.python_slice]
-        max_spike_blocks = max(s.max() for s in slice_spike_times)
+        max_spike_blocks = max(s.max() if len(s.value) > 0 else 0
+                               for s in slice_spike_times)
 
         # Total size is a single word to specify time of first spike
         # block and maximum number of spike blocks required
@@ -71,7 +72,8 @@ class SpikeSourceArray(Region):
         slice_spike_times = self.spike_times[vertex_slice.python_slice]
 
         # Determine time of last spike and convert to ms
-        max_time_ms = max(s.max() for s in slice_spike_times)
+        max_time_ms = max(s.max() if len(s.value) > 0 else 0
+                          for s in slice_spike_times)
         max_timestep = int(round(max_time_ms / self.sim_timestep_ms))
 
         # Build mask array to hold spikes
@@ -105,29 +107,35 @@ class SpikeSourceArray(Region):
 
         # Get timesteps in which there are spike blocks
         timesteps = np.where(timestep_mask)[0]
-        spike_vector = spike_vector[timestep_mask, :]
 
-        # Seperate out first timestep from the next timesteps
-        # to be  written with each spike block
-        first_timestep = timesteps[0]
-        next_timesteps = np.append(timesteps[1:], 0xFFFFFFFF)
-        logger.debug("\t\t\tFirst timestep %u", first_timestep)
+        # If there are no spike blocks, write magic number to signify
+        if len(timesteps) == 0:
+            fp.write(struct.pack("I", 0xFFFFFFFF))
+        # Otherwise
+        else:
+            spike_vector = spike_vector[timestep_mask, :]
 
-        # Reverse bit order within each word
-        spike_vector = np.fliplr(spike_vector.reshape(-1, 32))
+            # Seperate out first timestep from the next timesteps
+            # to be  written with each spike block
+            first_timestep = timesteps[0]
+            next_timesteps = np.append(timesteps[1:], 0xFFFFFFFF)
+            logger.debug("\t\t\tFirst timestep %u", first_timestep)
 
-        # Pack into bytes and swap word endianess
-        spike_vector = np.packbits(spike_vector, axis=1)
-        spike_vector = spike_vector.view(dtype=np.uint32).byteswap()
+            # Reverse bit order within each word
+            spike_vector = np.fliplr(spike_vector.reshape(-1, 32))
 
-        # Reshape spike vectors into rows for each timestep
-        spike_vector = spike_vector.reshape(-1, vertex_words)
+            # Pack into bytes and swap word endianess
+            spike_vector = np.packbits(spike_vector, axis=1)
+            spike_vector = spike_vector.view(dtype=np.uint32).byteswap()
 
-        # Stack spike vector next to next timesteps to form spike blocks
-        # **NOTE** cast to uint32 as np.where dumps out int64
-        spike_blocks = np.hstack((next_timesteps[:, np.newaxis],
-                                  spike_vector)).astype(np.uint32)
+            # Reshape spike vectors into rows for each timestep
+            spike_vector = spike_vector.reshape(-1, vertex_words)
 
-        # Write first timestep followed by spike blocks
-        fp.write(struct.pack("I", first_timestep))
-        fp.write(spike_blocks.tostring())
+            # Stack spike vector next to next timesteps to form spike blocks
+            # **NOTE** cast to uint32 as np.where dumps out int64
+            spike_blocks = np.hstack((next_timesteps[:, np.newaxis],
+                                    spike_vector)).astype(np.uint32)
+
+            # Write first timestep followed by spike blocks
+            fp.write(struct.pack("I", first_timestep))
+            fp.write(spike_blocks.tostring())
