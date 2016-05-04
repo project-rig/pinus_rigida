@@ -97,7 +97,7 @@ class AnalogueRecording(Region):
             return {}
 
         # Seek to start of recording memory
-        region_memory.seek(calc_slice_bitfield_words(vertex_slice) * 4)
+        region_memory.seek(4 + (calc_slice_bitfield_words(vertex_slice) * 4))
 
         # Read data from memory
         data = region_memory.read(sample_words * 4 * self.record_ticks)
