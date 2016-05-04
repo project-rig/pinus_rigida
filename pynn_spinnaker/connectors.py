@@ -65,7 +65,7 @@ class FromListConnector(FromListConnector):
                               pre_size, post_size):
         # Extract columns of pre and post indices from connection list
         pre_indices = self.conn_list[:, 0]
-        post_indices = self.conn_list[:, 0]
+        post_indices = self.conn_list[:, 1]
 
         # Return number of list entries which contain
         # connections in both pre and post slices
