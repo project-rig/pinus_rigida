@@ -48,7 +48,7 @@ public:
       // Initially zero all counts
       for(unsigned int n = 0; n < numNeurons; n++)
       {
-        m_TimeSinceLastSpike = 0;
+        m_TimeSinceLastSpike[n] = 0;
       }
     }
     return true;

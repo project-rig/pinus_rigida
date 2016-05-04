@@ -304,9 +304,17 @@ void UpdateNeurons()
     }
 
     // If it spikes or should flush
-    if(spiked || g_Flush.ShouldFlush(n, spiked))
+    bool flush = g_Flush.ShouldFlush(n, spiked);
+    if(spiked || flush)
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
+      if(spiked)
+      {
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
+      }
+      else
+      {
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting flush");
+      }
 
       // Send spike/flush
       uint32_t key = g_AppWords[spiked ? AppWordSpikeKey : AppWordFlushKey] | n;
