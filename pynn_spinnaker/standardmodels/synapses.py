@@ -35,6 +35,9 @@ class StaticSynapse(synapses.StaticSynapse):
     # 8 element delay buffer - The last element is purely for output
     max_dtcm_delay_slots = 7
 
+    # Static weights are unsigned
+    signed_weight = False
+
     # Static synapses don't require post-synaptic
     # spikes back-propagated to them
     requires_back_propagation = False
@@ -75,6 +78,9 @@ class STDPMechanism(synapses.STDPMechanism):
     # **NOTE** only 7 timesteps worth of delay can be handled by
     # 8 element delay buffer - The last element is purely for output
     max_dtcm_delay_slots = 7
+
+    # Static weights are unsigned
+    signed_weight = False
 
     # STDP synapses require post-synaptic
     # spikes back-propagated to them

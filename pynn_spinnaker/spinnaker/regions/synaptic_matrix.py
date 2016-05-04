@@ -35,6 +35,7 @@ class SynapticMatrix(Region):
     NumHeaderWords = 3
 
     def __init__(self, synapse_type):
+        self.signed_weight = synapse_type.signed_weight
         self.max_dtcm_delay_slots = synapse_type.max_dtcm_delay_slots
 
     # --------------------------------------------------------------------------
@@ -86,7 +87,7 @@ class SynapticMatrix(Region):
         # Create a converter to convert floating
         # point weights to correct format
         float_to_weight = NumpyFloatToFixConverter(
-            False, self.FixedPointWeightBits, weight_fixed_point)
+            self.signed_weight, self.FixedPointWeightBits, weight_fixed_point)
 
         # Loop through sub matrices
         for matrix, matrix_rows, placement in zip(sub_matrix_props,

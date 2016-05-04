@@ -109,10 +109,13 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
 
         # If weights are required
         if "weight" in dtype.names:
+            # Determine type for weight
+            weight_type = np.int16 if self.signed_weight else np.uint16
+
             # Create 16-bit weight view of first two bytes in each synapse,
             # reshape this back into a 1D view and convert weights to float
             weight_view = plastic_view[:,0:2].reshape(-1)[:2 * len(synapses)]
-            weight_view = weight_view.view(dtype=np.int16)
+            weight_view = weight_view.view(dtype=weight_type)
 
             # Convert the weight view to floating point
             synapses["weight"] = weight_to_float(weight_view)

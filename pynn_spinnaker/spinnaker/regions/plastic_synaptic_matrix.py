@@ -81,9 +81,12 @@ class PlasticSynapticMatrix(SynapticMatrix):
 
         # If weights are required
         if "weight" in dtype.names:
+            # Determine type for weight
+            weight_type = np.int16 if self.signed_weight else np.uint16
+
             # Create 16-bit view of plastic weight section of synapse words
             weight_view = synapse_words[self.pre_state_words: control_start_idx]
-            weight_view = weight_view.view(dtype=np.uint16)[:len(synapses)]
+            weight_view = weight_view.view(dtype=weight_type)[:len(synapses)]
 
             # Convert the weight view to floating point
             synapses["weight"] = weight_to_float(weight_view)
