@@ -36,17 +36,25 @@ row_dtype = [("weight", np.float32), ("delay", np.uint32),
 # WeightRange
 # --------------------------------------------------------------------------
 class WeightRange(object):
-    def __init__(self):
+    def __init__(self, signed_weight):
+        # Based on signedness, determine how many
+        # bits we need to fit range of weights within
+        self.weight_val_bits = 15 if signed_weight else 16
+
         self.min = sys.float_info.max
         self.max = sys.float_info.min
 
     def update(self, weight):
-        self.min = min(self.min, weight)
-        self.max = max(self.max, weight)
+        abs_weight = abs(weight)
+
+        self.min = min(self.min, abs_weight)
+        self.max = max(self.max, abs_weight)
 
     def update_iter(self, weight):
-        self.min = min(self.min, np.amin(weight))
-        self.max = max(self.max, np.amax(weight))
+        abs_weight = np.abs(weight)
+
+        self.min = min(self.min, np.amin(abs_weight))
+        self.max = max(self.max, np.amax(abs_weight))
 
     @property
     def fixed_point(self):
@@ -58,16 +66,17 @@ class WeightRange(object):
             # Get MSB of minimum weight
             min_msb = math.floor(math.log(self.min, 2)) + 1
 
-            # Check there's enough bits to represent this range in 16 bits
-            if (max_msb - min_msb) >= 16:
-                logger.warn("Insufficient range in 16-bit weight to represent "
+            # Check there's enough bits to represent this range
+            if (max_msb - min_msb) >= self.weight_val_bits:
+                logger.warn("Insufficient range in %u-bit weight to represent "
                             "minimum weight:%f and maximum weight:%f",
-                            self.min, self.max)
+                            self.weight_val_bits, self.min, self.max)
 
         # Calculate where the weight format fixed-point lies
         # **NOTE** we clamp so that there is at least a 1-bit overlap with
         # The bottom of the S16.15 format used by the neuron processors
-        return min(30, (16 - int(max_msb)))
+        max_shift = self.weight_val_bits + 14
+        return min(max_shift, (self.weight_val_bits - int(max_msb)))
 
 
 
@@ -539,7 +548,7 @@ class Population(common.Population):
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of
         # weights present in incoming connections
-        weight_range = WeightRange()
+        weight_range = WeightRange(synapse_type.model.signed_weight)
 
         # Build incoming projections
         # **NOTE** this will result to multiple calls to convergent_connect
@@ -572,9 +581,6 @@ class Population(common.Population):
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             matrix_rows, weight_range,
                             **connection_parameters):
-        # Make weight absolute
-        weight =  np.abs(connection_parameters["weight"])
-
         # Convert delay into timesteps and round
         delay_timesteps = np.around(
             connection_parameters["delay"] / float(self._simulator.state.dt))
@@ -585,6 +591,7 @@ class Population(common.Population):
             delay_timesteps = itertools.repeat(delay_timesteps)
 
         # If weight is an iterable, update weight range
+        weight = connection_parameters["weight"]
         if isinstance(weight, Iterable):
             weight_range.update_iter(weight)
         # Otherwise

@@ -171,6 +171,8 @@ class SynapticMatrix(Region):
                     num_ext_words = 0
                     any_connections = False
                     for i, row in enumerate(rows):
+                        assert np.all(row["index"][1:] > row["index"][:-1])
+
                         # Find start and end of sub-row
                         sub_row_start = np.searchsorted(
                             row["index"], vertex_slice.start, side="left")
@@ -290,7 +292,8 @@ class SynapticMatrix(Region):
         # Build data type for rows
         dtype = np.dtype([(n, np.float32 if n == "weight" else np.uint32)
                  for n in names])
-        logger.debug("\tUsing row dtype:%s", dtype)
+        logger.debug("\tUsing row dtype:%s, weight fixed point:%u",
+                     dtype, post_s_vert.weight_fixed_point)
 
         # Read rows
         return [self._read_row(i, r, pre_n_vert.neuron_slice,
@@ -350,8 +353,12 @@ class SynapticMatrix(Region):
             # **NOTE** subtract one so there is a minimum of 1 slot of delay
             dtcm_delay = 1 + ((row[1]["delay"] - 1) % self.max_dtcm_delay_slots)
 
-            # Convert weight to fixed point
-            weight_fixed = float_to_weight(row[1]["weight"])
+            # Convert weight to fixed point, taking
+            # absolute if weight is unsigned
+            if self.signed_weight:
+                weight_fixed = float_to_weight(row[1]["weight"])
+            else:
+                weight_fixed = float_to_weight(np.abs(row[1]["weight"]))
 
             # Write synapses
             num_row_words = self._get_num_row_words(num_synapses)
