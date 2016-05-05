@@ -74,15 +74,20 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         plastic_view = destination[self.pre_state_words: control_start_idx]
         plastic_view = plastic_view.view(dtype=np.uint8)
 
+        # Restrict this view to non-padding synapses
+        plastic_view = plastic_view[:len(weight_fixed) * self.synapse_bytes]
+
         # Reshape into a 2D array where each synapse is a row
-        plastic_view = plastic_view.reshape((-1, self.synapse_bytes))
+        plastic_view.shape = (-1, self.synapse_bytes)
 
-        # Create weight view of first two bytes in each synapse, reshape
-        # this back into a 1D view and copy in weights, viewed as bytes
-        weight_view = plastic_view[:,0:2].reshape(-1)[:2 * len(weight_fixed)]
-        weight_view[:] = weight_fixed.view(dtype=np.uint8)
+        # View fixed point weights as bytes and reshape into matching shape
+        weight_bytes = weight_fixed.view(dtype=np.uint8)
+        weight_bytes.shape = (-1, 2)
 
-        # Zero synapse traces
+        # Copy weights into first two byte columns of plastic view
+        plastic_view[:,0:2] = weight_bytes
+
+        # Zero remaining columns
         plastic_view[:,2:] = 0
 
         # Create 16-bit view of control word
@@ -104,6 +109,9 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         plastic_view = synapse_words[self.pre_state_words: control_start_idx]
         plastic_view = plastic_view.view(dtype=np.uint8)
 
+        # Restrict this view to non-padding synapses
+        plastic_view = plastic_view[:len(synapses) * self.synapse_bytes]
+
         # Reshape into a 2D array where each synapse is a row
         plastic_view = plastic_view.reshape((-1, self.synapse_bytes))
 
@@ -114,7 +122,7 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
 
             # Create 16-bit weight view of first two bytes in each synapse,
             # reshape this back into a 1D view and convert weights to float
-            weight_view = plastic_view[:,0:2].reshape(-1)[:2 * len(synapses)]
+            weight_view = plastic_view[:,0:2].reshape(-1)
             weight_view = weight_view.view(dtype=weight_type)
 
             # Convert the weight view to floating point
