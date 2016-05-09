@@ -4,7 +4,7 @@
 #include "../../../common/spike_input_buffer.h"
 namespace SynapseProcessor
 {
-  typedef Common::SpikeInputBufferBase<256> SpikeInputBuffer;
+  typedef Common::SpikeInputBufferBase<512> SpikeInputBuffer;
 }
 
 // Synapse processor includes
