@@ -2,6 +2,7 @@
 import enum
 import itertools
 import logging
+import math
 import numpy as np
 import regions
 from rig import machine
@@ -124,13 +125,30 @@ class SynapseCluster(object):
 
             # Loop through all non-directly connectable
             # projections of this type
-            vert_event_rate = 0.0
-            vert_sdram_bytes = 0
-            vert = Vertex(post_slice, receptor_index)
+            #vert_event_rate = 0.0
+            #vert_sdram_bytes = 0
+            #vert = Vertex(post_slice, receptor_index)
+
             for proj in synaptic_projections:
                 logger.debug("\t\t\t\tProjection:%s", proj.label)
+
+                n_verts = len(proj.pre._neural_cluster.verts)
+                verts_per_slice = int(math.ceil(n_verts / 15.0))
+
+                logger.info("\t\t\t%u/%u neuron vertices per slice", verts_per_slice, n_verts)
+
+                for start_n_vert in range(0, n_verts, verts_per_slice):
+                    end_n_vert = min(start_n_vert + verts_per_slice, n_verts)
+
+                    vert = Vertex(post_slice, receptor_index)
+
+                    for v in range(start_n_vert, end_n_vert):
+                        vert.add_connection(proj.pre, proj.pre._neural_cluster.verts[v])
+
+                    self.verts.append(vert)
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
+                '''
                 for pre_vertex in proj.pre._neural_cluster.verts:
                     logger.debug("\t\t\t\t\tPre slice:%s",
                                  str(pre_vertex.neuron_slice))
@@ -169,7 +187,7 @@ class SynapseCluster(object):
                     # If it's more than this type of
                     # synapse processor can handle
                     if (vert_event_rate > synapse_model.max_synaptic_event_rate
-                        or vert_sdram_bytes > (8 * 1024 * 1024)):
+                        or vert_sdram_bytes > (16 * 1024 * 1024)):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
 
@@ -181,8 +199,9 @@ class SynapseCluster(object):
             # If the last synapse vertex created had any incoming connections
             if len(vert.incoming_connections) > 0:
                 self.verts.append(vert)
+            '''
 
-        logger.debug("\t\t\t%u synapse vertices", len(self.verts))
+        logger.info("\t\t\t%u synapse vertices", len(self.verts))
 
         # Loop through synapse vertices
         for v in self.verts:
