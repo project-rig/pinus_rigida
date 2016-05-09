@@ -93,9 +93,9 @@ if_cond_neuron_mutable_param_map = [
 # Synapse shaping region maps
 # ----------------------------------------------------------------------------
 exp_synapse_immutable_param_map = [
-    ("tau_syn_e", "i4", lazy_param_map.s1615_exp_decay),
+    ("tau_syn_e", "u4", lazy_param_map.u032_exp_decay),
     ("tau_syn_e", "i4", lazy_param_map.s1615_exp_init),
-    ("tau_syn_i", "i4", lazy_param_map.s1615_exp_decay),
+    ("tau_syn_i", "u4", lazy_param_map.u032_exp_decay),
     ("tau_syn_i", "i4", lazy_param_map.s1615_exp_init),
 ]
 

@@ -196,6 +196,7 @@ def exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
 # Various functions bound to standard fixed point types
 s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)
 s1615_exp_decay = partial(exp_decay, float_to_fixed=float_to_s1615_no_copy)
+u032_exp_decay = partial(exp_decay, float_to_fixed=float_to_u032_no_copy)
 s1615_exp_init = partial(exp_init, float_to_fixed=float_to_s1615_no_copy)
 s1615_rate_isi = partial(rate_isi, float_to_fixed=float_to_s1615_no_copy)
 u032_rate_exp_minus_lambda = partial(rate_exp_minus_lambda, float_to_fixed=float_to_u032_no_copy)

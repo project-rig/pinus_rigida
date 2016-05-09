@@ -35,13 +35,13 @@ public:
   struct ImmutableState
   {
     // Excitatory decay constants
-    S1615 m_ExpTauSynExc;
+    U032 m_ExpTauSynExc;
 
     // Excitatory scale
     S1615 m_InitExc;
 
     // Inhibitory decay constant
-    S1615 m_ExpTauSynInh;
+    U032 m_ExpTauSynInh;
 
     // Inhibitory scale
     S1615 m_InitInh;
@@ -76,9 +76,8 @@ public:
   static inline void Shape(MutableState &mutableState, const ImmutableState &immutableState)
   {
     // Decay both currents
-    // **TODO** Are m_ExpTauSynExc and m_ExpTauSynInh always going to be 16 bits? If so, can we use 16x32 DSP multiply
-    mutableState.m_ISynExc = MulS1615(mutableState.m_ISynExc, immutableState.m_ExpTauSynExc);
-    mutableState.m_ISynInh = MulS1615(mutableState.m_ISynInh, immutableState.m_ExpTauSynInh);
+    mutableState.m_ISynExc = MulS1615U032(mutableState.m_ISynExc, immutableState.m_ExpTauSynExc);
+    mutableState.m_ISynInh = MulS1615U032(mutableState.m_ISynInh, immutableState.m_ExpTauSynInh);
   }
 
   static void Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState);

@@ -59,6 +59,12 @@ namespace FixedPointNumber
     return Mul<uint32_t, uint64_t, 32>(a, b);
   }
 
+  inline S1615 MulS1615U032(S1615 a, U032 b)
+  {
+    int64_t m = (int64_t)a * (int64_t)b;
+    return (S1615)(m >> 32);
+  }
+
   inline S2011 Mul16S2011(S2011 a, S2011 b)
   {
     return Mul16<11>(a, b);
