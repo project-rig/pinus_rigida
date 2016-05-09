@@ -168,7 +168,7 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
 
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    max_neurons_per_core = 256
+    max_neurons_per_core = 512
     max_current_inputs_per_core = 2048
 
     directly_connectable = True
