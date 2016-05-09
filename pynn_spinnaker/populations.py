@@ -528,17 +528,17 @@ class Population(common.Population):
         for n_vert in self._neural_cluster.verts:
             # Get subset of the post-synaptic synapse vertices
             # that need to be connected to this neuron vertex
-            post_s_verts = [s for s in post_s_verts
-                            if n_vert in s.incoming_connections[self]]
+            sub_post_s_verts = [s for s in post_s_verts
+                                if n_vert in s.incoming_connections[self]]
 
             # If there are any post-synaptic vertices
-            if len(post_s_verts) > 0:
+            if len(sub_post_s_verts) > 0:
                 # Create a key for this source neuron vertex
                 net_key = (n_vert.routing_key, n_vert.routing_mask)
 
                 # Create a net connecting neuron vertex to synapse vertices
                 mean_firing_rate = self.spinnaker_config.mean_firing_rate
-                net = Net(n_vert, post_s_verts,
+                net = Net(n_vert, sub_post_s_verts,
                           mean_firing_rate * len(n_vert.neuron_slice))
 
                 # Add net to list and associate with key
