@@ -83,7 +83,10 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
-        return len(pre_slice) * self.n
+        # How large a fraction of the full post populations is this
+        post_fraction = float(len(post_slice)) / float(post_size)
+
+        return int(len(pre_slice) * self.n * post_fraction)
 
 # ----------------------------------------------------------------------------
 # FixedNumberPreConnector
@@ -93,7 +96,10 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
-        return self.n * len(post_slice)
+        # How large a fraction of the full pre populations is this
+        pre_fraction = float(len(pre_slice)) / float(pre_size)
+
+        return int(len(post_slice) * self.n * pre_fraction)
 
 # ----------------------------------------------------------------------------
 # FixedTotalNumberConnector
