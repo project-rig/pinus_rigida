@@ -206,10 +206,12 @@ class State(common.control.BaseState):
             for s_type, stats in iteritems(pop.get_synapse_statistics()):
                 logger.info("\t\tSynapse type:%s receptor:%s",
                             s_type.model.__class__.__name__, s_type.receptor)
-                logger.info("\t\t\tRows requested per vertex per second:%f",
-                            np.mean(stats["row_requested"]) / duration_s)
-                logger.info("\t\t\tDelay rows requested per vertex per second:%f",
-                            np.mean(stats["delay_row_requested"]) / duration_s)
+                logger.info("\t\t\tRows requested - Average per vertex per second:%f, Total per second:%f",
+                            np.mean(stats["row_requested"]) / duration_s,
+                            np.sum(stats["row_requested"]) / duration_s)
+                logger.info("\t\t\tDelay rows requested - Average per vertex per second:%f, Total per second:%f",
+                            np.mean(stats["delay_row_requested"]) / duration_s,
+                            np.sum(stats["delay_row_requested"]) / duration_s)
                 logger.info("\t\t\tDelay buffers not processed:%u",
                             np.sum(stats["delay_buffers_not_processed"]))
                 logger.info("\t\t\tInput buffer overflows:%u",
