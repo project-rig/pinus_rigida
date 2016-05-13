@@ -45,6 +45,7 @@ class State(common.control.BaseState):
     def __init__(self):
         common.control.BaseState.__init__(self)
         self.machine_controller = None
+        self.spalloc_job = None
         self.system_info = None
         self.dt = 0.1
 
@@ -99,6 +100,10 @@ class State(common.control.BaseState):
         if self.machine_controller is not None and self.stop_on_spinnaker:
             logger.info("Stopping SpiNNaker application")
             self.machine_controller.send_signal("stop")
+
+        # Destroy spalloc job if we have one
+        if self.spalloc_job is not None:
+            self.spalloc_job.destroy()
 
     def _wait_for_transition(self, placements, allocations,
                              from_state, to_state,
@@ -296,8 +301,36 @@ class State(common.control.BaseState):
         if self.machine_controller is None:
             logger.info("Connecting to SpiNNaker")
 
+            # If we should use spalloc
+            if self.spalloc_num_boards is not None:
+                from spalloc import Job
+
+                # Request the job
+                self.spalloc_job = Job(self.spalloc_num_boards)
+                logger.info("Allocated spalloc job ID %u",
+                            self.spalloc_job.id)
+
+                # Wait until we're given the machine
+                logger.info("Waiting for spalloc machine allocation")
+                self.spalloc_job.wait_until_ready()
+
+                # spalloc recommends a slight delay before attempting to boot the
+                # machine, later versions of spalloc server may relax this
+                # requirement.
+                time.sleep(5.0)
+
+                # Store the hostname
+                hostname = self.spalloc_job.hostname
+                logger.info("Using %u board(s) of \"%s\" (%s)",
+                            len(self.spalloc_job.boards),
+                            self.spalloc_job.machine_name,
+                            hostname)
+            # Otherwise, use pre-configured hostname
+            else:
+                hostname = self.spinnaker_hostname
+
             # Get machine controller from connected SpiNNaker board and boot
-            self.machine_controller = MachineController(self.spinnaker_hostname)
+            self.machine_controller = MachineController(hostname)
             self.machine_controller.boot()
 
             # Get system info
