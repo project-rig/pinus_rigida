@@ -301,6 +301,14 @@ class Population(common.Population):
 
         return spike_times, signals
 
+    def _clamp_j_constraint(self, j_constraint):
+        if self.spinnaker_config.max_cluster_width is None:
+            return min(self.size, j_constraint)
+        else:
+            return min(self.spinnaker_config.max_cluster_width,
+                       self.size,
+                       j_constraint)
+
     def _estimate_constraints(self, hardware_timestep_us):
         # Determine the fraction of 1ms that the hardware timestep is.
         # This is used to scale all time-driven estimates
@@ -312,10 +320,10 @@ class Population(common.Population):
             self.spinnaker_config.max_neurons_per_core
             if self.spinnaker_config.max_neurons_per_core is not None
             else self.celltype.max_neurons_per_core)
-        self.neuron_j_constraint = int(max_neurons_per_core * timestep_mul)
 
         # Clamp constraint to actual size of population
-        self.neuron_j_constraint = min(self.neuron_j_constraint, self.size)
+        self.neuron_j_constraint = self._clamp_j_constraint(
+            int(max_neurons_per_core * timestep_mul))
         logger.debug("\t\tNeuron j constraint:%u",
                      self.neuron_j_constraint)
 
@@ -336,8 +344,8 @@ class Population(common.Population):
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
-                synapse_constraint = min(synapse_constraint, self.size)
-                self.synapse_j_constraints[s_type] = synapse_constraint
+                self.synapse_j_constraints[s_type] =\
+                    self._clamp_j_constraint(synapse_constraint)
 
                 logger.debug("\t\tSynapse type:%s, receptor:%s - j constraint:%u",
                              s_type.model.__class__.__name__, s_type.receptor,
@@ -353,8 +361,8 @@ class Population(common.Population):
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
-                current_input_constraint = min(current_input_constraint,
-                                               self.size)
+                current_input_constraint =\
+                    self._clamp_j_constraint(current_input_constraint)
                 current_input_j_constraints[p] = current_input_constraint
                 logger.debug("\t\tDirectly connectable projection:%s "
                              "- Current input contraint:%u", p.label,
