@@ -100,10 +100,13 @@ class State(common.control.BaseState):
         if self.machine_controller is not None and self.stop_on_spinnaker:
             logger.info("Stopping SpiNNaker application")
             self.machine_controller.send_signal("stop")
+            self.machine_controller = None
 
         # Destroy spalloc job if we have one
         if self.spalloc_job is not None:
+            logger.info("Destroying spalloc job")
             self.spalloc_job.destroy()
+            self.spalloc_job = None
 
     def _wait_for_transition(self, placements, allocations,
                              from_state, to_state,
