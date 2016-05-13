@@ -58,7 +58,7 @@ def replace_local_hyperlinks(
 
 setup(
     name="pynn_spinnaker",
-    version="0.2.0",
+    version="0.2.1",
     packages=find_packages(),
     package_data={'pynn_spinnaker': ['model_binaries/*.aplx']},
 
@@ -100,4 +100,9 @@ setup(
             "pynn_spinnaker_path = pynn_spinnaker.scripts.pynn_spinnaker_path:main",
         ],
     }
+
+    # Extras
+    extras_require={
+        "spalloc": ["spalloc >= 0.2.2"],  # For machine allocation
+    },
 )
