@@ -345,14 +345,19 @@ class State(common.control.BaseState):
         placements, allocations, application_map, routing_tables =\
             place_and_route_wrapper(vertex_resources, vertex_applications,
                                     nets, net_keys, self.system_info, constraints)
-        logger.info("Placed on %u cores", len(placements))
+
+        # Convert placement values to a set to get unique list of chips
+        unique_chips = set(itervalues(placements))
+
+        logger.info("Placed on %u cores (%u chips)",
+                    len(placements), len(unique_chips))
         logger.debug(list(itervalues(placements)))
 
         # If software watchdog is disabled, write zero to each chip in
         # placement's SV struct, otherwise, write default from SV struct file
         wdog = (0 if self.disable_software_watchdog else
                 self.machine_controller.structs["sv"]["soft_wdog"].default)
-        for x, y in set(itervalues(placements)):
+        for x, y in unique_chips:
             logger.debug("Setting software watchdog to %u for chip %u, %u",
                          wdog, x, y)
             self.machine_controller.write_struct_field("sv", "soft_wdog",
