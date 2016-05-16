@@ -175,7 +175,7 @@ def rate_exp_minus_lambda(values, sim_timestep_ms, float_to_fixed, **kwargs):
     lambda_vals = (lambda_vals * sim_timestep_ms) / 1000.0
 
     # Calculate exponential
-    lambda_vals = la.exp(-1.0 / lambda_vals)
+    lambda_vals = la.exp(-1.0 * lambda_vals)
 
     # Convert to fixed point and return
     return float_to_fixed(lambda_vals)
