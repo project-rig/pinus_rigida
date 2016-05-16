@@ -92,7 +92,8 @@ def apply_indices(lazy_params, param_map, indices, **kwargs):
             param_name, _, param_mapping = param
 
             # Set parameter size
-            lazy_params[param_name].shape = (max(indices) + 1,)
+            if not hasattr(lazy_params[param_name].base_value, "shape"):
+                lazy_params[param_name].shape = (max(indices) + 1,)
 
             # Apply lazy transformation and evaluate slice
             params[field_name] = param_mapping(lazy_params[param_name],
