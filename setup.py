@@ -99,7 +99,7 @@ setup(
         "console_scripts": [
             "pynn_spinnaker_path = pynn_spinnaker.scripts.pynn_spinnaker_path:main",
         ],
-    }
+    },
 
     # Extras
     extras_require={
