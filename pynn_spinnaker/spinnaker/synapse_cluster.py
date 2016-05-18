@@ -32,7 +32,6 @@ class Regions(enum.IntEnum):
     profiler = 7
     statistics = 8
 
-
 # ----------------------------------------------------------------------------
 # Vertex
 # ----------------------------------------------------------------------------
@@ -224,9 +223,13 @@ class SynapseCluster(object):
                     for _ in range(2)]
 
     def load(self, placements, allocations, machine_controller,
-             matrices, weight_fixed_point, flush_mask):
+             incoming_projections, flush_mask):
         # Loop through synapse verts
         for v in self.verts:
+
+            # **HACK**
+            weight_fixed_point = 14
+
             # Cache weight fixed-point for
             # this synapse point in vertex
             v.weight_fixed_point = weight_fixed_point
@@ -246,7 +249,7 @@ class SynapseCluster(object):
             # Partition matrices
             sub_matrix_props, sub_matrix_rows =\
                 self.regions[Regions.synaptic_matrix].partition_matrices(
-                    matrices, v.post_neuron_slice, v.incoming_connections)
+                    incoming_projections, v.post_neuron_slice, v.incoming_connections)
 
             # Place them in memory
             matrix_placements = self.regions[Regions.key_lookup].place_matrices(

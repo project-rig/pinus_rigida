@@ -132,7 +132,33 @@ class PopulationView(common.PopulationView):
     def _get_view(self, selector, label=None):
         return PopulationView(self, selector, label)
 
+    def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
+                            matrix_rows, weight_range,
+                            **connection_parameters):
+        # Convert delay into timesteps and round
+        delay_timesteps = np.around(
+            connection_parameters["delay"] / float(self._simulator.state.dt))
+        delay_timesteps = delay_timesteps.astype(int)
 
+        # If delay is not iterable, make it so using repeat
+        if not isinstance(delay_timesteps, Iterable):
+            delay_timesteps = itertools.repeat(delay_timesteps)
+
+        # If weight is an iterable, update weight range
+        weight = connection_parameters["weight"]
+        if isinstance(weight, Iterable):
+            weight_range.update_iter(weight)
+        # Otherwise
+        else:
+            # Update weight range
+            weight_range.update(weight)
+
+            # Make weight iterable using repeat
+            weight = itertools.repeat(weight)
+
+        # Add synapse to each row
+        for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
+            matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
 # --------------------------------------------------------------------------
 # Population
 # --------------------------------------------------------------------------
@@ -553,6 +579,7 @@ class Population(common.Population):
                 nets.append(net)
                 net_keys[net] = net_key
 
+    '''
     def _build_incoming_connection(self, synapse_type):
         # Create weight range object to track range of
         # weights present in incoming connections
@@ -571,7 +598,6 @@ class Population(common.Population):
                                   weight_range=weight_range,
                                   directly_connect=False)
 
-
             # Convert completed rows to numpy arrays and add to list
             pop_matrix_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
                                         for r in matrix_rows]
@@ -585,7 +611,7 @@ class Population(common.Population):
         logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
 
         return pop_matrix_rows, weight_fixed_point
-
+    '''
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             matrix_rows, weight_range,
                             **connection_parameters):
@@ -642,12 +668,13 @@ class Population(common.Population):
                         s_type.model.__class__.__name__, s_type.receptor)
 
             # Expand any incoming connections
-            matrices, weight_fixed_point =\
-                self._build_incoming_connection(s_type)
-
+            #matrices, weight_fixed_point =\
+            #    self._build_incoming_connection(s_type)
+            #for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
             # Load vertices that make up cluster
             s_cluster.load(placements, allocations, machine_controller,
-                           matrices, weight_fixed_point, flush_mask)
+                           self.incoming_projections[s_type],
+                           flush_mask)
 
         # If population has a neuron cluster, load it
         if self._neural_cluster is not None:
