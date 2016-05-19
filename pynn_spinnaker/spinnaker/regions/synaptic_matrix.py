@@ -1,9 +1,7 @@
 # Import modules
 import itertools
 import logging
-import math
 import numpy as np
-import sys
 
 # Import classes
 from collections import namedtuple
@@ -16,56 +14,7 @@ from ..utils import get_row_offset_length
 
 logger = logging.getLogger("pynn_spinnaker")
 
-row_dtype = [("weight", np.float32), ("delay", np.uint32),
-             ("index", np.uint32)]
-
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
-
-# ------------------------------------------------------------------------------
-# WeightRange
-# ------------------------------------------------------------------------------
-class WeightRange(object):
-    def __init__(self, signed_weight):
-        # Based on signedness, determine how many
-        # bits we need to fit range of weights within
-        self.weight_val_bits = 15 if signed_weight else 16
-
-        self.min = sys.float_info.max
-        self.max = sys.float_info.min
-
-    def update(self, weight):
-        abs_weight = abs(weight)
-
-        self.min = min(self.min, abs_weight)
-        self.max = max(self.max, abs_weight)
-
-    def update_iter(self, weight):
-        abs_weight = np.abs(weight)
-
-        self.min = min(self.min, np.amin(abs_weight))
-        self.max = max(self.max, np.amax(abs_weight))
-
-    @property
-    def fixed_point(self):
-        # Get MSB for maximum weight
-        max_msb = math.floor(math.log(self.max, 2)) + 1
-
-        # If minimum weight isn't zero
-        if self.min != 0.0:
-            # Get MSB of minimum weight
-            min_msb = math.floor(math.log(self.min, 2)) + 1
-
-            # Check there's enough bits to represent this range
-            if (max_msb - min_msb) >= self.weight_val_bits:
-                logger.warn("Insufficient range in %u-bit weight to represent "
-                            "minimum weight:%f and maximum weight:%f",
-                            self.weight_val_bits, self.min, self.max)
-
-        # Calculate where the weight format fixed-point lies
-        # **NOTE** we clamp so that there is at least a 1-bit overlap with
-        # The bottom of the S16.15 format used by the neuron processors
-        max_shift = self.weight_val_bits + 14
-        return min(max_shift, (self.weight_val_bits - int(max_msb)))
 
 
 # ------------------------------------------------------------------------------
@@ -157,13 +106,13 @@ class SynapticMatrix(Region):
             # Calculate the number of extension words required and build
             # Second numpy array to contain concatenated extension rows
             num_ext_words = matrix.size_words - num_matrix_words
-            ext_words = np.empty(num_ext_words, dtype=np.uint32)
+
 
             logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u, "
                          "matrix words:%u, num extension words:%u, num rows:%u",
                          placement, matrix.max_cols, num_matrix_words,
                          matrix.size_words - num_matrix_words, len(matrix_rows))
-
+            ext_words = np.empty(num_ext_words, dtype=np.uint32)
             # Loop through matrix rows
             next_row_offset = 0
             for i, row in enumerate(matrix_rows):
@@ -191,108 +140,85 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def build_matrices(self, incoming_projections, vertex_slice, incoming_connections):
+    def partition_matrices(self, post_vertex_slice, pre_pop_sub_rows,
+                           incoming_connections):
         # Loop through all incoming connections
         sub_matrix_props = []
         sub_matrix_rows = []
 
-        # Create weight range
-        weight_range = WeightRange(self.signed_weight)
-
         # Loop through presynaptic population
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
-            # Loop though connections which connect them to this population
-            for proj in incoming_projections[pre_pop]:
-                # Check local mask isn't currently in use
-                assert np.all(proj.post._mask_local)
+            # Get the list of sub-rows associated
+            # with this presynaptic population
+            sub_rows = pre_pop_sub_rows[pre_pop]
 
-                # Cache original post mask (due to above
-                # this is slightly pointless but still)
-                old_post_mask = proj.post._mask_local
+            # Loop through presynaptic vertices
+            for pre_n_vertex in pre_neuron_vertices:
+                # Slice out the sub-rows asssociated
+                # with this presynaptic neuron vert
+                vert_sub_rows = sub_rows[pre_n_vertex.neuron_slice.python_slice]
 
-                # Create new local mask to select only the columns
-                # corresponding to neurons in postsynaptic vertex
-                proj.post._mask_local = np.zeros((proj.post.size,), dtype=bool)
-                proj.post._mask_local[vertex_slice.python_slice] = True
+                max_cols = 1
+                num_ext_words = 0
+                any_connections = False
+                for i, sub_row in enumerate(vert_sub_rows):
+                    # If sub-row has any elements
+                    if len(sub_row) != 0:
+                        # Make indices relative to vertex start
+                        sub_row["index"] -= post_vertex_slice.start
 
-                # Create list of lists to contain matrix rows
-                post_vert_sub_rows = [[] for _ in range(pre_pop.size)]
+                        # There is at least one connection so
+                        # this matrix needs to be placed
+                        any_connections = True
 
-                # Loop through projections and build
-                proj._build(matrix_rows=post_vert_sub_rows,
-                            weight_range=weight_range,
-                            directly_connect=False)
+                        # Determine which delay slot each sub-rob entry is in
+                        sub_row_delay_slot = (sub_row["delay"] - 1) / self.max_dtcm_delay_slots
 
-                # Convert rows to numpy
-                post_vert_sub_rows = [np.asarray(r, dtype=row_dtype)
-                                      for r in post_vert_sub_rows]
+                        # Sort sub-row by delay slot
+                        sub_row_order = np.argsort(sub_row_delay_slot)
+                        sub_row = sub_row[sub_row_order]
+                        sub_row_delay_slot = sub_row_delay_slot[sub_row_order]
 
-                # Loop through presynaptic vertices
-                for pre_neuron_vertex in pre_neuron_vertices:
-                    sub_rows = post_vert_sub_rows[pre_neuron_vertex.neuron_slice.python_slice]
+                        # Take cumulative sum of the number of synapses
+                        # in each delay slot to obtain sections of
+                        # sub_row which belong in each delay slot
+                        sub_row_lengths = np.bincount(sub_row_delay_slot)
+                        sub_row_sections = np.cumsum(sub_row_lengths)
 
-                    max_cols = 1
-                    num_ext_words = 0
-                    any_connections = False
-                    for i, sub_row in enumerate(sub_rows):
-                        # If sub-row has any elements
-                        if len(sub_row) != 0:
-                            # Make indices relative to vertex start
-                            sub_row["index"] -= vertex_slice.start
+                        # Split sub-row into delay rows based
+                        # on these sections, filtering out empty
+                        # rows if they aren't the first row
+                        vert_sub_rows[i] = [(e * self.max_dtcm_delay_slots, r)
+                                    for e, r in enumerate(
+                                        np.split(sub_row, sub_row_sections))
+                                    if e == 0 or len(r) > 0]
 
-                            any_connections = True
+                        # Calculate number of extension words thos
+                        num_ext_words += self._get_num_ext_words(
+                            len(vert_sub_rows[i]), sub_row_lengths,
+                            sub_row_sections)
 
-                            # Determine which delay slot each sub-rob entry is in
-                            sub_row_delay_slot = (sub_row["delay"] - 1) / self.max_dtcm_delay_slots
+                        # Update maximum number of columns based
+                        # on length of first delay slot
+                        max_cols = max(max_cols, sub_row_sections[0])
+                    # Otherwise, add empty row
+                    else:
+                        vert_sub_rows[i] = [(0, ())]
 
-                            # Sort sub-row by delay slot
-                            sub_row_order = np.argsort(sub_row_delay_slot)
-                            sub_row = sub_row[sub_row_order]
-                            sub_row_delay_slot = sub_row_delay_slot[sub_row_order]
+                if any_connections:
+                    # Calculate matrix size in words - size of square
+                    # matrix added to number of extension words
+                    size_words = num_ext_words +\
+                        (len(vert_sub_rows) * self._get_num_row_words(max_cols))
 
-                            # Take cumulative sum of the number of synapses
-                            # in each delay slot to obtain sections of
-                            # sub_row which belong in each delay slot
-                            sub_row_lengths = np.bincount(sub_row_delay_slot)
-                            sub_row_sections = np.cumsum(sub_row_lengths)
+                    # Add sub matrix to list
+                    sub_matrix_props.append(
+                        SubMatrix(pre_n_vertex.routing_key,
+                                  pre_n_vertex.routing_mask,
+                                  size_words, max_cols))
+                    sub_matrix_rows.append(vert_sub_rows)
 
-                            # Split sub-row into delay rows based
-                            # on these sections, filtering out empty
-                            # rows if they aren't the first row
-                            sub_rows[i] = [(e * self.max_dtcm_delay_slots, r)
-                                        for e, r in enumerate(
-                                            np.split(sub_row, sub_row_sections))
-                                        if e == 0 or len(r) > 0]
-
-                            # Calculate number of extension words thos
-                            num_ext_words += self._get_num_ext_words(
-                                len(sub_rows[i]), sub_row_lengths,
-                                sub_row_sections)
-
-                            # Update maximum number of columns based
-                            # on length of first delay slot
-                            max_cols = max(max_cols, sub_row_sections[0])
-                        # Otherwise, add empty row
-                        else:
-                            sub_rows[i] = [(0, ())]
-
-                    if any_connections:
-                        # Calculate matrix size in words - size of square
-                        # matrix added to number of extension words
-                        size_words = num_ext_words +\
-                            (len(sub_rows) * self._get_num_row_words(max_cols))
-
-                        # Add sub matrix to list
-                        sub_matrix_props.append(
-                            SubMatrix(pre_neuron_vertex.routing_key,
-                                      pre_neuron_vertex.routing_mask,
-                                      size_words, max_cols))
-                        sub_matrix_rows.append(sub_rows)
-
-                # Restore old local mask
-                proj.post._mask_local = old_post_mask
-
-        return sub_matrix_props, sub_matrix_rows, weight_range
+        return sub_matrix_props, sub_matrix_rows
 
     def read_sub_matrix(self, pre_n_vert, post_s_vert, names, region_mem):
         # Find the matrix properties and placement of sub-matrix
