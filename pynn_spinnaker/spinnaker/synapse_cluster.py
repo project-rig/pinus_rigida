@@ -165,8 +165,11 @@ class SynapseCluster(object):
         # Get synapse application name
         synapse_app = get_model_executable_filename(
             "synapse_", synapse_model, config.num_profile_samples is not None)
-        
+
         logger.debug("\t\t\tSynapse application:%s", synapse_app)
+
+        # Cache synapse model
+        self.synapse_model = synapse_model
 
         # Loop through the post-slices
         self.verts = []
@@ -286,7 +289,7 @@ class SynapseCluster(object):
                                 if v.post_neuron_slice == post_slice]
 
             # Create weight range
-            weight_range = WeightRange(False)
+            weight_range = WeightRange(self.synapse_model.signed_weight)
 
             # Loop through unique presynaptic populations with connections
             # terminating in any of the vertices in this postsynaptic slice
@@ -331,8 +334,8 @@ class SynapseCluster(object):
                                              for r in sub_rows]
 
                 # If the synapse model has a function to update weight range
-                #if hasattr(synapse_type.model, "update_weight_range"):
-                #    synapse_type.model.update_weight_range(weight_range)
+                if hasattr(self.synapse_model, "update_weight_range"):
+                    self.synapse_model.update_weight_range(weight_range)
 
                 # Calculate where the weight format fixed-point lies
                 weight_fixed_point = weight_range.fixed_point
