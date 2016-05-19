@@ -106,13 +106,13 @@ class SynapticMatrix(Region):
             # Calculate the number of extension words required and build
             # Second numpy array to contain concatenated extension rows
             num_ext_words = matrix.size_words - num_matrix_words
+            ext_words = np.empty(num_ext_words, dtype=np.uint32)
 
-
-            logger.debug("\t\t\tWriting matrix placement:%u, max cols:%u, "
+            logger.debug("\t\t\t\t\tWriting matrix placement:%u, max cols:%u, "
                          "matrix words:%u, num extension words:%u, num rows:%u",
                          placement, matrix.max_cols, num_matrix_words,
                          matrix.size_words - num_matrix_words, len(matrix_rows))
-            ext_words = np.empty(num_ext_words, dtype=np.uint32)
+
             # Loop through matrix rows
             next_row_offset = 0
             for i, row in enumerate(matrix_rows):
