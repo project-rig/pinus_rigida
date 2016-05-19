@@ -232,45 +232,46 @@ class SynapticMatrix(Region):
                     num_ext_words = 0
                     any_connections = False
                     for i, sub_row in enumerate(sub_rows):
-                        # Skip empty subrows
-                        if len(sub_row) == 0:
-                            continue
+                        # If sub-row has any elements
+                        if len(sub_row) != 0:
+                            # Make indices relative to vertex start
+                            sub_row["index"] -= vertex_slice.start
 
-                        # Make indices relative to vertex start
-                        sub_row["index"] -= vertex_slice.start
+                            any_connections = True
 
-                        any_connections = True
+                            # Determine which delay slot each sub-rob entry is in
+                            sub_row_delay_slot = (sub_row["delay"] - 1) / self.max_dtcm_delay_slots
 
-                        # Determine which delay slot each sub-rob entry is in
-                        sub_row_delay_slot = (sub_row["delay"] - 1) / self.max_dtcm_delay_slots
+                            # Sort sub-row by delay slot
+                            sub_row_order = np.argsort(sub_row_delay_slot)
+                            sub_row = sub_row[sub_row_order]
+                            sub_row_delay_slot = sub_row_delay_slot[sub_row_order]
 
-                        # Sort sub-row by delay slot
-                        sub_row_order = np.argsort(sub_row_delay_slot)
-                        sub_row = sub_row[sub_row_order]
-                        sub_row_delay_slot = sub_row_delay_slot[sub_row_order]
+                            # Take cumulative sum of the number of synapses
+                            # in each delay slot to obtain sections of
+                            # sub_row which belong in each delay slot
+                            sub_row_lengths = np.bincount(sub_row_delay_slot)
+                            sub_row_sections = np.cumsum(sub_row_lengths)
 
-                        # Take cumulative sum of the number of synapses
-                        # in each delay slot to obtain sections of
-                        # sub_row which belong in each delay slot
-                        sub_row_lengths = np.bincount(sub_row_delay_slot)
-                        sub_row_sections = np.cumsum(sub_row_lengths)
+                            # Split sub-row into delay rows based
+                            # on these sections, filtering out empty
+                            # rows if they aren't the first row
+                            sub_rows[i] = [(e * self.max_dtcm_delay_slots, r)
+                                        for e, r in enumerate(
+                                            np.split(sub_row, sub_row_sections))
+                                        if e == 0 or len(r) > 0]
 
-                        # Split sub-row into delay rows based
-                        # on these sections, filtering out empty
-                        # rows if they aren't the first row
-                        sub_rows[i] = [(e * self.max_dtcm_delay_slots, r)
-                                       for e, r in enumerate(
-                                           np.split(sub_row, sub_row_sections))
-                                       if e == 0 or len(r) > 0]
+                            # Calculate number of extension words thos
+                            num_ext_words += self._get_num_ext_words(
+                                len(sub_rows[i]), sub_row_lengths,
+                                sub_row_sections)
 
-                        # Calculate number of extension words thos
-                        num_ext_words += self._get_num_ext_words(
-                            len(sub_rows[i]), sub_row_lengths,
-                            sub_row_sections)
-
-                        # Update maximum number of columns based
-                        # on length of first delay slot
-                        max_cols = max(max_cols, sub_row_sections[0])
+                            # Update maximum number of columns based
+                            # on length of first delay slot
+                            max_cols = max(max_cols, sub_row_sections[0])
+                        # Otherwise, add empty row
+                        else:
+                            sub_rows[i] = [(0, ())]
 
                     if any_connections:
                         # Calculate matrix size in words - size of square
