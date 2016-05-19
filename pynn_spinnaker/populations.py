@@ -4,7 +4,6 @@ import logging
 import math
 import numpy as np
 from rig import machine
-import sys
 from pyNN import common
 
 # Import classes
@@ -28,54 +27,6 @@ from six import iteritems, iterkeys, itervalues
 logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
-
-# --------------------------------------------------------------------------
-# WeightRange
-# --------------------------------------------------------------------------
-class WeightRange(object):
-    def __init__(self, signed_weight):
-        # Based on signedness, determine how many
-        # bits we need to fit range of weights within
-        self.weight_val_bits = 15 if signed_weight else 16
-
-        self.min = sys.float_info.max
-        self.max = sys.float_info.min
-
-    def update(self, weight):
-        abs_weight = abs(weight)
-
-        self.min = min(self.min, abs_weight)
-        self.max = max(self.max, abs_weight)
-
-    def update_iter(self, weight):
-        abs_weight = np.abs(weight)
-
-        self.min = min(self.min, np.amin(abs_weight))
-        self.max = max(self.max, np.amax(abs_weight))
-
-    @property
-    def fixed_point(self):
-        # Get MSB for maximum weight
-        max_msb = math.floor(math.log(self.max, 2)) + 1
-
-        # If minimum weight isn't zero
-        if self.min != 0.0:
-            # Get MSB of minimum weight
-            min_msb = math.floor(math.log(self.min, 2)) + 1
-
-            # Check there's enough bits to represent this range
-            if (max_msb - min_msb) >= self.weight_val_bits:
-                logger.warn("Insufficient range in %u-bit weight to represent "
-                            "minimum weight:%f and maximum weight:%f",
-                            self.weight_val_bits, self.min, self.max)
-
-        # Calculate where the weight format fixed-point lies
-        # **NOTE** we clamp so that there is at least a 1-bit overlap with
-        # The bottom of the S16.15 format used by the neuron processors
-        max_shift = self.weight_val_bits + 14
-        return min(max_shift, (self.weight_val_bits - int(max_msb)))
-
-
 
 # Round a j constraint to the lowest power-of-two
 # multiple of the minium j constraint
@@ -550,39 +501,6 @@ class Population(common.Population):
                 nets.append(net)
                 net_keys[net] = net_key
 
-    '''
-    def _build_incoming_connection(self, synapse_type):
-        # Create weight range object to track range of
-        # weights present in incoming connections
-        weight_range = WeightRange(synapse_type.model.signed_weight)
-
-        # Build incoming projections
-        # **NOTE** this will result to multiple calls to convergent_connect
-        pop_matrix_rows = {}
-        for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
-            # Create list of lists to contain matrix rows
-            matrix_rows = [[] for _ in range(pre_pop.size)]
-
-            # Loop through projections and build
-            for projection in projections:
-                projection._build(matrix_rows=matrix_rows,
-                                  weight_range=weight_range,
-                                  directly_connect=False)
-
-            # Convert completed rows to numpy arrays and add to list
-            pop_matrix_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
-                                        for r in matrix_rows]
-
-        # If the synapse model has a function to update weight range
-        if hasattr(synapse_type.model, "update_weight_range"):
-            synapse_type.model.update_weight_range(weight_range)
-
-        # Calculate where the weight format fixed-point lies
-        weight_fixed_point = weight_range.fixed_point
-        logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
-
-        return pop_matrix_rows, weight_fixed_point
-    '''
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             matrix_rows, weight_range,
                             **connection_parameters):

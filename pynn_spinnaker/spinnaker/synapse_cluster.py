@@ -225,15 +225,8 @@ class SynapseCluster(object):
     def load(self, placements, allocations, machine_controller,
              incoming_projections, flush_mask):
         # Loop through synapse verts
+        # **TODO** group by post vertex slice so build matrices can be shared
         for v in self.verts:
-
-            # **HACK**
-            weight_fixed_point = 14
-
-            # Cache weight fixed-point for
-            # this synapse point in vertex
-            v.weight_fixed_point = weight_fixed_point
-
             # Get placement and allocation
             vertex_placement = placements[v]
             vertex_allocation = allocations[v]
@@ -246,10 +239,23 @@ class SynapseCluster(object):
                          v, vertex_placement[0], vertex_placement[1],
                          core.start)
 
-            # Partition matrices
-            sub_matrix_props, sub_matrix_rows =\
-                self.regions[Regions.synaptic_matrix].partition_matrices(
+            # Build matrices
+            sub_matrix_props, sub_matrix_rows, weight_range =\
+                self.regions[Regions.synaptic_matrix].build_matrices(
                     incoming_projections, v.post_neuron_slice, v.incoming_connections)
+
+            # If the synapse model has a function to update weight range
+            #if hasattr(synapse_type.model, "update_weight_range"):
+            #    synapse_type.model.update_weight_range(weight_range)
+
+            # Calculate where the weight format fixed-point lies
+            weight_fixed_point = weight_range.fixed_point
+            logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
+
+
+            # Cache weight fixed-point for
+            # this synapse point in vertex
+            v.weight_fixed_point = weight_fixed_point
 
             # Place them in memory
             matrix_placements = self.regions[Regions.key_lookup].place_matrices(

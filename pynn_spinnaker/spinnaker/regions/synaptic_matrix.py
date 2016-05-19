@@ -1,6 +1,7 @@
 # Import modules
 import itertools
 import logging
+import math
 import numpy as np
 import sys
 
@@ -13,14 +14,16 @@ from rig.type_casts import NumpyFloatToFixConverter, NumpyFixToFloatConverter
 from six import iteritems
 from ..utils import get_row_offset_length
 
+logger = logging.getLogger("pynn_spinnaker")
+
 row_dtype = [("weight", np.float32), ("delay", np.uint32),
              ("index", np.uint32)]
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
 
-logger = logging.getLogger("pynn_spinnaker")
-
-
+# ------------------------------------------------------------------------------
+# WeightRange
+# ------------------------------------------------------------------------------
 class WeightRange(object):
     def __init__(self, signed_weight):
         # Based on signedness, determine how many
@@ -188,10 +191,13 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def partition_matrices(self, incoming_projections, vertex_slice, incoming_connections):
+    def build_matrices(self, incoming_projections, vertex_slice, incoming_connections):
         # Loop through all incoming connections
         sub_matrix_props = []
         sub_matrix_rows = []
+
+        # Create weight range
+        weight_range = WeightRange(self.signed_weight)
 
         # Loop through presynaptic population
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
@@ -211,9 +217,6 @@ class SynapticMatrix(Region):
 
                 # Create list of lists to contain matrix rows
                 post_vert_sub_rows = [[] for _ in range(pre_pop.size)]
-
-                # **HACK** make weight range
-                weight_range = WeightRange(True)
 
                 # Loop through projections and build
                 proj._build(matrix_rows=post_vert_sub_rows,
@@ -289,8 +292,7 @@ class SynapticMatrix(Region):
                 # Restore old local mask
                 proj.post._mask_local = old_post_mask
 
-        print sub_matrix_props
-        return sub_matrix_props, sub_matrix_rows
+        return sub_matrix_props, sub_matrix_rows, weight_range
 
     def read_sub_matrix(self, pre_n_vert, post_s_vert, names, region_mem):
         # Find the matrix properties and placement of sub-matrix
