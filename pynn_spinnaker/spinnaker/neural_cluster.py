@@ -266,7 +266,7 @@ class NeuralCluster(object):
             core = vertex_allocation[machine.Cores]
             assert (core.stop - core.start) == 1
 
-            logger.debug("\t\tVertex %s (%u, %u, %u): Spike key:%08x, Flush key:%08x",
+            logger.debug("\t\t\tVertex %s (%u, %u, %u): Spike key:%08x, Flush key:%08x",
                             v, vertex_placement[0], vertex_placement[1],
                             core.start, v.spike_tx_key, v.flush_tx_key)
 

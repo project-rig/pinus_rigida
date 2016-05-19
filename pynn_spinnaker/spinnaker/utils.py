@@ -251,14 +251,14 @@ def load_regions(regions, region_arguments, machine_controller, core):
     # Calculate region size
     size, allocs = sizeof_regions_named(regions, region_arguments)
 
-    logger.debug("\t\t\tRegion size = %u bytes", size)
+    logger.debug("\t\t\t\t\tRegion size = %u bytes", size)
 
     # Allocate a suitable memory block
     # for this vertex and get memory io
     # **NOTE** this is tagged by core
     memory_io = machine_controller.sdram_alloc_as_filelike(
         size, tag=core.start)
-    logger.debug("\t\t\tMemory with tag:%u begins at:%08x",
+    logger.debug("\t\t\t\t\tMemory with tag:%u begins at:%08x",
                     core.start, memory_io.address)
 
     # Layout the slice of SDRAM we have been given

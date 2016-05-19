@@ -556,10 +556,6 @@ class Population(common.Population):
             logger.info("\t\tSynapse type:%s, receptor:%s",
                         s_type.model.__class__.__name__, s_type.receptor)
 
-            # Expand any incoming connections
-            #matrices, weight_fixed_point =\
-            #    self._build_incoming_connection(s_type)
-            #for pre_pop, projections in iteritems(self.incoming_projections[synapse_type]):
             # Load vertices that make up cluster
             s_cluster.load(placements, allocations, machine_controller,
                            self.incoming_projections[s_type],
@@ -567,6 +563,7 @@ class Population(common.Population):
 
         # If population has a neuron cluster, load it
         if self._neural_cluster is not None:
+            logger.info("\t\tNeurons")
             self._neural_cluster.load(placements, allocations, machine_controller)
 
     # --------------------------------------------------------------------------

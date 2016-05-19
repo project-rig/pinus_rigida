@@ -288,12 +288,12 @@ class SynapseCluster(object):
             # Create weight range
             weight_range = WeightRange(False)
 
-            # Loop through presynaptic populations with connections
+            # Loop through unique presynaptic populations with connections
             # terminating in any of the vertices in this postsynaptic slice
             pre_pop_sub_rows = {}
-            for pre_pop in itertools.chain.from_iterable(
+            for pre_pop in set(itertools.chain.from_iterable(
                 iterkeys(v.incoming_connections)
-                for v in post_slice_verts):
+                for v in post_slice_verts)):
 
                 # Create list of lists to contain matrix rows
                 sub_rows = [[] for _ in range(pre_pop.size)]
@@ -313,13 +313,18 @@ class SynapseCluster(object):
                     proj.post._mask_local = np.zeros((proj.post.size,), dtype=bool)
                     proj.post._mask_local[post_slice.python_slice] = True
 
+                    # Cache original connector callback
+                    old_connector_callback = proj._connector.callback
+                    proj._connector.callback = None
+
                     # Build projection
                     proj._build(matrix_rows=sub_rows,
                                 weight_range=weight_range,
                                 directly_connect=False)
 
-                    # Restore old mask
+                    # Restore old mask and connector callback
                     proj.post._mask_local = old_post_mask
+                    proj._connector.callback = old_connector_callback
 
                 # Convert rows to numpy
                 pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
@@ -331,7 +336,7 @@ class SynapseCluster(object):
 
                 # Calculate where the weight format fixed-point lies
                 weight_fixed_point = weight_range.fixed_point
-                logger.debug("\t\tWeight fixed point:%u", weight_fixed_point)
+                logger.debug("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
 
                 # Loop through synapse verts in this postsynaptic slice
                 for v in post_slice_verts:
@@ -343,7 +348,7 @@ class SynapseCluster(object):
                     core = vertex_allocation[machine.Cores]
                     assert (core.stop - core.start) == 1
 
-                    logger.debug("\t\tVertex %s (%u, %u, %u)",
+                    logger.debug("\t\t\t\tVertex %s (%u, %u, %u)",
                                 v, vertex_placement[0], vertex_placement[1],
                                 core.start)
 
