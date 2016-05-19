@@ -301,9 +301,8 @@ class SynapseCluster(object):
                 # Create list of lists to contain matrix rows
                 sub_rows = [[] for _ in range(pre_pop.size)]
 
-                # Loop through corresponding projection
+                # Loop through projections leading from pre_pop
                 for proj in incoming_projections[pre_pop]:
-
                     # Check local mask isn't currently in use
                     assert np.all(proj.post._mask_local)
 
@@ -320,7 +319,7 @@ class SynapseCluster(object):
                     old_connector_callback = proj._connector.callback
                     proj._connector.callback = None
 
-                    # Build projection
+                    # Add synapses from projection to rows
                     proj._build(matrix_rows=sub_rows,
                                 weight_range=weight_range,
                                 directly_connect=False)
@@ -329,72 +328,72 @@ class SynapseCluster(object):
                     proj.post._mask_local = old_post_mask
                     proj._connector.callback = old_connector_callback
 
-                # Convert rows to numpy
+                # Convert rows to numpy and add to dictionary
                 pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
                                              for r in sub_rows]
 
-                # If the synapse model has a function to update weight range
-                if hasattr(self.synapse_model, "update_weight_range"):
-                    self.synapse_model.update_weight_range(weight_range)
+            # If the synapse model has a function to update weight range
+            if hasattr(self.synapse_model, "update_weight_range"):
+                self.synapse_model.update_weight_range(weight_range)
 
-                # Calculate where the weight format fixed-point lies
-                weight_fixed_point = weight_range.fixed_point
-                logger.debug("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
+            # Calculate where the weight format fixed-point lies
+            weight_fixed_point = weight_range.fixed_point
+            logger.debug("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
 
-                # Loop through synapse verts in this postsynaptic slice
-                for v in post_slice_verts:
-                    # Get placement and allocation
-                    vertex_placement = placements[v]
-                    vertex_allocation = allocations[v]
+            # Loop through synapse verts in this postsynaptic slice
+            for v in post_slice_verts:
+                # Get placement and allocation
+                vertex_placement = placements[v]
+                vertex_allocation = allocations[v]
 
-                    # Get core this vertex should be run on
-                    core = vertex_allocation[machine.Cores]
-                    assert (core.stop - core.start) == 1
+                # Get core this vertex should be run on
+                core = vertex_allocation[machine.Cores]
+                assert (core.stop - core.start) == 1
 
-                    logger.debug("\t\t\t\tVertex %s (%u, %u, %u)",
-                                v, vertex_placement[0], vertex_placement[1],
-                                core.start)
+                logger.debug("\t\t\t\tVertex %s (%u, %u, %u)",
+                            v, vertex_placement[0], vertex_placement[1],
+                            core.start)
 
-                    # Partition matrices
-                    sub_matrix_props, sub_matrix_rows =\
-                        self.regions[Regions.synaptic_matrix].partition_matrices(
-                            post_slice, pre_pop_sub_rows, v.incoming_connections)
+                # Partition matrices
+                sub_matrix_props, sub_matrix_rows =\
+                    self.regions[Regions.synaptic_matrix].partition_matrices(
+                        post_slice, pre_pop_sub_rows, v.incoming_connections)
 
-                    # Cache weight fixed-point for
-                    # this synapse point in vertex
-                    v.weight_fixed_point = weight_fixed_point
+                # Cache weight fixed-point for
+                # this synapse point in vertex
+                v.weight_fixed_point = weight_fixed_point
 
-                    # Place them in memory
-                    matrix_placements =\
-                        self.regions[Regions.key_lookup].place_matrices(
-                            sub_matrix_props)
+                # Place them in memory
+                matrix_placements =\
+                    self.regions[Regions.key_lookup].place_matrices(
+                        sub_matrix_props)
 
-                    # Select placed chip
-                    with machine_controller(x=vertex_placement[0],
-                                            y=vertex_placement[1]):
-                        # Get the back propagation buffers from
-                        # each back-propagating neuron vertex
-                        back_prop_in_buffers = [
-                            b.get_back_prop_in_buffer(v.post_neuron_slice)
-                            for b in v.back_prop_in_verts]
+                # Select placed chip
+                with machine_controller(x=vertex_placement[0],
+                                        y=vertex_placement[1]):
+                    # Get the back propagation buffers from
+                    # each back-propagating neuron vertex
+                    back_prop_in_buffers = [
+                        b.get_back_prop_in_buffer(v.post_neuron_slice)
+                        for b in v.back_prop_in_verts]
 
-                        # Get region arguments required to
-                        # calculate size and write
-                        region_arguments = self._get_region_arguments(
-                            v.post_neuron_slice, sub_matrix_props,
-                            sub_matrix_rows, matrix_placements,
-                            weight_fixed_point, v.out_buffers,
-                            back_prop_in_buffers, flush_mask)
+                    # Get region arguments required to
+                    # calculate size and write
+                    region_arguments = self._get_region_arguments(
+                        v.post_neuron_slice, sub_matrix_props,
+                        sub_matrix_rows, matrix_placements,
+                        weight_fixed_point, v.out_buffers,
+                        back_prop_in_buffers, flush_mask)
 
-                        # Load regions
-                        v.region_memory = load_regions(
-                            self.regions, region_arguments,
-                            machine_controller, core)
+                    # Load regions
+                    v.region_memory = load_regions(
+                        self.regions, region_arguments,
+                        machine_controller, core)
 
-                        # Store sub matrix properties and placements in vertex
-                        # so they can be used to subsequently read weights back
-                        v.sub_matrix_props = sub_matrix_props
-                        v.matrix_placements = matrix_placements
+                    # Store sub matrix properties and placements in vertex
+                    # so they can be used to subsequently read weights back
+                    v.sub_matrix_props = sub_matrix_props
+                    v.matrix_placements = matrix_placements
 
     def read_profile(self):
         # Get the profile recording region
