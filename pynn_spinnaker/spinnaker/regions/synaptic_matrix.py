@@ -13,6 +13,9 @@ from rig.type_casts import NumpyFloatToFixConverter, NumpyFixToFloatConverter
 from six import iteritems
 from ..utils import get_row_offset_length
 
+row_dtype = [("weight", np.float32), ("delay", np.uint32),
+             ("index", np.uint32)]
+
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
 
 logger = logging.getLogger("pynn_spinnaker")
@@ -190,35 +193,40 @@ class SynapticMatrix(Region):
         sub_matrix_props = []
         sub_matrix_rows = []
 
+        # Loop through presynaptic population
         for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
-            pre_pop_projections = incoming_projections[pre_pop]
+            # Loop though connections which connect them to this population
+            for proj in incoming_projections[pre_pop]:
+                # Check local mask isn't currently in use
+                assert np.all(proj.post._mask_local)
 
-            for proj in pre_pop_projections:
-                old_pre = proj.pre
-                old_post = proj.post
+                # Cache original post mask (due to above
+                # this is slightly pointless but still)
+                old_post_mask = proj.post._mask_local
 
-                # **YUCK** temporarily replace post in projection with
-                # view of the neurons that make up post vertex slice
-                proj.post = old_post[vertex_slice.python_slice]
+                # Create new local mask to select only the columns
+                # corresponding to neurons in postsynaptic vertex
+                proj.post._mask_local = np.zeros((proj.post.size,), dtype=bool)
+                proj.post._mask_local[vertex_slice.python_slice] = True
 
+                # Create list of lists to contain matrix rows
+                post_vert_sub_rows = [[] for _ in range(pre_pop.size)]
+
+                # **HACK** make weight range
+                weight_range = WeightRange(True)
+
+                # Loop through projections and build
+                proj._build(matrix_rows=post_vert_sub_rows,
+                            weight_range=weight_range,
+                            directly_connect=False)
+
+                # Convert rows to numpy
+                post_vert_sub_rows = [np.asarray(r, dtype=row_dtype)
+                                      for r in post_vert_sub_rows]
+
+                # Loop through presynaptic vertices
                 for pre_neuron_vertex in pre_neuron_vertices:
-                    # Create list of lists to contain matrix rows
-                    sub_rows = [[] for _ in range(len(pre_neuron_vertex.neuron_slice))]
-
-                    # **YUCK* temporarily replace pre in projection
-                    # with view of the neurons that make up our vertices
-                    proj.pre = old_pre[pre_neuron_vertex.neuron_slice.python_slice]
-
-                    # **HACK** make weight range
-                    weight_range = WeightRange(True)
-
-                    # Loop through projections and build
-                    proj._build(matrix_rows=sub_rows,
-                                weight_range=weight_range,
-                                directly_connect=False)
-
-                    sub_rows = [np.asarray(r, dtype= [("weight", np.float32), ("delay", np.uint32), ("index", np.uint32)])
-                                for r in sub_rows]
+                    sub_rows = post_vert_sub_rows[pre_neuron_vertex.neuron_slice.python_slice]
 
                     max_cols = 1
                     num_ext_words = 0
@@ -227,6 +235,9 @@ class SynapticMatrix(Region):
                         # Skip empty subrows
                         if len(sub_row) == 0:
                             continue
+
+                        # Make indices relative to vertex start
+                        sub_row["index"] -= vertex_slice.start
 
                         any_connections = True
 
@@ -270,13 +281,12 @@ class SynapticMatrix(Region):
                         # Add sub matrix to list
                         sub_matrix_props.append(
                             SubMatrix(pre_neuron_vertex.routing_key,
-                                        pre_neuron_vertex.routing_mask,
-                                        size_words, max_cols))
+                                      pre_neuron_vertex.routing_mask,
+                                      size_words, max_cols))
                         sub_matrix_rows.append(sub_rows)
 
-                # Restore projection to it's original glory
-                proj.pre = old_pre
-                proj.post = old_post
+                # Restore old local mask
+                proj.post._mask_local = old_post_mask
 
         print sub_matrix_props
         return sub_matrix_props, sub_matrix_rows

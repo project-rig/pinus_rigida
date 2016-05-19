@@ -29,9 +29,6 @@ logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
-row_dtype = [("weight", np.float32), ("delay", np.uint32),
-             ("index", np.uint32)]
-
 # --------------------------------------------------------------------------
 # WeightRange
 # --------------------------------------------------------------------------
@@ -132,33 +129,7 @@ class PopulationView(common.PopulationView):
     def _get_view(self, selector, label=None):
         return PopulationView(self, selector, label)
 
-    def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
-                            matrix_rows, weight_range,
-                            **connection_parameters):
-        # Convert delay into timesteps and round
-        delay_timesteps = np.around(
-            connection_parameters["delay"] / float(self._simulator.state.dt))
-        delay_timesteps = delay_timesteps.astype(int)
 
-        # If delay is not iterable, make it so using repeat
-        if not isinstance(delay_timesteps, Iterable):
-            delay_timesteps = itertools.repeat(delay_timesteps)
-
-        # If weight is an iterable, update weight range
-        weight = connection_parameters["weight"]
-        if isinstance(weight, Iterable):
-            weight_range.update_iter(weight)
-        # Otherwise
-        else:
-            # Update weight range
-            weight_range.update(weight)
-
-            # Make weight iterable using repeat
-            weight = itertools.repeat(weight)
-
-        # Add synapse to each row
-        for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
-            matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
 # --------------------------------------------------------------------------
 # Population
 # --------------------------------------------------------------------------
