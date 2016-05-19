@@ -571,7 +571,6 @@ class Population(common.Population):
                                   weight_range=weight_range,
                                   directly_connect=False)
 
-
             # Convert completed rows to numpy arrays and add to list
             pop_matrix_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
                                         for r in matrix_rows]
@@ -589,10 +588,17 @@ class Population(common.Population):
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
                             matrix_rows, weight_range,
                             **connection_parameters):
+        # Check delays are within ranges specified by simulator
+        delay_ms = connection_parameters["delay"]
+        assert np.all(delay_ms >= self._simulator.state.min_delay)
+        assert np.all(delay_ms <= self._simulator.state.max_delay)
+
         # Convert delay into timesteps and round
-        delay_timesteps = np.around(
-            connection_parameters["delay"] / float(self._simulator.state.dt))
+        delay_timesteps = np.around(delay_ms / float(self._simulator.state.dt))
         delay_timesteps = delay_timesteps.astype(int)
+
+        # Check that delays are greater than zero after converting to timesteps
+        assert np.all(delay_timesteps > 0)
 
         # If delay is not iterable, make it so using repeat
         if not isinstance(delay_timesteps, Iterable):
