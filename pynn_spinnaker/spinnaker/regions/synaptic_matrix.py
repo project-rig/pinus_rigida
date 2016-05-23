@@ -147,16 +147,16 @@ class SynapticMatrix(Region):
         sub_matrix_rows = []
 
         # Loop through presynaptic population
-        for pre_pop, pre_neuron_vertices in iteritems(incoming_connections):
+        for pre_pop, pre_n_verts in iteritems(incoming_connections):
             # Get the list of sub-rows associated
             # with this presynaptic population
             sub_rows = pre_pop_sub_rows[pre_pop]
 
             # Loop through presynaptic vertices
-            for pre_n_vertex in pre_neuron_vertices:
+            for pre_n_vert in pre_n_verts:
                 # Slice out the sub-rows asssociated
                 # with this presynaptic neuron vert
-                vert_sub_rows = sub_rows[pre_n_vertex.neuron_slice.python_slice]
+                vert_sub_rows = sub_rows[pre_n_vert.neuron_slice.python_slice]
 
                 max_cols = 1
                 num_ext_words = 0
@@ -213,8 +213,8 @@ class SynapticMatrix(Region):
 
                     # Add sub matrix to list
                     sub_matrix_props.append(
-                        SubMatrix(pre_n_vertex.routing_key,
-                                  pre_n_vertex.routing_mask,
+                        SubMatrix(pre_n_vert.routing_key,
+                                  pre_n_vert.routing_mask,
                                   size_words, max_cols))
                     sub_matrix_rows.append(vert_sub_rows)
 
