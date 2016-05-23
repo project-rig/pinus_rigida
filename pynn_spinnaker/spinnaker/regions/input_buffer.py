@@ -56,7 +56,7 @@ class InputBuffer(Region):
         for b in in_buffers:
             data += struct.pack("IIIIIi", b.pointers[0], b.pointers[1],
                                 b.start_neuron, b.num_neurons,
-                                p.receptor_index 15 - b.weight_fixed_point)
+                                b.receptor_index, 15 - b.weight_fixed_point)
 
         # Write data to filelike
         fp.write(data)

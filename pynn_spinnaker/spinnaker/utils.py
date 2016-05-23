@@ -63,7 +63,7 @@ class InputVertex(object):
         
         # The number of neurons-orth of input
         # transferred should match smallest slice
-        num_neurons = min(len(post_slice), len(self.self.post_neuron_slice))
+        num_neurons = min(len(post_slice), len(self.post_neuron_slice))
 
         # Buffer should be applied to neuron at start of
         # synapse start relative to start of neuron slice
@@ -75,7 +75,7 @@ class InputVertex(object):
         # Return offset pointers into out buffers
         return InputBuffer([b + offset_bytes for b in self.out_buffers],
                            start_neuron, num_neurons,
-                           s.receptor_index, s.weight_fixed_point)
+                           self.receptor_index, self.weight_fixed_point)
 
 
 # ----------------------------------------------------------------------------
