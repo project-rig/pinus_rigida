@@ -275,8 +275,7 @@ class NeuralCluster(object):
                                     y=vertex_placement[1]):
                 # Get the input buffers from each synapse vertex
                 in_buffers = [
-                    (s.get_in_buffer(v.neuron_slice), s.receptor_index,
-                        s.weight_fixed_point)
+                    s.get_in_buffer(v.neuron_slice)
                     for s in v.input_verts]
 
                 # Get regiona arguments

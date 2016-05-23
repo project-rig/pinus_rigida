@@ -25,6 +25,15 @@ class Args(namedtuple("Args", "args, kwargs")):
     def __new__(cls, *args, **kwargs):
         return super(Args, cls).__new__(cls, args, kwargs)
 
+
+# ----------------------------------------------------------------------------
+# Args
+# ----------------------------------------------------------------------------
+InputBuffer = namedtuple("InputBuffer",
+                         ["pointers", "start_neuron", "num_neurons",
+                          "receptor_index", "weight_fixed_point"])
+
+
 # ----------------------------------------------------------------------------
 # InputVertex
 # ----------------------------------------------------------------------------
@@ -52,12 +61,21 @@ class InputVertex(object):
         assert post_slice.overlaps(self.post_neuron_slice)
         assert self.out_buffers is not None
         
-        # Calculate the offset
-        offset_bytes = (post_slice.start - self.post_neuron_slice.start) * 4
-        assert offset_bytes >= 0
+        # The number of neurons-orth of input
+        # transferred should match smallest slice
+        num_neurons = min(len(post_slice), len(self.self.post_neuron_slice))
+
+        # Buffer should be applied to neuron at start of
+        # synapse start relative to start of neuron slice
+        start_neuron = max(0, self.post_neuron_slice.start - post_slice.start)
+
+        # If neuron slice starts after input slice then it should be offset
+        offset_bytes = max(0, (post_slice.start - self.post_neuron_slice.start) * 4)
 
         # Return offset pointers into out buffers
-        return [b + offset_bytes for b in self.out_buffers]
+        return InputBuffer([b + offset_bytes for b in self.out_buffers],
+                           start_neuron, num_neurons,
+                           s.receptor_index, s.weight_fixed_point)
 
 
 # ----------------------------------------------------------------------------
