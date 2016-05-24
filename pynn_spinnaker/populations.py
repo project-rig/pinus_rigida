@@ -509,6 +509,9 @@ class Population(common.Population):
             connection_parameters["delay"] / float(self._simulator.state.dt))
         delay_timesteps = delay_timesteps.astype(int)
 
+        # Check that delays are greater than zero after converting to timesteps
+        assert np.all(delay_timesteps > 0)
+
         # If delay is not iterable, make it so using repeat
         if not isinstance(delay_timesteps, Iterable):
             delay_timesteps = itertools.repeat(delay_timesteps)

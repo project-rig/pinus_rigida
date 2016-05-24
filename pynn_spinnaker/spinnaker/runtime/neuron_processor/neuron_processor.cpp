@@ -388,7 +388,6 @@ static void DMATransferDone(uint, uint tag)
     // Apply input in DMA buffer
     Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
     g_InputBuffer.Process(g_InputBufferBeingProcessed,
-                          g_AppWords[AppWordNumNeurons],
                           applyInputLambda);
     Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
 
@@ -396,8 +395,7 @@ static void DMATransferDone(uint, uint tag)
     g_InputBufferBeingProcessed++;
 
     // If there aren't any more input buffers to DMA, start neuron update
-    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick,
-      g_AppWords[AppWordNumNeurons], DMATagInputRead))
+    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick, DMATagInputRead))
     {
       UpdateNeurons();
     }
@@ -454,8 +452,7 @@ static void TimerTick(uint tick, uint)
     g_InputBufferBeingProcessed = 0;
 
     // If there aren't any input buffers to DMA, start neuron update
-    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick,
-      g_AppWords[AppWordNumNeurons], DMATagInputRead))
+    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick, DMATagInputRead))
     {
       UpdateNeurons();
     }

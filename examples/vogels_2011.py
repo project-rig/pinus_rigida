@@ -34,10 +34,10 @@ cell_params = {
 NUM_EXCITATORY = 2000
 
 # SpiNNaker setup
-setup_kwargs =  {"spinnaker_hostname": "192.168.1.1"}
+setup_kwargs =  {"spalloc_num_boards": 1}
 
 # Function to build the basic network - dynamics should be a PyNN synapse dynamics object
-def build_network(ie_synapse, max_e_neurons_per_core, e_mean_firing_rate):
+def build_network(ie_synapse, e_mean_firing_rate):
     # Create excitatory and inhibitory populations of neurons
     ex_pop = sim.Population(NUM_EXCITATORY, model(**cell_params), label="E")
     in_pop = sim.Population(NUM_EXCITATORY / 4, model(**cell_params), label="I")
@@ -48,9 +48,6 @@ def build_network(ie_synapse, max_e_neurons_per_core, e_mean_firing_rate):
                                       high=-50.0, rng=rng)
     ex_pop.initialize(v=uniformDistr)
     in_pop.initialize(v=uniformDistr)
-
-    # **HACK** issue #28 means plastic version needs clustering hack
-    ex_pop.spinnaker_config.max_neurons_per_core = max_e_neurons_per_core
 
     # Pass mean firing rate of population to heuristic (in mode without
     ex_pop.spinnaker_config.mean_firing_rate = e_mean_firing_rate
@@ -78,7 +75,7 @@ def build_network(ie_synapse, max_e_neurons_per_core, e_mean_firing_rate):
 
 # Build static network
 sim.setup(timestep=1.0, **setup_kwargs)
-static_ex_pop,_ = build_network(sim.StaticSynapse(weight=0.0), 1024, 300.0)
+static_ex_pop,_ = build_network(sim.StaticSynapse(weight=0.0, delay=1.0), 300.0)
 
 # Run for 1s
 sim.run(1000)
@@ -87,16 +84,17 @@ sim.run(1000)
 static_data = static_ex_pop.get_data()
 
 # Clear simulation state
-sim.setup(timestep=1.0, **setup_kwargs)
+sim.setup(min_delay=1.0, max_delay=7.0, timestep=1.0, **setup_kwargs)
 
 # Build inhibitory plasticity  model
 stdp_model = sim.STDPMechanism(
     timing_dependence = sim.Vogels2011Rule(rho=0.12, tau=20.0, eta=0.05),
-    weight_dependence = sim.AdditiveWeightDependence(w_min=0.0, w_max=1.0)
+    weight_dependence = sim.AdditiveWeightDependence(w_min=0.0, w_max=1.0),
+    weight=0.0, delay=1.0,
 )
 
 # Build plastic network
-plastic_ex_pop, plastic_ie_projection = build_network(stdp_model, 512, 10.0)
+plastic_ex_pop, plastic_ie_projection = build_network(stdp_model, 10.0)
 
 # Run simulation
 sim.run(10000)
