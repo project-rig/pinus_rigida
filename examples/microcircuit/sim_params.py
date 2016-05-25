@@ -1,6 +1,7 @@
 ###################################################
 ###     	Simulation parameters		###        
 ###################################################
+import os
 
 simulator_params = {
     'nest' :
@@ -37,7 +38,7 @@ system_params = {
     # file name for error output
     'errfile' : 'errors.txt',
     # absolute path to which the output files should be written
-    'output_path' : '',
+    'output_path' : os.getcwd(),
     # path to the MPI shell script
     'mpi_path' : '',
     # path to back-end

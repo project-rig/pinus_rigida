@@ -10,7 +10,7 @@ params_dict = {
     # Whether to make random numbers independent of the number of processes
     'parallel_safe' : True,
     # Fraction of neurons to simulate
-    'N_scaling' : 1.,
+    'N_scaling' : 0.1,
     # Fraction of in-degrees to simulate. Upon downscaling, synaptic weights are 
     # taken proportional to 1/sqrt(in-degree) and external drive is adjusted 
     # to preserve mean and variances of activity in the diffusion approximation.
@@ -18,7 +18,7 @@ params_dict = {
     # This scaling was not part of the original study, but this option is included
     # here to enable simulations on small systems that give results similar to
     # full-scale simulations.
-    'K_scaling' : 1.,
+    'K_scaling' : 0.1,
     # Type of background input. Possible values: 'poisson' or 'DC'
     # If 'DC' is chosen, a constant external current is provided, equal to the mean 
     # current due to the Poisson input used in the default version of the model.
@@ -77,7 +77,7 @@ params_dict = {
 }
 
 # Simulator back-end
-simulator = 'pynn_spinnaker'
+simulator = 'nest'
 
 # Load params from params_dict into global namespace
 globals().update(params_dict[simulator])

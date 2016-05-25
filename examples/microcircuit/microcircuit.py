@@ -16,8 +16,8 @@ import plotting
 
 # prepare simulation
 # logging.basicConfig() # TODO! Remove if it runs without this line
-#exec('import pyNN.%s as sim' %simulator)
-import pynn_spinnaker as sim
+exec('import pyNN.%s as sim' %simulator)
+#import pynn_spinnaker as sim
 sim.setup(**simulator_params[simulator])
 import network
 
