@@ -38,7 +38,7 @@ params_dict = {
     # Fraction of neurons from which to record membrane potentials when 
     # record_v=True and record_fraction = True
     'frac_record_v' : 0.02,
-  }
+  },
 
   'pynn_spinnaker':
   {

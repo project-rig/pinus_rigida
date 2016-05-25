@@ -12,13 +12,11 @@ simulator_params = {
     },
     'pynn_spinnaker':
     {
-      'timestep'        : 0.1,    # ms
-      'threads'         : 1,
-      'sim_duration'    : 1000., # ms
-      'min_delay'       : 0.1,     # ms
-      'spinnaker_hostname': "192.168.1.1",
-      'spinnaker_width': 8,
-      'spinnaker_height': 8
+      'timestep'          : 0.1,    # ms
+      'threads'           : 1,
+      'sim_duration'      : 1000., # ms
+      'min_delay'         : 0.1,     # ms
+      'spalloc_num_board' : 6,
     }
 }
 
