@@ -72,7 +72,7 @@ public:
                 inputBufferIndex, (tick + 1) % 2);
 
       // Start DMA into input buffer
-      auto inputBuffer = m_InputBuffers[inputBufferIndex];
+      const auto &inputBuffer = m_InputBuffers[inputBufferIndex];
       spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffers[(tick + 1) % 2]),
                          m_DMABuffer, DMA_READ, inputBuffer.m_NumNeurons * sizeof(T));
       return false;
@@ -89,7 +89,7 @@ public:
   void Process(unsigned int inputBufferIndex, G applyInputFunction)
   {
     // Get corresponding input buffer
-    auto inputBuffer = m_InputBuffers[inputBufferIndex];
+    const auto &inputBuffer = m_InputBuffers[inputBufferIndex];
 
     LOG_PRINT(LOG_LEVEL_TRACE, "\tApplying input buffer:%u to start neuron:%u, num neurons:%u, receptor:%u with left shift:%d",
       inputBufferIndex, inputBuffer.m_StartNeuron, inputBuffer.m_NumNeurons, inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
