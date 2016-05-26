@@ -265,6 +265,14 @@ void UpdateNeurons()
 {
   Profiler::Tag<ProfilerTagUpdateNeurons> p;
 
+  // If spike recording isn't reset, DMA to write previous time steps spikes is outstanding,
+  if(!g_SpikeRecording.IsReset())
+  {
+    LOG_PRINT(LOG_LEVEL_ERROR, "Updating neurons with previous spike recorder transfer in progress");
+    rt_error(RTE_ABORT);
+    return;
+  }
+
   // Loop through neurons
   auto *neuronMutableState = g_NeuronMutableState;
   const uint16_t *neuronImmutableStateIndex = g_NeuronImmutableStateIndices;

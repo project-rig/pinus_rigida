@@ -73,6 +73,14 @@ public:
     // If we should record this neuron's spikingness
     if(BitField::TestBit(m_IndicesToRecord, neuron))
     {
+      // If current bit is beyond the end of the bitfield, spike buffer has
+      // probably not been transferred and hence in reset so give and error
+      if(m_CurrentBit >= (m_NumWords * 32))
+      {
+        LOG_PRINT(LOG_LEVEL_ERROR, "Recording spike past end of record buffer");
+        return;
+      }
+
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tRecording neuron:%u, spikes:%u",
                 neuron, spiked ? 1 : 0);
 
@@ -117,6 +125,10 @@ public:
     }
   }
 
+  bool IsReset() const
+  {
+    return (m_CurrentBit == 0);
+  }
 
 private:
   //-----------------------------------------------------------------------------
