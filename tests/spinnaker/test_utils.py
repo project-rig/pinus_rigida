@@ -2,7 +2,9 @@
 import pytest
 from pynn_spinnaker.spinnaker import utils
 
-
+# ----------------------------------------------------------------------------
+# Tests
+# ----------------------------------------------------------------------------
 @pytest.mark.parametrize(
     "input_slice, neuron_slice, expected_offset_bytes, expected_num_neurons, expected_start_neuron",
     [(utils.UnitStrideSlice(0, 256), utils.UnitStrideSlice(0, 512), 0, 256, 0),
