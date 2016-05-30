@@ -11,35 +11,39 @@ from pyNN.parameters import ParameterSpace
 from six import iterkeys
 
 # ----------------------------------------------------------------------------
+# Test generator
+# ----------------------------------------------------------------------------
+def pytest_generate_tests(metafunc):
+    # If fixture requires kwargs, add any specified in test class
+    if "kwargs" in metafunc.fixturenames:
+        metafunc.parametrize("kwargs", getattr(metafunc.cls, "kwargs", [{}]))
+
+# ----------------------------------------------------------------------------
 # BaseTestMapping
 # ----------------------------------------------------------------------------
 class BaseTestMapping(object):
     # ----------------------------------------------------------------------------
     # Standard parameters
     # ----------------------------------------------------------------------------
-    test_scalars = [{"a": 0.5}, {"a": 27.0, "b": 0.5, "c": 0.2}]
-    test_arrays = [({"a": np.arange(10.0)}, 10),
-                   ({"a": np.arange(10.0), "b": np.arange(10.0, 20.0), "c": np.arange(20.0, 30.0)}, 10),
-                   ({"a": [0.5],  "b": [0.0], "c": [122.0]}, 1)]
-    test_kwargs = [{}]
+    scalars = [{"a": 0.5}, {"a": 27.0, "b": 0.5, "c": 0.2}]
+    arrays = [({"a": np.arange(10.0)}, 10),
+              ({"a": np.arange(10.0), "b": np.arange(10.0, 20.0), "c": np.arange(20.0, 30.0)}, 10),
+              ({"a": [0.5],  "b": [0.0], "c": [122.0]}, 1)]
+    bad_arrays = [(a[0], a[1] + 6) for a in arrays]
 
     # ----------------------------------------------------------------------------
     # Test methods
     # ----------------------------------------------------------------------------
-    @pytest.mark.parametrize("params", test_scalars)
+    @pytest.mark.parametrize("params", scalars)
     @pytest.mark.parametrize("size", [1, 10])
-    @pytest.mark.parametrize("kwargs", test_kwargs)
     def test_homogeneous(self, params, size, kwargs):
         self._test(params, size, kwargs)
 
-    @pytest.mark.parametrize("params, size", test_arrays)
-    @pytest.mark.parametrize("kwargs", test_kwargs)
+    @pytest.mark.parametrize("params, size", arrays)
     def test_array(self, params, size, kwargs):
         self._test(params, size, kwargs)
 
-    @pytest.mark.parametrize("params, size",
-                            [(a[0], a[1] + 6) for a in test_arrays])
-    @pytest.mark.parametrize("kwargs", test_kwargs)
+    @pytest.mark.parametrize("params, size", bad_arrays)
     def test_array_bad_length(self, params, size, kwargs):
         with pytest.raises(ValueError):
             self._test(params, size, kwargs)
@@ -83,15 +87,14 @@ class TestInteger(BaseTestMapping):
 # ----------------------------------------------------------------------------
 # TestIntegerTimeDivide
 # ----------------------------------------------------------------------------
-'''
 class TestIntegerTimeDivide(BaseTestMapping):
     mapping_func = staticmethod(lazy_param_map.integer_time_divide)
     data_type = "i4"
-    test_kwargs = [{"sim_timestep_ms": 1.0}, {"sim_timestep_ms": 0.1}]
+    kwargs = [{"sim_timestep_ms": 1.0}, {"sim_timestep_ms": 0.1}]
 
     def correct_value_func(self, p, sim_timestep_ms):
-        return np.round(numpy.divide(p, sim_timestep_ms)).astype(int)
-'''
+        return np.round(np.divide(p, sim_timestep_ms)).astype(int)
+
 # ----------------------------------------------------------------------------
 # TestS1615
 # ----------------------------------------------------------------------------
@@ -112,11 +115,28 @@ class TestS2211(BaseTestMapping):
     def correct_value_func(self, p):
         return np.round(np.multiply(p, 2.0 ** 11)).astype(int)
 
-'''
-integer_time_divide
+# ----------------------------------------------------------------------------
+# TestU32WeightFixedPoint
+# ----------------------------------------------------------------------------
+class TestU32WeightFixedPoint(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.u32_weight_fixed_point)
+    data_type = "u4"
+    kwargs = [{"weight_fixed_point": 24}, {"weight_fixed_point": 10}]
 
-u32_weight_fixed_point(values, weight_fixed_point, **kwargs):
-s32_weight_fixed_point(values, weight_fixed_point, **kwargs):
+    def correct_value_func(self, p, weight_fixed_point):
+        return np.round(np.multiply(p, 2.0 ** weight_fixed_point)).astype(int)
+
+# ----------------------------------------------------------------------------
+# TestS32WeightFixedPoint
+# ----------------------------------------------------------------------------
+class TestS32WeightFixedPoint(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.s32_weight_fixed_point)
+    data_type = "i4"
+    kwargs = [{"weight_fixed_point": 24}, {"weight_fixed_point": 10}]
+
+    def correct_value_func(self, p, weight_fixed_point):
+        return np.round(np.multiply(p, 2.0 ** weight_fixed_point)).astype(int)
+'''
 s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)
 s1615_exp_decay = partial(exp_decay, float_to_fixed=float_to_s1615_no_copy)
 u032_exp_decay = partial(exp_decay, float_to_fixed=float_to_u032_no_copy)
