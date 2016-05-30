@@ -11,72 +11,110 @@ from pyNN.parameters import ParameterSpace
 from six import iterkeys
 
 # ----------------------------------------------------------------------------
-# Helpers
+# BaseTestMapping
 # ----------------------------------------------------------------------------
-def _test(params, size, data_type, mapping_func, correct_value_func):
-    # Create parameter space
-    param_space = ParameterSpace(params, shape=(size,))
+class BaseTestMapping(object):
+    # ----------------------------------------------------------------------------
+    # Standard parameters
+    # ----------------------------------------------------------------------------
+    test_scalars = [{"a": 0.5}, {"a": 27.0, "b": 0.5, "c": 0.2}]
+    test_arrays = [({"a": np.arange(10.0)}, 10),
+                   ({"a": np.arange(10.0), "b": np.arange(10.0, 20.0), "c": np.arange(20.0, 30.0)}, 10),
+                   ({"a": [0.5],  "b": [0.0], "c": [122.0]}, 1)]
+    test_kwargs = [{}]
 
-    # Build param map applying mapping function to all parameters
-    param_map = [(param_name, data_type, mapping_func)
-                 for param_name in iterkeys(params)]
+    # ----------------------------------------------------------------------------
+    # Test methods
+    # ----------------------------------------------------------------------------
+    @pytest.mark.parametrize("params", test_scalars)
+    @pytest.mark.parametrize("size", [1, 10])
+    @pytest.mark.parametrize("kwargs", test_kwargs)
+    def test_homogeneous(self, params, size, kwargs):
+        self._test(params, size, kwargs)
 
-    # Apply map
-    mapped_params = lazy_param_map.apply(param_space, param_map, size)
+    @pytest.mark.parametrize("params, size", test_arrays)
+    @pytest.mark.parametrize("kwargs", test_kwargs)
+    def test_array(self, params, size, kwargs):
+        self._test(params, size, kwargs)
 
-    # Extract parameter names
-    param_names = (mapped_params.dtype.names
-                   if mapped_params.dtype.names is not None
-                   else (slice(None, None, None),))
+    @pytest.mark.parametrize("params, size",
+                            [(a[0], a[1] + 6) for a in test_arrays])
+    @pytest.mark.parametrize("kwargs", test_kwargs)
+    def test_array_bad_length(self, params, size, kwargs):
+        with pytest.raises(ValueError):
+            self._test(params, size, kwargs)
 
-    # Loop through mapped parameters and the parameter map
-    for n, p in zip(param_names, param_map):
-        correct_value = correct_value_func(params[p[0]])
-        assert np.all(mapped_params[n] == correct_value)
+    # ----------------------------------------------------------------------------
+    # Private methods
+    # ----------------------------------------------------------------------------
+    def _test(self, params, size, kwargs):
+        # Create parameter space
+        param_space = ParameterSpace(params, shape=(size,))
 
-def _test_exception(params, size, data_type, mapping_func, correct_value_func,
-                expected_exception):
-    if expected_exception is not None:
-        with pytest.raises(expected_exception):
-            _test(params, size, data_type, mapping_func, correct_value_func)
-    else:
-        _test(params, size, data_type, mapping_func, correct_value_func)
+        # Build param map applying mapping function to all parameters
+        param_map = [(param_name, self.data_type, self.mapping_func)
+                    for param_name in iterkeys(params)]
+
+        # Apply map
+        mapped_params = lazy_param_map.apply(param_space, param_map,
+                                             size, **kwargs)
+
+        # Extract parameter names
+        param_names = (mapped_params.dtype.names
+                    if mapped_params.dtype.names is not None
+                    else (slice(None, None, None),))
+
+        # Loop through mapped parameters and the parameter map
+        for n, p in zip(param_names, param_map):
+            correct_value = self.correct_value_func(params[p[0]], **kwargs)
+            assert np.all(mapped_params[n] == correct_value)
+
 
 # ----------------------------------------------------------------------------
-# Standard parameters
+# TestInteger
 # ----------------------------------------------------------------------------
-scalars = [{"a": 0.5}, {"a": 27.0, "b": 0.5, "c": 0.2}]
+class TestInteger(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.integer)
+    data_type = "i4"
+
+    def correct_value_func(self, p):
+        return np.round(p).astype(int)
 
 # ----------------------------------------------------------------------------
-# Tests
+# TestIntegerTimeDivide
 # ----------------------------------------------------------------------------
-@pytest.mark.parametrize("params", scalars)
-@pytest.mark.parametrize("size", [1, 10])
-def test_integer_homogeneous(params, size):
-    _test(params, size, "i4", lazy_param_map.integer,
-          lambda p: np.round(p).astype(int))
+'''
+class TestIntegerTimeDivide(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.integer_time_divide)
+    data_type = "i4"
+    test_kwargs = [{"sim_timestep_ms": 1.0}, {"sim_timestep_ms": 0.1}]
 
-@pytest.mark.parametrize("params, size, value_error",
-                         [({"a": np.arange(10.0)}, 10, False),
-                          ({"a": np.arange(10.0), "b": np.arange(10.0, 20.0), "c": np.arange(20.0, 30.0)}, 10, False),
-                          ({"a": [0.5],  "b": [0.0], "c": [122.0]}, 1, False),
-                          ({"a": np.arange(10.0)}, 12, True)])
-def test_integer_array(params, size, value_error):
-    _test_exception(params, size, "i4", lazy_param_map.integer,
-                    lambda p: np.round(p).astype(int),
-                    ValueError if value_error else None)
+    def correct_value_func(self, p, sim_timestep_ms):
+        return np.round(numpy.divide(p, sim_timestep_ms)).astype(int)
+'''
+# ----------------------------------------------------------------------------
+# TestS1615
+# ----------------------------------------------------------------------------
+class TestS1615(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.s1615)
+    data_type = "i4"
 
-@pytest.mark.parametrize("params", scalars)
-@pytest.mark.parametrize("size", [1, 10])
-def test_s1615_homogeneous(params, size):
-    _test(params, size, "i4", lazy_param_map.s1615,
-          lambda p: np.round(p * (2.0 ** 15)).astype(int))
+    def correct_value_func(self, p):
+        return np.round(np.multiply(p, 2.0 ** 15)).astype(int)
+
+# ----------------------------------------------------------------------------
+# TestS2211
+# ----------------------------------------------------------------------------
+class TestS2211(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.s2211)
+    data_type = "i4"
+
+    def correct_value_func(self, p):
+        return np.round(np.multiply(p, 2.0 ** 11)).astype(int)
 
 '''
-integer
 integer_time_divide
-s1615
-s2211
+
 u32_weight_fixed_point(values, weight_fixed_point, **kwargs):
 s32_weight_fixed_point(values, weight_fixed_point, **kwargs):
 s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)
