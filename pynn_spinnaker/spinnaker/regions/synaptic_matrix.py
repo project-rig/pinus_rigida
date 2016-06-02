@@ -140,6 +140,9 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
+    def estimate_matrix_bytes(self, pre_slice, max_row_synapses):
+        return self._get_num_row_words(max_row_synapses) * len(pre_slice) * 4
+
     def partition_matrices(self, post_vertex_slice, pre_pop_sub_rows,
                            incoming_connections):
         # Loop through all incoming connections

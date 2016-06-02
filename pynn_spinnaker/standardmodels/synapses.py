@@ -26,7 +26,7 @@ class StaticSynapse(synapses.StaticSynapse):
 
     # Assuming relatively long row length, at what rate can a SpiNNaker
     # synapse_processor of this type process synaptic events (hZ)
-    max_synaptic_event_rate = 7E6
+    max_synaptic_event_rate = 9E6
 
     synaptic_matrix_region_class = regions.StaticSynapticMatrix
 

@@ -5,6 +5,11 @@ Connection method classes for PyNN SpiNNaker
 :license: CeCILL, see LICENSE for details.
 
 """
+# Import modules
+import numpy as np
+import scipy
+
+# Import classes
 from pyNN.connectors import (AllToAllConnector,
                              FixedProbabilityConnector,
                              FixedTotalNumberConnector,
@@ -27,6 +32,10 @@ from pyNN.connectors import (AllToAllConnector,
 class AllToAllConnector(AllToAllConnector):
     directly_connectable = False
 
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        return len(post_slice)
+
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
         return len(pre_slice) * len(post_slice)
@@ -37,6 +46,17 @@ class AllToAllConnector(AllToAllConnector):
 # ----------------------------------------------------------------------------
 class FixedProbabilityConnector(FixedProbabilityConnector):
     directly_connectable = False
+
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        # Create array of possible row lengths
+        x = np.arange(len(post_slice))
+
+        # Calculate CDF
+        cdf = scipy.stats.binom.cdf(x, len(post_slice), self.p_connect)
+
+        # Return row-length corresponding to 99.9% of rows
+        return np.searchsorted(cdf, 0.999)
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
@@ -50,6 +70,10 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
 class OneToOneConnector(OneToOneConnector):
     directly_connectable = True
 
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        return 1
+
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
         return min(len(pre_slice), len(post_slice))
@@ -60,6 +84,16 @@ class OneToOneConnector(OneToOneConnector):
 # ----------------------------------------------------------------------------
 class FromListConnector(FromListConnector):
     directly_connectable = False
+
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        # Extract columns of pre and post indices from connection list
+        pre_indices = self.conn_list[:, 0]
+        post_indices = self.conn_list[:, 1]
+
+        # Compute histogram
+        #bins = np.histogram(len(pre_slice))[0]
+        raise NotImplementedError()
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
@@ -81,6 +115,10 @@ class FromListConnector(FromListConnector):
 class FixedNumberPostConnector(FixedNumberPostConnector):
     directly_connectable = False
 
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        raise NotImplementedError()
+
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
         # How large a fraction of the full post populations is this
@@ -94,6 +132,10 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
 class FixedNumberPreConnector(FixedNumberPreConnector):
     directly_connectable = False
 
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        return len(post_slice)
+
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
         # How large a fraction of the full pre populations is this
@@ -106,6 +148,10 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
 # ----------------------------------------------------------------------------
 class FixedTotalNumberConnector(FixedTotalNumberConnector):
     directly_connectable = False
+
+    def estimate_max_row_synapses(self, pre_slice, post_slice,
+                                  pre_size, post_size):
+        raise NotImplementedError()
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):

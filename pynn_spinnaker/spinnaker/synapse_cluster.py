@@ -173,6 +173,7 @@ class SynapseCluster(object):
 
         # Loop through the post-slices
         self.verts = []
+        vert_sdram = []
         for post_slice in self.post_slices:
             logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
@@ -204,12 +205,17 @@ class SynapseCluster(object):
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     pre_rate = total_synapses * pre_mean_rate
 
-                    # Synapses are approximately 4 bytes
-                    # **TODO** more generic
-                    sdram_bytes = total_synapses * 4
+                    # Estimate MAXIMUM number of synapses that may be in a row
+                    max_row_synapses = proj._estimate_max_row_synapses(
+                        pre_vertex.neuron_slice, post_slice)
+
+                    # Estimate size of matrix
+                    synaptic_matrix = self.regions[Regions.synaptic_matrix]
+                    sdram_bytes = synaptic_matrix.estimate_matrix_bytes(
+                        pre_vertex.neuron_slice, max_row_synapses)
 
                     logger.debug("\t\t\t\t\t\tTotal synapses:%d, "
-                                 "synaptic event rate:%f Hz, sdram:%u bytes",
+                                 "synaptic event rate:%f Hz, SDRAM:%u bytes",
                                  total_synapses, pre_rate, sdram_bytes)
 
                     # Add this connection to the synapse vertex
@@ -222,11 +228,12 @@ class SynapseCluster(object):
 
                     # If it's more than this type of
                     # synapse processor can handle
-                    if (vert_event_rate > synapse_model.max_synaptic_event_rate
-                        or vert_sdram_bytes > (8 * 1024 * 1024)):
+                    if (vert_event_rate > synapse_model.max_synaptic_event_rate):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
-
+                        vert_sdram.append(vert_sdram_bytes)
+                        logger.debug("\t\t\t\t\t\tVertex: total event rate:%f Hz, SDRAM:%u bytes",
+                                     vert_event_rate, vert_sdram_bytes)
                         # Create replacement and reset event rate and SDRAM
                         vert = Vertex(post_slice, receptor_index)
                         vert_event_rate = 0.0
@@ -235,17 +242,19 @@ class SynapseCluster(object):
             # If the last synapse vertex created had any incoming connections
             if len(vert.incoming_connections) > 0:
                 self.verts.append(vert)
+                vert_sdram.append(vert_sdram_bytes)
+                logger.debug("\t\t\t\t\t\tVertex: total event rate:%f Hz, SDRAM:%u bytes",
+                             vert_event_rate, vert_sdram_bytes)
 
         logger.debug("\t\t\t%u synapse vertices", len(self.verts))
 
         # Loop through synapse vertices
-        for v in self.verts:
+        for v, s in zip(self.verts, vert_sdram):
             # Add application to dictionary
             vertex_applications[v] = synapse_app
 
             # Add resources to dictionary
-            # **TODO** add SDRAM
-            vertex_resources[v] = {machine.Cores: 1}
+            vertex_resources[v] = {machine.Cores: 1, machine.SDRAM: s}
 
     # --------------------------------------------------------------------------
     # Public methods
