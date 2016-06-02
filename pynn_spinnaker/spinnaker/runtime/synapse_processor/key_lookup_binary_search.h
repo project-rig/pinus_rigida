@@ -46,7 +46,7 @@ public:
       {
         // Extract number of synapses and word offset from lookup entry
         const unsigned int rowSynapses = lookupEntry.m_WordOffsetRowSynapses.GetNumSynapses();
-        const unsigned int wordOffset = lookupEntry.m_WordOffsetRowSynapses.GetWordOffset();
+        const unsigned int wordOffset = 2 * lookupEntry.m_WordOffsetRowSynapses.GetWordOffset();
         
         // Extract neuron ID from key
         // **NOTE** assumed to be at bottom of mask

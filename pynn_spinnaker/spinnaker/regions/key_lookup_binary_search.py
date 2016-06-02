@@ -1,4 +1,5 @@
 # Import modules
+import math
 import struct
 
 # Import classes
@@ -61,9 +62,10 @@ class KeyLookupBinarySearch(Region):
         # **NOTE** default sort is fine as first element of sub-matrix
         # tuple is key which is what we want to sort by
         for m, p in sorted(zip(sub_matrix_props, matrix_placements)):
+            assert p & 0x1 == 0
             data += struct.pack(
                 "III", m.key, m.mask,
-                get_row_offset_length(p, m.max_cols, self.LengthBits)
+                get_row_offset_length(p // 2, m.max_cols, self.LengthBits)
             )
 
         # Write data to filelike
@@ -80,7 +82,11 @@ class KeyLookupBinarySearch(Region):
             # Add current offset
             matrix_placements.append(current_offset_words)
 
+            # Because there's not QUITE enough bits round
+            # words up so they're 64-bit aligned
+            size_words = 2 * int(math.ceil(float(s.size_words) / 2.0))
+
             # Add size to current offset
-            current_offset_words += s.size_words
+            current_offset_words += size_words
 
         return matrix_placements
