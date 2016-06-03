@@ -1,6 +1,8 @@
 # Import modules
 import lazyarray as la
+import logging
 import numpy as np
+import scipy.stats
 import sentinel
 
 # Import classes
@@ -9,6 +11,8 @@ from utils import LazyArrayFloatToFixConverter
 # Import functions
 from copy import deepcopy
 from functools import partial
+
+logger = logging.getLogger("pynn_spinnaker")
 
 # Create a converter functions to convert from float to
 # various fixed-point formats used by PyNN SpiNNaker
@@ -192,7 +196,42 @@ def exp_decay_lut(values, num_entries, time_shift, sim_timestep_ms,
     # Calculate exponential decay
     values.shape = time_ms.shape
     decay_vals = la.exp(time_ms / values)
+
+    # Check last entry is zero(ish)
+    if decay_vals[-1] > (1.0 / float(1 << float_to_fixed.n_frac)):
+        logger.warn("Exponential decay LUT too short - last entry:%f, "
+                    "num_entries:%u, time shift:%u, time step:%fms and "
+                    "tau:%fms", decay_vals[-1], num_entries, time_shift,
+                    sim_timestep_ms, values[0])
+
+    # Convert to fixed-point and return
     return float_to_fixed(decay_vals)
+
+def random_seed(num_words, **kwargs):
+    # Return random vector
+    # **THINK** why is seed only 31-bits
+    # **TODO** different types
+    return np.random.randint(0x7FFFFFFF, size=num_words).astype(np.uint32)
+
+def its_lut(distribution, float_to_fixed):
+    # Determine how many entries will be in LUT
+    size = (1 << float_to_fixed.n_frac)
+
+    # Calculate floating point range this represents
+    q = np.arange(0.0, 1.0, 1.0 / float(size))
+
+    # Calculate inverse CDF
+    inverse_cdf = la.larray(distribution(q))
+
+    # Convert to fixed-point and return
+    return float_to_fixed(inverse_cdf)
+
+def exp_dist_its_lut(mean, float_to_fixed, **kwargs):
+    # Bind mean parameter to PPF
+    distribution = partial(scipy.stats.expon.ppf, scale=mean)
+
+    # Return the inverse transform sample LUT
+    return inverse_transform_sample_lut(distribution, float_to_fixed)
 
 # Various functions bound to standard fixed point types
 s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)
@@ -202,3 +241,5 @@ s1615_exp_init = partial(exp_init, float_to_fixed=float_to_s1615_no_copy)
 s1615_rate_isi = partial(rate_isi, float_to_fixed=float_to_s1615_no_copy)
 u032_rate_exp_minus_lambda = partial(rate_exp_minus_lambda, float_to_fixed=float_to_u032_no_copy)
 s411_exp_decay_lut = partial(exp_decay_lut, float_to_fixed=float_to_s411_no_copy)
+mars_kiss_64_random_seed = partial(random_seed, num_words=4)
+s411_exp_dist_its_lut = partial(exp_dist_its_lut, float_to_fixed=float_to_s411_no_copy)
