@@ -1,8 +1,5 @@
 """
-Mock implementation of the PyNN API, for testing and documentation purposes.
-
-This simulator implements the PyNN API, but generates random data rather than
-really running simulations.
+Rig implementation of the PyNN API, for use on SpiNNaker
 
 :copyright: Copyright 2006-2015 by the PyNN team, see AUTHORS.
 :license: CeCILL, see LICENSE for details.
@@ -27,6 +24,8 @@ from .populations import Population, PopulationView, Assembly
 from .projections import Projection
 
 from rig.machine_control.machine_controller import TruncationWarning
+
+from version import __version__
 
 logger = logging.getLogger("PyNN")
 
