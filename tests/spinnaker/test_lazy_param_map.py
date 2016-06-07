@@ -106,10 +106,10 @@ class TestS1615(BaseTestMapping):
         return np.round(np.multiply(p, 2.0 ** 15)).astype(int)
 
 # ----------------------------------------------------------------------------
-# TestS2211
+# TestS2011
 # ----------------------------------------------------------------------------
-class TestS2211(BaseTestMapping):
-    mapping_func = staticmethod(lazy_param_map.s2211)
+class TestS2011(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.s2011)
     data_type = "i4"
 
     def correct_value_func(self, p):
