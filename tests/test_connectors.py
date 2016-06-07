@@ -58,5 +58,8 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     # Calculate actual maximum row length
     actual_max_row_synapses = max(len(s) for s in sub_rows)
 
+    # Check estimated maximum is greater or equal than actual maximum
     assert estimated_max_row_synapses >= actual_max_row_synapses
-    assert estimated_max_row_synapses < actual_max_row_synapses * 1.25
+
+    # Check estimated maximum isn't TOO big
+    assert estimated_max_row_synapses <= actual_max_row_synapses * 1.25
