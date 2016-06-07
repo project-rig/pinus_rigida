@@ -219,9 +219,12 @@ class NeuralCluster(object):
             # Add application to dictionary
             vertex_applications[v] = neuron_app
 
+            # Estimate SDRAM usage
+            sdram = self._estimate_sdram(v.neuron_slice)
+            logger.debug("\t\t\tVertex %s: %u bytes SDRAM", v, sdram)
+
             # Add resources to dictionary
-            # **TODO** add SDRAM
-            vertex_resources[v] = {machine.Cores: 1}
+            vertex_resources[v] = {machine.Cores: 1, machine.SDRAM: sdram}
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -323,6 +326,23 @@ class NeuralCluster(object):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
+    def _estimate_sdram(self, vertex_slice):
+        # Begin with size of spike recording region
+        sdram = self.regions[Regions.spike_recording].sizeof(vertex_slice);
+
+        # If profiler region exists, add its size
+        if Regions.profiler in self.regions:
+            sdram += self.regions[Regions.profiler].sizeof()
+
+        # Loop through possible analogue recording regions
+        for t in range(Regions.analogue_recording_start,
+                       Regions.analogue_recording_end):
+            # If region exists, add its size to total
+            if Regions(t) in self.regions:
+                sdram += self.regions[Regions(t)].sizeof(vertex_slice)
+
+        return sdram
+
     def _get_region_arguments(self, spike_tx_key, flush_tx_key, vertex_slice,
                               in_buffers, back_prop_out_buffers):
         region_arguments = defaultdict(Args)

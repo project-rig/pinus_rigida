@@ -13,7 +13,6 @@ from collections import namedtuple, Iterable
 
 # Import functions
 from copy import (copy, deepcopy)
-from rig.type_casts import validate_fp_params
 from six import (iteritems, iterkeys)
 
 logger = logging.getLogger("pynn_spinnaker")
@@ -143,13 +142,18 @@ class LazyArrayFloatToFixConverter(object):
         copy : bool
             Should array being converted to fixed-point be deepcopied
         """
-        self.min_value, self.max_value = validate_fp_params(
-            signed, n_bits, n_frac)
-
         # Check the number of bits is sane
         if n_bits not in [8, 16, 32, 64]:
             raise ValueError(
                 "n_bits: {}: Must be 8, 16, 32 or 64.".format(n_bits))
+
+        # Determine the maximum and minimum values after conversion
+        if signed:
+            self.max_value = 2**(n_bits - 1) - 1
+            self.min_value = -self.max_value - 1
+        else:
+            self.max_value = 2**n_bits - 1
+            self.min_value = 0
 
         # Store the settings
         self.bytes_per_element = n_bits / 8
