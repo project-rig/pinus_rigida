@@ -56,8 +56,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
         # number of events with p_connect probability
         cdf = scipy.stats.binom.cdf(x, len(post_slice), self.p_connect)
 
-        # Return row-length corresponding to 99.9% of rows
-        return np.searchsorted(cdf, 0.999)
+        # Return row-length corresponding to 99.99% of rows
+        return np.searchsorted(cdf, 0.9999)
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
@@ -137,8 +137,8 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
         # events with prob_in_slice probability of being in post_slice
         cdf = scipy.stats.binom.cdf(x, self.n, prob_in_row)
 
-        # Return row-length corresponding to 99.9% of rows
-        return min(len(post_slice), np.searchsorted(cdf, 0.999))
+        # Return row-length corresponding to 99.99% of rows
+        return min(len(post_slice), np.searchsorted(cdf, 0.9999))
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
