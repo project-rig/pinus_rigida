@@ -18,7 +18,7 @@ logger = logging.getLogger("pynn_spinnaker")
 # Create a converter functions to convert from float to
 # various fixed-point formats used by PyNN SpiNNaker
 float_to_s1615_no_copy = LazyArrayFloatToFixConverter(True, 32, 15, False)
-float_to_s2211_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
+float_to_s2011_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
 float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
 
@@ -132,8 +132,8 @@ def integer_time_divide(values, sim_timestep_ms, **kwargs):
 def s1615(values, **kwargs):
     return float_to_s1615_no_copy(deepcopy(values))
 
-def s2211(values, **kwargs):
-    return float_to_s2211_no_copy(deepcopy(values))
+def s2011(values, **kwargs):
+    return float_to_s2011_no_copy(deepcopy(values))
 
 def u32_weight_fixed_point(values, weight_fixed_point, **kwargs):
     float_to_weight_no_copy = LazyArrayFloatToFixConverter(

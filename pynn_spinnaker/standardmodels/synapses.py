@@ -184,7 +184,7 @@ class Vogels2011Rule(synapses.Vogels2011Rule):
     )
 
     plasticity_param_map = [
-        ("rho", "i4", lazy_param_map.s2211),
+        ("rho", "i4", lazy_param_map.s2011),
         ("tau", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                  num_entries=256, time_shift=0)),
         ("eta", "i4", lazy_param_map.s32_weight_fixed_point),
