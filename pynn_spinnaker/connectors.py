@@ -73,7 +73,7 @@ class OneToOneConnector(OneToOneConnector):
 
     def estimate_max_row_synapses(self, pre_slice, post_slice,
                                   pre_size, post_size):
-        return 1
+        return 1 if pre_slice.overlaps(post_slice) else 0
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
