@@ -155,7 +155,19 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
 
     def estimate_max_row_synapses(self, pre_slice, post_slice,
                                   pre_size, post_size):
-        return len(post_slice)
+        # Create array of possible row lengths
+        x = np.arange(len(post_slice))
+
+        # Calculate the probability that any of the
+        # n synapses in the column will be within this row
+        prob_in_row = float(self.n) / pre_size
+
+        # Calculate CDF of binomial distribution representing len(post_slice)
+        # events with prob_in_row probability of being connected to post neuron
+        cdf = scipy.stats.binom.cdf(x, len(post_slice), prob_in_row)
+
+        # Return row-length corresponding to 99.99% of rows
+        return np.searchsorted(cdf, 0.9999)
 
     def estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
