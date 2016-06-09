@@ -112,6 +112,18 @@ public:
   void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording,
               unsigned int)
   {
+    auto *tts = m_SlowTimeToSpike;
+    const uint16_t *immutableStateIndex = m_ImmutableStateIndices;
+    for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
+
+      // Get synaptic input
+      auto &synMutable = *synapseMutableState++;
+      const auto &synImmutable = g_SynapseImmutableState[*synapseImmutableStateIndex++];
+      S1615 excInput = Synapse::GetExcInput(synMutable, synImmutable);
+      S1615 inhInput = Synapse::GetInhInput(synMutable, synImmutable);
+    }
     // Loop through slow source
     auto *slowTimeToSpike = m_SlowTimeToSpike;
     const auto *slowImmutableState = m_SlowImmutableState;
@@ -186,110 +198,113 @@ public:
 
 private:
   //-----------------------------------------------------------------------------
-  // ImmutableBase
+  // Immutable
   //-----------------------------------------------------------------------------
-  class ImmutableBase
+  class Immutable
   {
   public:
     //-----------------------------------------------------------------------------
     // Public API
     //-----------------------------------------------------------------------------
-    bool IsActive(unsigned int tick) const
-    {
-      return ((tick >= m_StartTick) && (tick < m_EndTick));
-    }
-
-    uint32_t GetNeuronID() const { return m_NeuronID; }
-
     void Print(char *stream) const
     {
-      io_printf(stream, "\tNeuronID       = %u\n", m_NeuronID);
       io_printf(stream, "\tStartTick      = %u\n", m_StartTick);
       io_printf(stream, "\tEndTick        = %u\n", m_EndTick);
+      if(m_IsSlow)
+      {
+        io_printf(stream, "\tMeanISI        = %k\n", m_Data.m_MeanISI);
+      }
+      else
+      {
+        io_printf(stream, "\tExpMinusLambda = %k\n", (S1615)(m_Data.m_ExpMinusLambda >> 17));
+      }
+    }
+
+    bool Update(S1615 &slowTimeToSpike, R &rng, E emitSpikeFunction)
+    {
+      // If spike source is active, return result of correct update function
+      if((tick >= m_StartTick) && (tick < m_EndTick))
+      {
+        if(m_IsSlow)
+        {
+          return UpdateSlow(slowTimeToSpike, rng, emitSpikeFunction);
+        }
+        else
+        {
+          return UpdateFast(rng, emitSpikeFunction);
+        }
+      }
+      // Otherwise, return false
+      else
+      {
+        return false;
+      }
     }
 
   private:
     //-----------------------------------------------------------------------------
+    // Unions
+    //-----------------------------------------------------------------------------
+    union TypeSpecificData;
+    {Immutable
+      S1615 m_MeanISI;
+      U032 m_ExpMinusLambda;
+    };
+
+    //-----------------------------------------------------------------------------
+    // Private methods
+    //-----------------------------------------------------------------------------
+    bool UpdateSlow(S1615 &tts, R &rng, E emitSpikeFunction)
+    {
+      // If it's time to spike
+      const bool spiked = (tts <= 0);
+      if(spiked)
+      {
+        // Update time-to-spike
+        S1615 nextTTSImmutable = MulS1615(m_Data.m_MeanISI, NonUniform::ExponentialDistVariate(rng));
+        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tNext time-to-spike:%k ticks", nextTTS);
+        tts += nextTTS;
+      }
+
+      // Subtract one
+      tts -= S1615One;
+
+      // Return whether spikes have been emitted
+      return spiked;
+    }
+
+    bool UpdateFast(R &rng, E emitSpikeFunction)
+    {
+      // Get number of spikes to emit this timestep
+      unsigned int numSpikes = NonUniform::PoissonDistVariate(rng, m_Data.m_ExpMinusLambda);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting %u spikes", numSpikes);
+
+      // Emit spikes
+      for(unsigned int s = 0; s < numSpikes; s++)
+      {
+        emitSpikeFunction();
+      }
+
+      // Return true if any spikes have been emitted
+      return (numSpikes > 0);
+    }
+
+    //-----------------------------------------------------------------------------
     // Members
     //-----------------------------------------------------------------------------
-    uint32_t m_NeuronID;
+    bool m_IsSlow;
     uint32_t m_StartTick;
     uint32_t m_EndTick;
-  };
-
-  //-----------------------------------------------------------------------------
-  // SlowImmutable
-  //-----------------------------------------------------------------------------
-  //! data structure for spikes which have multiple timer tick between firings
-  //! this is separated from spikes which fire at least once every timer tick as
-  //! there are separate algorithms for each type.
-  class SlowImmutable : public ImmutableBase
-  {
-  public:
-    //-----------------------------------------------------------------------------
-    // Public API
-    //-----------------------------------------------------------------------------
-    S1615 CalculateTTS(R &rng) const
-    {
-      return MulS1615(m_MeanISI, NonUniform::ExponentialDistVariate(rng));
-    }
-
-    void Print(char *stream) const
-    {
-      // Superclass
-      ImmutableBase::Print(stream);
-
-      io_printf(stream, "\tMeanISI        = %k\n", m_MeanISI);
-    }
-
-  private:
-    //-----------------------------------------------------------------------------
-    // Members
-    //-----------------------------------------------------------------------------
-    S1615 m_MeanISI;
-  };
-
-  //-----------------------------------------------------------------------------
-  // FastImmutable
-  //-----------------------------------------------------------------------------
-  //! data structure for spikes which have at least one spike fired per timer tick
-  //! this is separated from spikes which have multiple timer ticks between firings
-  //! as there are separate algorithms for each type.
-  class FastImmutable : public ImmutableBase
-  {
-  public:
-    //-----------------------------------------------------------------------------
-    // GetNumSpikes
-    //-----------------------------------------------------------------------------
-    unsigned int GetNumSpikes(R &rng) const
-    {
-      return NonUniform::PoissonDistVariate(rng, m_ExpMinusLambda);
-    }
-
-    void Print(char *stream) const
-    {
-      // Superclass
-      ImmutableBase::Print(stream);
-
-      io_printf(stream, "\tExpMinusLambda = %k\n", (S1615)(m_ExpMinusLambda >> 17));
-    }
-
-  private:
-    //-----------------------------------------------------------------------------
-    // Members
-    //-----------------------------------------------------------------------------
-    U032 m_ExpMinusLambda;
+    TypeSpecificData m_Data;
   };
 
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  unsigned int m_NumSlow;
-  SlowImmutable *m_SlowImmutableState;
+  unsigned int m_NumSpikeSources;
+  Immutable *m_ImmutableState;
+  uint16_t *m_ImmutableStateIndices;
   S1615 *m_SlowTimeToSpike;
-
-  unsigned int m_NumFast;
-  FastImmutable *m_FastImmutableState;
 
   R m_RNG;
 };
