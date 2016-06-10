@@ -10,7 +10,7 @@ from rig.type_casts import NumpyFloatToFixConverter, NumpyFixToFloatConverter
 
 # Import functions
 from six import iteritems
-from ..utils import get_row_offset_length
+from ..utils import combine_row_offset_length, extract_row_offset_length
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -106,6 +106,7 @@ class SynapticMatrix(Region):
             # Calculate the number of extension words required and build
             # Second numpy array to contain concatenated extension rows
             num_ext_words = matrix.size_words - num_matrix_words
+            assert num_ext_words == 0
             ext_words = np.empty(num_ext_words, dtype=np.uint32)
 
             logger.debug("\t\t\t\t\tWriting matrix placement:%u, max cols:%u, "
@@ -258,10 +259,6 @@ class SynapticMatrix(Region):
         matrix_words = data[:num_matrix_words]
         ext_words = data[num_matrix_words:]
 
-        # Reading of delay extension rows not currently implemented - throw
-        if len(ext_words) > 0:
-            raise NotImplementedError()
-
         # Reshape matrix words
         matrix_words = matrix_words.reshape((num_rows, -1))
 
@@ -276,11 +273,47 @@ class SynapticMatrix(Region):
         logger.debug("\tUsing row dtype:%s, weight fixed point:%u",
                      dtype, post_s_vert.weight_fixed_point)
 
-        # Read rows
-        return [self._read_row(i, r, pre_n_vert.neuron_slice,
-                               post_s_vert.post_neuron_slice,
-                               weight_to_float, dtype)
-                for i, r in enumerate(matrix_words)]
+        # Loop through matrix rows
+        synapses = []
+        for i, r in enumerate(matrix_words):
+            # Read row
+            row = self._read_row(i, r, pre_n_vert.neuron_slice,
+                                 post_s_vert.post_neuron_slice,
+                                 weight_to_float, dtype)
+
+            # Extract synapses from row
+            row_synapses = row[3]
+
+            # While this row has more extension
+            total_ext_delay = 0
+            while row[0] != 0:
+                # Add next row's delay to total
+                total_ext_delay += row[0]
+
+                # Make offset relative to start of extension words
+                ext_offset = row[1] - vert_matrix_placement - num_ext_words
+
+                # Convert extension row length to words
+                ext_words = self._get_num_row_words(row[2])
+
+                # Create view of extension row data
+                ext_row_data = ext_words[ext_offset:ext_offset + ext_words]
+
+                # Read extension row
+                row = self._read_row(i, ext_row_data, pre_n_vert.neuron_slice,
+                                    post_s_vert.post_neuron_slice,
+                                    weight_to_float, dtype)
+
+                # If delays are required, add total extended delay
+                # **TODO** convert to ms
+                if "delay" in dtype.names:
+                    row[3]["delay"] += total_ext_delay
+
+                # Stack extension row synapses onto row
+                row_synapses = np.hstack((row_synapses, row[3]))
+
+            # Add complete row of synapses to list
+            synapses.append(row_synapses)
 
     # --------------------------------------------------------------------------
     # Private methods
@@ -291,6 +324,11 @@ class SynapticMatrix(Region):
 
         # Create empty array to hold synapses
         synapses = np.empty(num_synapses, dtype=dtype)
+
+        # Extract the delay extension fields from row
+        next_row_delay = row_words[1]
+        next_row_offset, next_row_length = extract_row_offset_length(
+            row_words[2], self.LengthBits)
 
         # If pre-synaptic indices are required, fill them in
         if "presynaptic_index" in dtype.names:
@@ -304,7 +342,7 @@ class SynapticMatrix(Region):
         if "postsynaptic_index" in dtype.names:
             synapses["postsynaptic_index"] += post_slice.start
 
-        return synapses
+        return next_row_delay, next_row_offset, next_row_length, synapses
 
     def _write_row(self, row, next_row, next_row_offset,
                              float_to_weight, destination):
@@ -323,9 +361,9 @@ class SynapticMatrix(Region):
 
             # Write word containing the offset to the
             # next row and its length (in synapses)
-            destination[2] = get_row_offset_length(next_row_offset,
-                                                   len(next_row[1]),
-                                                   self.LengthBits)
+            destination[2] = combine_row_offset_length(next_row_offset,
+                                                       len(next_row[1]),
+                                                       self.LengthBits)
         # If there are any synapses in row
         # **NOTE** empty rows may be tuples or empty
         # lists both of which break the following code

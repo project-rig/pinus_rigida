@@ -5,7 +5,7 @@ import struct
 from region import Region
 
 # Import functions
-from ..utils import get_row_offset_length
+from ..utils import combine_row_offset_length
 
 # ------------------------------------------------------------------------------
 # KeyLookupBinarySearch
@@ -63,7 +63,7 @@ class KeyLookupBinarySearch(Region):
         for m, p in sorted(zip(sub_matrix_props, matrix_placements)):
             data += struct.pack(
                 "III", m.key, m.mask,
-                get_row_offset_length(p, m.max_cols, self.LengthBits)
+                combine_row_offset_length(p, m.max_cols, self.LengthBits)
             )
 
         # Write data to filelike

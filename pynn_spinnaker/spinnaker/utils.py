@@ -204,11 +204,21 @@ def calc_slice_bitfield_words(vertex_slice):
     return calc_bitfield_words(len(vertex_slice))
 
 
-def get_row_offset_length(offset, length, num_length_bits):
+def combine_row_offset_length(offset, length, num_length_bits):
     assert length >= 1 and length <= (2 ** num_length_bits)
     assert offset >= 0 and offset < (2 ** (32 - num_length_bits))
 
     return (length - 1) | (offset << num_length_bits)
+
+def extract_row_offset_length(offset_length, num_length_bits):
+    # Build mask to extract length
+    length_mask = (2 ** num_length_bits) - 1
+
+    # Extract fields
+    offset = offset_length >> num_length_bits
+    length = (offset_length & length_mask) + 1
+
+    return offset, length
 
 def get_model_executable_filename(prefix, model, profiled):
     # Find directory in which model class is located
