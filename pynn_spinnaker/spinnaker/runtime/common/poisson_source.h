@@ -53,19 +53,36 @@ public:
     }
     m_RNG.SetState(seed);
 
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tPoisson spike source mutable state");
-    if(!AllocateCopyStructArray(numSources, region, m_SlowTimeToSpike))
-    {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate spike source mutable state array");
-      return false;
-    }
-
     LOG_PRINT(LOG_LEVEL_TRACE, "\tPoisson spike source immutable state");
     if(!AllocateCopyIndexedStructArray(numSources, region,
       m_ImmutableStateIndices, m_ImmutableState))
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate spike source immutable state array");
       return false;
+    }
+
+    // Allocate time to spike array
+    // **NOTE** this is only USED by slow spike sources but
+    // for simplicity we allocate one for each neuron
+    m_SlowTimeToSpike = (S1615*)spin1_malloc(sizeof(S1615) * numSources);
+
+    // Loop through spike sources
+    S1615 *tts = m_SlowTimeToSpike;
+    const uint16_t *immutableStateIndex = m_ImmutableStateIndices;
+    for(unsigned int s = 0; s < numSources; s++)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating spike source %u", s);
+
+      // Get mutable and immutable state for spike source
+      auto &sourceTTS = *tts++;
+      auto &sourceImmutableState = m_ImmutableState[*immutableStateIndex++];
+
+      // Initialize spike source
+      sourceImmutableState.Initialize(sourceTTS, m_RNG);
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+      sourceImmutableState.Print(IO_BUF, sourceTTS);
+#endif
     }
 
     return true;
@@ -91,13 +108,8 @@ public:
       auto &sourceTTS = *tts++;
       const auto &sourceImmutableState = m_ImmutableState[*immutableStateIndex++];
 
-      auto sourceEmitSpikeFunction = std::bind(emitSpikeFunction, s);
       // Bind source ID to emit spike function
-      /*auto sourceEmitSpikeLambda =
-        [emitSpikeFunction, s]()
-        {
-          emitSpikeFunction(s);
-        };*/
+      auto sourceEmitSpikeFunction = std::bind(emitSpikeFunction, s);
 
       // Update spike
       const bool spiked = sourceImmutableState.Update(tick, sourceTTS, m_RNG, sourceEmitSpikeFunction);
@@ -115,17 +127,21 @@ private:
     //-----------------------------------------------------------------------------
     // Public API
     //-----------------------------------------------------------------------------
-    void Print(char *stream) const
+    void Print(char *stream, S1615 slowTimeToSpike) const
     {
-      io_printf(stream, "\tStartTick      = %u\n", m_StartTick);
-      io_printf(stream, "\tEndTick        = %u\n", m_EndTick);
-      if(m_IsSlow)
+      io_printf(stream, "\tImmutable state:\n");
+      io_printf(stream, "\t\tStartTick      = %u\n", m_StartTick);
+      io_printf(stream, "\t\tEndTick        = %u\n", m_EndTick);
+      if(IsSlow())
       {
-        io_printf(stream, "\tMeanISI        = %k\n", m_Data.m_MeanISI);
+        io_printf(stream, "\t\tMeanISI        = %k\n", m_Data.m_MeanISI);
+
+        io_printf(stream, "\tMutable state:\n");
+        io_printf(IO_BUF, "\t\tTTS            = %k\n", slowTimeToSpike);
       }
       else
       {
-        io_printf(stream, "\tExpMinusLambda = %k\n", (S1615)(m_Data.m_ExpMinusLambda >> 17));
+        io_printf(stream, "\t\tExpMinusLambda = %k\n", (S1615)(m_Data.m_ExpMinusLambda >> 17));
       }
     }
 
@@ -135,7 +151,7 @@ private:
       // If spike source is active, return result of correct update function
       if((tick >= m_StartTick) && (tick < m_EndTick))
       {
-        if(m_IsSlow)
+        if(IsSlow())
         {
           return UpdateSlow(slowTimeToSpike, rng, emitSpikeFunction);
         }
@@ -148,6 +164,15 @@ private:
       else
       {
         return false;
+      }
+    }
+
+    void Initialize(S1615 &slowTimeToSpike, R &rng) const
+    {
+      // If this is a slow spike source, calculate the initial time to spike
+      if(IsSlow())
+      {
+        slowTimeToSpike = CalculateTTS(rng);
       }
     }
 
@@ -164,6 +189,16 @@ private:
     //-----------------------------------------------------------------------------
     // Private methods
     //-----------------------------------------------------------------------------
+    bool IsSlow() const
+    {
+      return (m_IsSlow != 0);
+    }
+
+    S1615 CalculateTTS(R &rng) const
+    {
+      return MulS1615(m_Data.m_MeanISI, NonUniform::ExponentialDistVariate(rng));
+    }
+
     template<typename E>
     bool UpdateSlow(S1615 &tts, R &rng, E emitSpikeFunction) const
     {
@@ -172,7 +207,7 @@ private:
       if(spiked)
       {
         // Update time-to-spike
-        S1615 nextTTS = MulS1615(m_Data.m_MeanISI, NonUniform::ExponentialDistVariate(rng));
+        S1615 nextTTS = CalculateTTS(rng);
         LOG_PRINT(LOG_LEVEL_TRACE, "\t\tNext time-to-spike:%k ticks", nextTTS);
         tts += nextTTS;
 
@@ -207,7 +242,7 @@ private:
     //-----------------------------------------------------------------------------
     // Members
     //-----------------------------------------------------------------------------
-    bool m_IsSlow;
+    uint32_t m_IsSlow;
     uint32_t m_StartTick;
     uint32_t m_EndTick;
     TypeSpecificData m_Data;
