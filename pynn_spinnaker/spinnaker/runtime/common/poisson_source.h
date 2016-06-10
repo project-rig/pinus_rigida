@@ -1,5 +1,8 @@
 #pragma once
 
+// Standard includes
+#include <functional>
+
 // Common includes
 #include "fixed_point_number.h"
 #include "log.h"
@@ -29,14 +32,14 @@ public:
   // Poisson source doesn't use any DMA tags
   static const uint DMATagMax = 0;
 
-  PoissonSource() : m_NumSlow(0), m_SlowImmutableState(NULL), m_SlowTimeToSpike(NULL), m_NumFast(0), m_FastImmutableState(NULL)
+  PoissonSource() : m_ImmutableState(NULL), m_ImmutableStateIndices(NULL), m_SlowTimeToSpike(NULL)
   {
   }
 
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  bool ReadSDRAMData(uint32_t *region, uint32_t, unsigned int)
+  bool ReadSDRAMData(uint32_t *region, uint32_t, unsigned int numSources)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "PoissonSource::ReadSDRAMData");
 
@@ -50,55 +53,20 @@ public:
     }
     m_RNG.SetState(seed);
 
-    // Read number of slow spikes sources, followed by array of structs
-    m_NumSlow = (unsigned int)*region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\t%u slow spike sources", m_NumSlow);
-    if(!AllocateCopyStructArray(m_NumSlow, region, m_SlowImmutableState))
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tPoisson spike source mutable state");
+    if(!AllocateCopyStructArray(numSources, region, m_SlowTimeToSpike))
     {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate slow spike source immutable state array");
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate spike source mutable state array");
       return false;
     }
 
-    // If there are any slow spike sources
-    if(m_NumSlow > 0)
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tPoisson spike source immutable state");
+    if(!AllocateCopyIndexedStructArray(numSources, region,
+      m_ImmutableStateIndices, m_ImmutableState))
     {
-      // Allocate array
-      m_SlowTimeToSpike = (S1615*)spin1_malloc(sizeof(S1615) * m_NumSlow);
-      if(m_SlowTimeToSpike == NULL)
-      {
-        LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate slow spike source time to spikearray");
-        return false;
-      }
-
-      // Calculate initial time-to-spike for each slow source
-      for(unsigned int s = 0; s < m_NumSlow; s++)
-      {
-        m_SlowTimeToSpike[s] = m_SlowImmutableState[s].CalculateTTS(m_RNG);
-
-  #if LOG_LEVEL <= LOG_LEVEL_TRACE
-        io_printf(IO_BUF, "Slow spike source %u:\n", s);
-        m_SlowImmutableState[s].Print(IO_BUF);
-        io_printf(IO_BUF, "\tTTS            = %k\n", m_SlowTimeToSpike[s]);
-  #endif
-      }
-    }
-
-    // Read number of fast spikes sources, followed by array of structs
-    m_NumFast = (unsigned int)*region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\t%u fast spike sources", m_NumFast);
-    if(!AllocateCopyStructArray(m_NumFast, region, m_FastImmutableState))
-    {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate fast spike source immutable state array");
+      LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate spike source immutable state array");
       return false;
     }
-
-  #if LOG_LEVEL <= LOG_LEVEL_TRACE
-    for(unsigned int s = 0; s < m_NumFast; s++)
-    {
-      io_printf(IO_BUF, "Fast spike source %u:\n", s);
-      m_FastImmutableState[s].Print(IO_BUF);
-    }
-  #endif
 
     return true;
   }
@@ -110,97 +78,38 @@ public:
 
   template<typename E>
   void Update(uint tick, E emitSpikeFunction, SpikeRecording &spikeRecording,
-              unsigned int)
+              unsigned int numSources)
   {
+    // Loop through spike sources
     auto *tts = m_SlowTimeToSpike;
     const uint16_t *immutableStateIndex = m_ImmutableStateIndices;
-    for(unsigned int n = 0; n < g_AppWords[AppWordNumNeurons]; n++)
+    for(unsigned int s = 0; s < numSources; s++)
     {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating neuron %u", n);
+      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating spike source %u", s);
 
-      // Get synaptic input
-      auto &synMutable = *synapseMutableState++;
-      const auto &synImmutable = g_SynapseImmutableState[*synapseImmutableStateIndex++];
-      S1615 excInput = Synapse::GetExcInput(synMutable, synImmutable);
-      S1615 inhInput = Synapse::GetInhInput(synMutable, synImmutable);
-    }
-    // Loop through slow source
-    auto *slowTimeToSpike = m_SlowTimeToSpike;
-    const auto *slowImmutableState = m_SlowImmutableState;
-    for(unsigned int s = 0; s < m_NumSlow; s++)
-    {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating slow spike source %u", s);
+      // Get mutable and immutable state for spike source
+      auto &sourceTTS = *tts++;
+      const auto &sourceImmutableState = m_ImmutableState[*immutableStateIndex++];
 
-      auto &tts = *slowTimeToSpike++;
-      const auto &immutable = *slowImmutableState++;
-
-      // If this source should be active
-      bool spiked = false;
-      if(immutable.IsActive(tick))
-      {
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tTime-to-spike:%k ticks", tts);
-
-        // If it's time to spike
-        if(tts <= 0)
+      auto sourceEmitSpikeFunction = std::bind(emitSpikeFunction, s);
+      // Bind source ID to emit spike function
+      /*auto sourceEmitSpikeLambda =
+        [emitSpikeFunction, s]()
         {
-          // Set spiked flag
-          spiked = true;
+          emitSpikeFunction(s);
+        };*/
 
-          // Emit a spike
-          LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting spike");
-          emitSpikeFunction(immutable.GetNeuronID());
-
-          // Update time-to-spike
-          S1615 nextTTS = immutable.CalculateTTS(m_RNG);
-          LOG_PRINT(LOG_LEVEL_TRACE, "\t\tNext time-to-spike:%k ticks", nextTTS);
-          tts += nextTTS;
-        }
-
-        // Subtract one
-        tts -= S1615One;
-      }
-
-      // Record spike
-      spikeRecording.RecordSpike(immutable.GetNeuronID(), spiked);
+      // Update spike
+      const bool spiked = sourceImmutableState.Update(tick, sourceTTS, m_RNG, sourceEmitSpikeFunction);
+      spikeRecording.RecordSpike(s, spiked);
     }
-
-    // Loop through fast source
-    const auto *fastImmutableState = m_FastImmutableState;
-    for(unsigned int f = 0; f < m_NumFast; f++)
-    {
-      LOG_PRINT(LOG_LEVEL_TRACE, "\tSimulating fast spike source %u", f);
-
-      const auto &immutable = *fastImmutableState++;
-
-      // If this source should be active
-      bool spiked = false;
-      if(immutable.IsActive(tick))
-      {
-        // Get number of spikes to emit this timestep
-        unsigned int numSpikes = immutable.GetNumSpikes(m_RNG);
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\tEmitting %u spikes", numSpikes);
-
-        // Determine if this means it spiked
-        spiked = (numSpikes > 0);
-
-        // Emit spikes
-        for(unsigned int s = 0; s < numSpikes; s++)
-        {
-          emitSpikeFunction(immutable.GetNeuronID());
-        }
-      }
-
-      // Record spike
-      spikeRecording.RecordSpike(immutable.GetNeuronID(), spiked);
-    }
-
   }
 
 private:
   //-----------------------------------------------------------------------------
-  // Immutable
+  // ImmutableState
   //-----------------------------------------------------------------------------
-  class Immutable
+  class ImmutableState
   {
   public:
     //-----------------------------------------------------------------------------
@@ -220,7 +129,8 @@ private:
       }
     }
 
-    bool Update(S1615 &slowTimeToSpike, R &rng, E emitSpikeFunction)
+    template<typename E>
+    bool Update(uint tick, S1615 &slowTimeToSpike, R &rng, E emitSpikeFunction) const
     {
       // If spike source is active, return result of correct update function
       if((tick >= m_StartTick) && (tick < m_EndTick))
@@ -245,8 +155,8 @@ private:
     //-----------------------------------------------------------------------------
     // Unions
     //-----------------------------------------------------------------------------
-    union TypeSpecificData;
-    {Immutable
+    union TypeSpecificData
+    {
       S1615 m_MeanISI;
       U032 m_ExpMinusLambda;
     };
@@ -254,16 +164,20 @@ private:
     //-----------------------------------------------------------------------------
     // Private methods
     //-----------------------------------------------------------------------------
-    bool UpdateSlow(S1615 &tts, R &rng, E emitSpikeFunction)
+    template<typename E>
+    bool UpdateSlow(S1615 &tts, R &rng, E emitSpikeFunction) const
     {
       // If it's time to spike
       const bool spiked = (tts <= 0);
       if(spiked)
       {
         // Update time-to-spike
-        S1615 nextTTSImmutable = MulS1615(m_Data.m_MeanISI, NonUniform::ExponentialDistVariate(rng));
+        S1615 nextTTS = MulS1615(m_Data.m_MeanISI, NonUniform::ExponentialDistVariate(rng));
         LOG_PRINT(LOG_LEVEL_TRACE, "\t\tNext time-to-spike:%k ticks", nextTTS);
         tts += nextTTS;
+
+        // Call emit spike function
+        emitSpikeFunction();
       }
 
       // Subtract one
@@ -273,7 +187,8 @@ private:
       return spiked;
     }
 
-    bool UpdateFast(R &rng, E emitSpikeFunction)
+    template<typename E>
+    bool UpdateFast(R &rng, E emitSpikeFunction) const
     {
       // Get number of spikes to emit this timestep
       unsigned int numSpikes = NonUniform::PoissonDistVariate(rng, m_Data.m_ExpMinusLambda);
@@ -301,8 +216,7 @@ private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  unsigned int m_NumSpikeSources;
-  Immutable *m_ImmutableState;
+  ImmutableState *m_ImmutableState;
   uint16_t *m_ImmutableStateIndices;
   S1615 *m_SlowTimeToSpike;
 
