@@ -2,7 +2,6 @@
 import lazyarray as la
 import logging
 import numpy as np
-import scipy.stats
 import sentinel
 
 # Import classes
