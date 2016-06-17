@@ -110,7 +110,7 @@ class Projection(common.Projection, ContextMixin):
         synaptic_matrices = self.post._read_synaptic_matrices(
             self.pre, self._synapse_cluster_type, names)
 
-        # Loop through all the rows of all the matrices and conver to a list
+        # Loop through all the rows of all the matrices and convert to a list
         return list(itertools.chain.from_iterable(
             row for matrix in synaptic_matrices for row in matrix))
 
