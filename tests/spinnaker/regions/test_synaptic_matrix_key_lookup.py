@@ -9,15 +9,14 @@ import tempfile
 from collections import defaultdict
 from pynn_spinnaker.spinnaker.regions import (ExtendedPlasticSynapticMatrix,
                                               KeyLookupBinarySearch,
-                                              PlasticSynapticMatrix,
-                                              StaticSynapticMatrix)
+                                              PlasticSynapticMatrix)
 from rig.bitfield import BitField
 
 # Import globals
 from pynn_spinnaker.spinnaker.neural_cluster import Vertex
 from pynn_spinnaker.spinnaker.synapse_cluster import row_dtype
 
-def _generate_random_matrix(pre_size, post_slice, row_length):
+def _generate_random_matrix(pre_size, post_slice, row_length, multapse):
     assert row_length <= len(post_slice)
 
     # Loop through rows
@@ -27,9 +26,8 @@ def _generate_random_matrix(pre_size, post_slice, row_length):
         row = np.empty(shape=row_length, dtype=row_dtype)
 
         # Fill fields with random data
-        #row["index"] = np.random.randint(post_slice.start, post_slice.stop, row_length)
         row["index"] = np.random.choice(np.arange(post_slice.start, post_slice.stop),
-                                        row_length, replace=False)
+                                        row_length, replace=multapse)
         row["weight"] = np.random.random(row_length)
         row["delay"] = np.random.randint(1, 100, row_length)
 
@@ -42,13 +40,23 @@ def _generate_random_matrix(pre_size, post_slice, row_length):
 @pytest.mark.parametrize("pre_size, post_slice, row_length",
                          [(1000, utils.UnitStrideSlice(0, 1000), 100)])
 @pytest.mark.parametrize("pre_vert_size", [500, 1000])
-def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length):
+@pytest.mark.parametrize("synaptic_matrix_region", [
+    ExtendedPlasticSynapticMatrix(mock.Mock(max_dtcm_delay_slots=7,
+                                            signed_weight=False,
+                                            pre_state_bytes=10,
+                                            synapse_trace_bytes=2)),
+    PlasticSynapticMatrix(mock.Mock(max_dtcm_delay_slots=7,
+                                    signed_weight=False,
+                                    pre_state_bytes=10))])
+def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
+                        synaptic_matrix_region):
     # Fix the seed so the test is consistent
     np.random.seed(123456)
 
     # Create a mock pre_population connected with a random weight matrix
     pre_pop = mock.Mock()
-    pre_pop_sub_rows = {pre_pop: _generate_random_matrix(pre_size, post_slice, row_length)}
+    pre_pop_sub_rows = {pre_pop: _generate_random_matrix(pre_size, post_slice,
+                                                         row_length, False)}
 
     # Create a 32-bit keyspace
     keyspace = BitField(32)
@@ -65,17 +73,8 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length):
     # Finalise keyspace fields
     keyspace.assign_fields()
 
-    # Create a mock synapse model
-    synapse_model = mock.Mock()
-    synapse_model.max_dtcm_delay_slots = 7
-    synapse_model.signed_weight = False
-    synapse_model.pre_state_bytes = 10
-    synapse_model.synapse_trace_bytes = 2
-
     # Create regions
-    synaptic_matrix_region = ExtendedPlasticSynapticMatrix(synapse_model)
     key_lookup_region = KeyLookupBinarySearch()
-
 
     # Partition matrices
     sub_matrix_props, sub_matrix_rows =\
@@ -111,9 +110,6 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length):
         # Check correct amount of data has been written back
         assert fp.tell() == matrix_size
 
-        # Seek back to start
-        fp.seek(0)
-
         # Loop through our presynaptic vertices
         for pre_n_vert in incoming_connections[pre_pop]:
             # Read sub-matrix back
@@ -143,4 +139,4 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length):
                 assert np.array_equal(orig_row[orig_row_order]["index"],
                                       row[row_order]["postsynaptic_index"])
                 assert np.allclose(orig_row[orig_row_order]["weight"],
-                                      row[row_order]["weight"], atol=0.001)
+                                      row[row_order]["weight"], atol=0.0001)
