@@ -40,8 +40,8 @@ def _generate_random_matrix(pre_size, post_slice, row_length):
 # Tests
 # ----------------------------------------------------------------------------
 @pytest.mark.parametrize("pre_size, post_slice, row_length",
-                         [(10, utils.UnitStrideSlice(0, 10), 5)])
-@pytest.mark.parametrize("pre_vert_size", [5])
+                         [(1000, utils.UnitStrideSlice(0, 1000), 100)])
+@pytest.mark.parametrize("pre_vert_size", [500, 1000])
 def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length):
     # Fix the seed so the test is consistent
     np.random.seed(123456)

@@ -294,21 +294,21 @@ class SynapticMatrix(Region):
                 total_ext_delay += row[0]
 
                 # Make offset relative to start of extension words
-                ext_row_start = row[1] - num_matrix_words
-                
+                ext_row_start = row[1] - num_matrix_words - vert_matrix_placement
+                assert ext_row_start >= 0
+
                 # Convert extension row length to words
                 ext_row_end = ext_row_start + self._get_num_row_words(row[2])
 
-                # Create view of extension row data
+                # Create view of new extension row data
                 ext_row_data = ext_words[ext_row_start:ext_row_end]
 
-                # Read extension row
+                # Read next extension row
                 row = self._read_row(i, ext_row_data, pre_n_vert.neuron_slice,
                                     post_s_vert.post_neuron_slice,
                                     weight_to_float, dtype)
 
                 # If delays are required, add total extended delay
-                # **TODO** convert to ms
                 if "delay" in dtype.names:
                     row[3]["delay"] += total_ext_delay
 
