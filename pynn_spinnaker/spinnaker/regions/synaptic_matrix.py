@@ -106,7 +106,6 @@ class SynapticMatrix(Region):
             # Calculate the number of extension words required and build
             # Second numpy array to contain concatenated extension rows
             num_ext_words = matrix.size_words - num_matrix_words
-            assert num_ext_words == 0
             ext_words = np.empty(num_ext_words, dtype=np.uint32)
 
             logger.debug("\t\t\t\t\tWriting matrix placement:%u, max cols:%u, "
@@ -124,9 +123,9 @@ class SynapticMatrix(Region):
                                 float_to_weight, matrix_words[i])
 
                 # Loop through extension rows
-                for i, ext_row in enumerate(row[1:], start=1):
+                for r, ext_row in enumerate(row[1:], start=1):
                     num_ext_row_words = self._get_num_row_words(len(ext_row[1]))
-                    next_row = None if len(row) == (i + 1) else row[i + 1]
+                    next_row = None if len(row) == (r + 1) else row[r + 1]
                     self._write_row(
                         ext_row, next_row,
                         placement + next_row_offset + num_ext_row_words + num_matrix_words,
@@ -182,6 +181,10 @@ class SynapticMatrix(Region):
                         sub_row_order = np.argsort(sub_row_delay_slot)
                         sub_row = sub_row[sub_row_order]
                         sub_row_delay_slot = sub_row_delay_slot[sub_row_order]
+
+                        # Check that no zero delays were inserted
+                        # This would result in a negative sub-row delay slot
+                        assert sub_row_delay_slot[0] >= 0
 
                         # Take cumulative sum of the number of synapses
                         # in each delay slot to obtain sections of
@@ -291,13 +294,13 @@ class SynapticMatrix(Region):
                 total_ext_delay += row[0]
 
                 # Make offset relative to start of extension words
-                ext_offset = row[1] - vert_matrix_placement - num_ext_words
-
+                ext_row_start = row[1] - num_matrix_words
+                
                 # Convert extension row length to words
-                ext_words = self._get_num_row_words(row[2])
+                ext_row_end = ext_row_start + self._get_num_row_words(row[2])
 
                 # Create view of extension row data
-                ext_row_data = ext_words[ext_offset:ext_offset + ext_words]
+                ext_row_data = ext_words[ext_row_start:ext_row_end]
 
                 # Read extension row
                 row = self._read_row(i, ext_row_data, pre_n_vert.neuron_slice,
@@ -314,6 +317,8 @@ class SynapticMatrix(Region):
 
             # Add complete row of synapses to list
             synapses.append(row_synapses)
+
+        return synapses
 
     # --------------------------------------------------------------------------
     # Private methods

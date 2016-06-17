@@ -18,8 +18,10 @@ from utils import (get_model_executable_filename, load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
-
-row_dtype = [("weight", np.float32), ("delay", np.uint32),
+# Numpy data type used for synaptic matrix rows
+# **NOTE** delay is signed to make catching the 
+# condition where zero delays are inserted easier
+row_dtype = [("weight", np.float32), ("delay", np.int32),
              ("index", np.uint32)]
 
 
