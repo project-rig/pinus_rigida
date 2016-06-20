@@ -135,7 +135,7 @@ class SynapseCluster(object):
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
-            synapse_model.max_synaptic_event_rate,
+            synapse_model._max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
         self.regions[Regions.statistics] = regions.Statistics(
@@ -143,13 +143,13 @@ class SynapseCluster(object):
 
         # Create correct type of synaptic matrix region
         self.regions[Regions.synaptic_matrix] =\
-            synapse_model.synaptic_matrix_region_class(synapse_model)
+            synapse_model._synaptic_matrix_region_class(synapse_model)
 
         # If synapse mode has a plasticity parameter map
-        if hasattr(synapse_model, "plasticity_param_map"):
+        if hasattr(synapse_model, "_plasticity_param_map"):
             self.regions[Regions.plasticity] =\
                 regions.HomogeneousParameterSpace(
-                    synapse_model.plasticity_param_map,
+                    synapse_model._plasticity_param_map,
                     synapse_model.native_parameters,
                     sim_timestep_ms)
 
@@ -230,7 +230,7 @@ class SynapseCluster(object):
 
                     # If it's more than this type of
                     # synapse processor can handle
-                    if (vert_event_rate > synapse_model.max_synaptic_event_rate):
+                    if (vert_event_rate > synapse_model._max_synaptic_event_rate):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
                         vert_sdram.append(vert_sdram_bytes)
@@ -300,7 +300,7 @@ class SynapseCluster(object):
                                 if v.post_neuron_slice == post_slice]
 
             # Create weight range
-            weight_range = WeightRange(self.synapse_model.signed_weight)
+            weight_range = WeightRange(self.synapse_model._signed_weight)
 
             # Loop through unique presynaptic populations with connections
             # terminating in any of the vertices in this postsynaptic slice
@@ -344,8 +344,8 @@ class SynapseCluster(object):
                                              for r in sub_rows]
 
             # If the synapse model has a function to update weight range
-            if hasattr(self.synapse_model, "update_weight_range"):
-                self.synapse_model.update_weight_range(weight_range)
+            if hasattr(self.synapse_model, "_update_weight_range"):
+                self.synapse_model._update_weight_range(weight_range)
 
             # Calculate where the weight format fixed-point lies
             weight_fixed_point = weight_range.fixed_point

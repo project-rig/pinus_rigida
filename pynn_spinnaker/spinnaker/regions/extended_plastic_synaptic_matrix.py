@@ -22,11 +22,11 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
 
         # Round up number of bytes required by presynaptic state to words
         self.pre_state_words = int(math.ceil(
-            float(synapse_type.pre_state_bytes) / 4.0))
+            float(synapse_type._pre_state_bytes) / 4.0))
 
         # Add number of extra bytes associated
         # with each synapse to 2 bytes weight
-        self.synapse_bytes = 2 + synapse_type.synapse_trace_bytes
+        self.synapse_bytes = 2 + synapse_type._synapse_trace_bytes
 
     # --------------------------------------------------------------------------
     # Private methods

@@ -184,7 +184,7 @@ class State(common.control.BaseState):
             # Loop through synapse clusters
             for s_type, s_cluster in iteritems(pop._synapse_clusters):
                 # If synapse cluster doesn't require back propagation, skip
-                if not s_type.model.requires_back_propagation:
+                if not s_type.model._requires_back_propagation:
                     continue
 
                 logger.debug("\t\tSynapse type:%s, receptor:%s",

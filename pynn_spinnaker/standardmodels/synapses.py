@@ -20,37 +20,40 @@ class StaticSynapse(synapses.StaticSynapse):
         ("delay", "delay"),
     )
 
-    # How many post-synaptic neurons per core can a
-    # SpiNNaker synapse_processor of this type handle
-    max_post_neurons_per_core = 1024
-
-    # Assuming relatively long row length, at what rate can a SpiNNaker
-    # synapse_processor of this type process synaptic events (hZ)
-    max_synaptic_event_rate = 9E6
-
-    synaptic_matrix_region_class = regions.StaticSynapticMatrix
-
-    # How many timesteps of delay can DTCM ring-buffer handle
-    # **NOTE** only 7 timesteps worth of delay can be handled by
-    # 8 element delay buffer - The last element is purely for output
-    max_dtcm_delay_slots = 7
-
-    # Static weights are unsigned
-    signed_weight = False
-
-    # Static synapses don't require post-synaptic
-    # spikes back-propagated to them
-    requires_back_propagation = False
-
     def _get_minimum_delay(self):
         d = state.min_delay
         if d == "auto":
             d = state.dt
         return d
 
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    # How many post-synaptic neurons per core can a
+    # SpiNNaker synapse_processor of this type handle
+    _max_post_neurons_per_core = 1024
+
+    # Assuming relatively long row length, at what rate can a SpiNNaker
+    # synapse_processor of this type process synaptic events (hZ)
+    _max_synaptic_event_rate = 9E6
+
+    _synaptic_matrix_region_class = regions.StaticSynapticMatrix
+
+    # How many timesteps of delay can DTCM ring-buffer handle
+    # **NOTE** only 7 timesteps worth of delay can be handled by
+    # 8 element delay buffer - The last element is purely for output
+    _max_dtcm_delay_slots = 7
+
+    # Static weights are unsigned
+    _signed_weight = False
+
+    # Static synapses don't require post-synaptic
+    # spikes back-propagated to them
+    _requires_back_propagation = False
+
     # Static synapses are always compatible with each other
     @property
-    def comparable_properties(self):
+    def _comparable_properties(self):
         return (self.__class__,)
 
 # ------------------------------------------------------------------------------
@@ -64,60 +67,63 @@ class STDPMechanism(synapses.STDPMechanism):
         ("delay", "delay")
     )
 
-    # How many post-synaptic neurons per core can a
-    # SpiNNaker synapse_processor of this type handle
-    max_post_neurons_per_core = 512
-
-    # Assuming relatively long row length, at what rate can a SpiNNaker
-    # synapse_processor of this type process synaptic events (hZ)
-    max_synaptic_event_rate = 1.2E6
-
-    synaptic_matrix_region_class = regions.PlasticSynapticMatrix
-
-    # How many timesteps of delay can DTCM ring-buffer handle
-    # **NOTE** only 7 timesteps worth of delay can be handled by
-    # 8 element delay buffer - The last element is purely for output
-    max_dtcm_delay_slots = 7
-
-    # Static weights are unsigned
-    signed_weight = False
-
-    # STDP synapses require post-synaptic
-    # spikes back-propagated to them
-    requires_back_propagation = True
-
     def _get_minimum_delay(self):
         d = state.min_delay
         if d == 'auto':
             d = state.dt
         return d
 
-    def update_weight_range(self, weight_range):
-        self.weight_dependence.update_weight_range(weight_range)
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    # How many post-synaptic neurons per core can a
+    # SpiNNaker synapse_processor of this type handle
+    _max_post_neurons_per_core = 512
+
+    # Assuming relatively long row length, at what rate can a SpiNNaker
+    # synapse_processor of this type process synaptic events (hZ)
+    _max_synaptic_event_rate = 1.2E6
+
+    _synaptic_matrix_region_class = regions.PlasticSynapticMatrix
+
+    # How many timesteps of delay can DTCM ring-buffer handle
+    # **NOTE** only 7 timesteps worth of delay can be handled by
+    # 8 element delay buffer - The last element is purely for output
+    _max_dtcm_delay_slots = 7
+
+    # Static weights are unsigned
+    _signed_weight = False
+
+    # STDP synapses require post-synaptic
+    # spikes back-propagated to them
+    _requires_back_propagation = True
+
+    def _update_weight_range(self, weight_range):
+        self.weight_dependence._update_weight_range(weight_range)
 
     # The presynaptic state for STDP synapses consists of a uint32 containing
     # time of last update a uint32 containing time of last presynaptic spike
     # and the presynaptic trace required by the timing dependence
     @property
-    def pre_state_bytes(self):
-        return 8 + self.timing_dependence.pre_trace_bytes
+    def _pre_state_bytes(self):
+        return 8 + self.timing_dependence._pre_trace_bytes
 
     # STDP mechanisms should be compared based on their class, timing
     # dependence (parameters) and weight dependence (parameters)
     @property
-    def comparable_properties(self):
+    def _comparable_properties(self):
         return (self.__class__, self.timing_dependence,
                 self.weight_dependence)
 
     # The parameter map used to create the plasticity region is just the
     # timing and weight dependence's parameter maps concatenated together
     @property
-    def plasticity_param_map(self):
-        return (self.timing_dependence.plasticity_param_map +
-                self.weight_dependence.plasticity_param_map)
+    def _plasticity_param_map(self):
+        return (self.timing_dependence._plasticity_param_map +
+                self.weight_dependence._plasticity_param_map)
 
     @property
-    def executable_filename(self):
+    def _executable_filename(self):
         return (self.__class__.__name__.lower() + "_" +
                 self.weight_dependence.__class__.__name__.lower() + "_" +
                 self.timing_dependence.__class__.__name__.lower())
@@ -133,14 +139,17 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
         ("w_min",     "w_min"),
     )
 
-    plasticity_param_map = [
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    _plasticity_param_map = [
         ("w_min", "i4", lazy_param_map.s32_weight_fixed_point),
         ("w_max", "i4", lazy_param_map.s32_weight_fixed_point),
     ]
 
-    comparable_param_names =  ("w_max", "w_min")
+    _comparable_param_names =  ("w_max", "w_min")
 
-    def update_weight_range(self, weight_range):
+    def _update_weight_range(self, weight_range):
         weight_range.update(get_homogeneous_param(self.parameter_space, "w_max"))
         weight_range.update(get_homogeneous_param(self.parameter_space, "w_min"))
 
@@ -157,7 +166,10 @@ class SpikePairRule(synapses.SpikePairRule):
         ("tau_minus", "tau_minus"),
     )
 
-    plasticity_param_map = [
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    _plasticity_param_map = [
         ("tau_plus", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                       num_entries=256, time_shift=0)),
         ("tau_minus", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
@@ -166,10 +178,10 @@ class SpikePairRule(synapses.SpikePairRule):
         ("a_minus", "i4", lazy_param_map.s32_weight_fixed_point),
     ]
 
-    comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
+    _comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
 
     # Single int16 to contain trace
-    pre_trace_bytes = 2
+    _pre_trace_bytes = 2
 
 # ------------------------------------------------------------------------------
 # Vogels2011Rule
@@ -183,7 +195,10 @@ class Vogels2011Rule(synapses.Vogels2011Rule):
         ("rho", "rho"),
     )
 
-    plasticity_param_map = [
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    _plasticity_param_map = [
         ("rho", "i4", lazy_param_map.s2011),
         ("tau", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                  num_entries=256, time_shift=0)),
@@ -191,7 +206,7 @@ class Vogels2011Rule(synapses.Vogels2011Rule):
         ("eta", "i4", lazy_param_map.s32_weight_fixed_point),
     ]
 
-    comparable_param_names = ("tau", "eta", "rho")
+    _comparable_param_names = ("tau", "eta", "rho")
 
     # Single int16 to contain trace
-    pre_trace_bytes = 2
+    _pre_trace_bytes = 2

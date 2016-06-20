@@ -288,7 +288,7 @@ class Population(common.Population):
             # If there's any non-directly connectable projections of this type
             if len(projections) != len(directly_connectable_projections):
                 # Get hard maximum from synapse type
-                synapse_constraint = s_type.model.max_post_neurons_per_core
+                synapse_constraint = s_type.model._max_post_neurons_per_core
 
                 # Clamp constraint to actual size of
                 # population and add to dictionary
@@ -369,7 +369,7 @@ class Population(common.Population):
                     pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
                     total_synaptic_event_rate += total_synapses * pre_mean_rate
 
-                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model.max_synaptic_event_rate)))
+                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model._max_synaptic_event_rate)))
                 logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
                             s_type.model.__class__.__name__, s_type.receptor,
                             total_synaptic_event_rate, num_i_cores)
@@ -423,7 +423,7 @@ class Population(common.Population):
             # Determine if any of the incoming projections
             # to this population require back-propagation
             requires_back_prop = any(
-                s_type.model.requires_back_propagation
+                s_type.model._requires_back_propagation
                 for s_type in iterkeys(self.incoming_projections))
 
             self._neural_cluster = NeuralCluster(

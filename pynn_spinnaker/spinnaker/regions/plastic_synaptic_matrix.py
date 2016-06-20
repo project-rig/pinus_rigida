@@ -22,7 +22,7 @@ class PlasticSynapticMatrix(SynapticMatrix):
 
         # Round up number of bytes required by presynaptic state to words
         self.pre_state_words = int(math.ceil(
-            float(synapse_type.pre_state_bytes) / 4.0))
+            float(synapse_type._pre_state_bytes) / 4.0))
 
     # --------------------------------------------------------------------------
     # Private methods
