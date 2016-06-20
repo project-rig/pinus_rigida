@@ -58,7 +58,7 @@ def replace_local_hyperlinks(
 
 setup(
     name="pynn_spinnaker",
-    version="0.3.0",
+    version="0.3.1",
     packages=find_packages(),
     package_data={'pynn_spinnaker': ['model_binaries/*.aplx']},
 
