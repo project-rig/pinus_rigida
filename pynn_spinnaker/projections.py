@@ -249,11 +249,11 @@ class Projection(common.Projection, ContextMixin):
         return direct_weights
 
     def _estimate_max_row_synapses(self, pre_slice, post_slice):
-        return self._connector.estimate_max_row_synapses(
+        return self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
 
     def _estimate_num_synapses(self, pre_slice, post_slice):
-        return self._connector.estimate_num_synapses(
+        return self._connector._estimate_num_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
 
     def _allocate_out_buffers(self, placements, allocations,
@@ -301,5 +301,5 @@ class Projection(common.Projection, ContextMixin):
         # the connector can be reduced to a direct connector and
         # the synapse type is static
         return (self.pre.celltype.directly_connectable and
-                self._connector.directly_connectable and
+                self._connector._directly_connectable and
                 type(self.synapse_type) is self._static_synapse_class)

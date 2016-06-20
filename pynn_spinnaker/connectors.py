@@ -30,14 +30,19 @@ from pyNN.connectors import (AllToAllConnector,
 # AllToAllConnector
 # ----------------------------------------------------------------------------
 class AllToAllConnector(AllToAllConnector):
-    directly_connectable = False
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = False
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         return len(post_slice)
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
+    def _estimate_num_synapses(self, pre_slice, post_slice,
+                               pre_size, post_size):
         return len(pre_slice) * len(post_slice)
 
 
@@ -45,10 +50,15 @@ class AllToAllConnector(AllToAllConnector):
 # FixedProbabilityConnector
 # ----------------------------------------------------------------------------
 class FixedProbabilityConnector(FixedProbabilityConnector):
-    directly_connectable = False
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = False
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         # Create array of possible row lengths
         x = np.arange(len(post_slice))
 
@@ -59,8 +69,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
         # Return row-length corresponding to 99.99% of rows
         return np.searchsorted(cdf, 0.9999)
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
+    def _estimate_num_synapses(self, pre_slice, post_slice,
+                               pre_size, post_size):
         return int(round(self.p_connect * float(len(pre_slice)) *
                          float(len(post_slice))))
 
@@ -69,14 +79,19 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
 # OneToOneConnector
 # ----------------------------------------------------------------------------
 class OneToOneConnector(OneToOneConnector):
-    directly_connectable = True
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = True
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         return 1 if pre_slice.overlaps(post_slice) else 0
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
+    def _estimate_num_synapses(self, pre_slice, post_slice,
+                               pre_size, post_size):
         return min(len(pre_slice), len(post_slice))
 
 
@@ -84,10 +99,15 @@ class OneToOneConnector(OneToOneConnector):
 # FromListConnector
 # ----------------------------------------------------------------------------
 class FromListConnector(FromListConnector):
-    directly_connectable = False
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = False
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         # Extract columns of pre and post indices from connection list
         pre_indices = self.conn_list[:, 0]
         post_indices = self.conn_list[:, 1]
@@ -104,7 +124,7 @@ class FromListConnector(FromListConnector):
         # Return maximum number of list entries in each bin
         return np.amax(np.bincount(slice_pre_indices));
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
+    def _estimate_num_synapses(self, pre_slice, post_slice,
                               pre_size, post_size):
         # Extract columns of pre and post indices from connection list
         pre_indices = self.conn_list[:, 0]
@@ -122,10 +142,15 @@ class FromListConnector(FromListConnector):
 # FixedNumberPostConnector
 # ----------------------------------------------------------------------------
 class FixedNumberPostConnector(FixedNumberPostConnector):
-    directly_connectable = False
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = False
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         # Create array of possible row lengths - there can't be more than n!
         x = np.arange(self.n)
 
@@ -140,8 +165,8 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
         # Return row-length corresponding to 99.99% of rows
         return min(len(post_slice), np.searchsorted(cdf, 0.9999))
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
+    def _estimate_num_synapses(self, pre_slice, post_slice,
+                               pre_size, post_size):
         # How large a fraction of the full post populations is this
         post_fraction = float(len(post_slice)) / float(post_size)
 
@@ -151,10 +176,15 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
 # FixedNumberPreConnector
 # ----------------------------------------------------------------------------
 class FixedNumberPreConnector(FixedNumberPreConnector):
-    directly_connectable = False
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = False
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         # Create array of possible row lengths
         x = np.arange(len(post_slice))
 
@@ -169,8 +199,8 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
         # Return row-length corresponding to 99.99% of rows
         return np.searchsorted(cdf, 0.9999)
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
+    def _estimate_num_synapses(self, pre_slice, post_slice,
+                               pre_size, post_size):
         # How large a fraction of the full pre populations is this
         pre_fraction = float(len(pre_slice)) / float(pre_size)
 
@@ -180,10 +210,15 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
 # FixedTotalNumberConnector
 # ----------------------------------------------------------------------------
 class FixedTotalNumberConnector(FixedTotalNumberConnector):
-    directly_connectable = False
+    # Can suitable populations connected with this connector be connected
+    # using an in-memory buffer rather than by sending multicast packets
+    _directly_connectable = False
 
-    def estimate_max_row_synapses(self, pre_slice, post_slice,
-                                  pre_size, post_size):
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
         # Create array of possible row lengths - there can't be more than n!
         x = np.arange(self.n)
 
@@ -199,8 +234,8 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         # Return row-length corresponding to 99.9% of rows
         return min(len(post_slice), np.searchsorted(cdf, 0.999))
 
-    def estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
+    def _estimate_num_synapses(self, pre_slice, post_slice,
+                               pre_size, post_size):
         # How large a fraction of the full pre and post populations is this
         pre_fraction = float(len(pre_slice)) / float(pre_size)
         post_fraction = float(len(post_slice)) / float(post_size)
