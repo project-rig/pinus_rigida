@@ -21,9 +21,6 @@ float_to_s2011_no_copy = LazyArrayFloatToFixConverter(True, 32, 11, False)
 float_to_u032_no_copy = LazyArrayFloatToFixConverter(False, 32, 32, False)
 float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
 
-# Sentinel used to indicate that a constant field should be used for Indices
-Indices = sentinel.create("Indices")
-
 # -----------------------------------------------------------------------------
 # Functions
 # -----------------------------------------------------------------------------
@@ -71,45 +68,6 @@ def apply(lazy_params, param_map, size, **kwargs):
 
             # Apply lazy transformation and evaluate
             params[field_name] = param_mapping(lazy_params[param_name], **kwargs).evaluate()
-
-    return params
-
-
-def apply_indices(lazy_params, param_map, indices, **kwargs):
-    # Build a numpy record array large enough for all neurons
-    params = np.empty(len(indices), dtype=_build_dtype(param_map))
-
-    # Loop through parameters
-    for field_name, param in zip(params.dtype.names, param_map):
-        # If this map entry has a constant value
-        if len(param) == 2:
-            param_value, _ = param
-
-            # If parameter should be used for indices, copy them in
-            if param_value is Indices:
-                params[field_name] = indices
-            # Otherwise, if parameter value is a lazy array,
-            # evaluate it and copy into field
-            elif isinstance(param_value, la.larray):
-                params[field_name] = param_value.evaluate()
-            # Otherwise, if parameter value is callable,
-            # call it and evaluate the result
-            elif callable(param_value):
-                params[field_name] = param_value(**kwargs).evaluate()
-            # Otherwise, assuming it's a scalar, copy it into all fields
-            else:
-                params[field_name][:] = param_value
-        # Otherwise
-        elif len(indices) > 0:
-            param_name, _, param_mapping = param
-
-            # Set parameter size
-            if not hasattr(lazy_params[param_name].base_value, "shape"):
-                lazy_params[param_name].shape = (max(indices) + 1,)
-
-            # Apply lazy transformation and evaluate slice
-            params[field_name] = param_mapping(lazy_params[param_name],
-                                               **kwargs)[indices]
 
     return params
 
@@ -226,6 +184,31 @@ def its_lut(distribution, n_frac):
 
     # Return inverse CDF
     return la.larray(distribution(q))
+
+def choose(param, mask_function, a_function, b_function, **kwargs):
+    # Call mask function and evaluate
+    # **NOTE** slicinc on non-evaluated lazyarrays doens't work
+    mask_a = mask_function(param, **kwargs).evaluate()
+    mask_b = np.logical_not(mask_a)
+
+    # Split the parameter into two lazy arrays based on mask
+    param_a = la.larray(param[mask_a])
+    param_b = la.larray(param[mask_b])
+
+    # Evaluate two halves of parameter space
+    a = a_function(param_a, **kwargs).evaluate()
+    b = b_function(param_b, **kwargs).evaluate()
+    assert a.dtype == b.dtype
+
+    # Create empty array to contain results
+    result = np.empty(shape=param.shape, dtype=a.dtype)
+
+    # Copy in two halves of result
+    result[mask_a] = a
+    result[mask_b] = b
+
+    # Return as lazy array
+    return la.larray(result)
 
 # Various functions bound to standard fixed point types
 s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)

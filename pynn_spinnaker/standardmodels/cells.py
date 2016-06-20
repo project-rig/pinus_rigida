@@ -1,4 +1,5 @@
 # Import modules
+import lazyarray as la
 import logging
 from pyNN.standardmodels import cells
 from ..spinnaker import lazy_param_map
@@ -6,9 +7,21 @@ from ..spinnaker import regions
 
 # Import functions
 from copy import deepcopy
+from functools import partial
 from pyNN.standardmodels import build_translations
 
 logger = logging.getLogger("PyNN")
+
+# Function to use with lazy_param_map.choose to determine whether
+# a Poisson source should be modelled using the fast or slow model
+def _poisson_slow_model(values, sim_timestep_ms, **kwargs):
+    # Convert rates into spikes per time step
+    rate_vals = deepcopy(values)
+    spikes_per_timestep = (rate_vals * sim_timestep_ms) / 1000.0
+
+    # Based on this return mask specifying which spikes sources
+    # should be simulated using the slow rather than fast model
+    return la.larray(spikes_per_timestep <= 0.25)
 
 # ----------------------------------------------------------------------------
 # Neuron type translations
@@ -190,19 +203,14 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     _neuron_region_class = regions.SpikeSourcePoisson
     _current_input_region_class = regions.SpikeSourcePoisson
 
-
-    _slow_immutable_param_map = [
-        (lazy_param_map.Indices, "u4"),
+    _immutable_param_map = [
+        ("rate", "u4", _poisson_slow_model),
         ("start_time", "u4", lazy_param_map.integer_time_divide),
         ("end_time", "u4", lazy_param_map.integer_time_divide),
-        ("rate", "i4", lazy_param_map.s1615_rate_isi),
-    ]
-
-    _fast_immutable_param_map = [
-        (lazy_param_map.Indices, "u4"),
-        ("start_time", "u4", lazy_param_map.integer_time_divide),
-        ("end_time", "u4", lazy_param_map.integer_time_divide),
-        ("rate", "u4", lazy_param_map.u032_rate_exp_minus_lambda),
+        ("rate", "u4", partial(lazy_param_map.choose,
+                               mask_function=_poisson_slow_model,
+                               a_function=lazy_param_map.s1615_rate_isi,
+                               b_function=lazy_param_map.u032_rate_exp_minus_lambda)),
     ]
 
 
