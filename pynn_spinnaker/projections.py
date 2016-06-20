@@ -300,6 +300,6 @@ class Projection(common.Projection, ContextMixin):
         # If the pre-synaptic celltype can be directly connectable,
         # the connector can be reduced to a direct connector and
         # the synapse type is static
-        return (self.pre.celltype.directly_connectable and
+        return (self.pre.celltype._directly_connectable and
                 self._connector._directly_connectable and
                 type(self.synapse_type) is self._static_synapse_class)

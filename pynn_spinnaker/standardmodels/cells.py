@@ -115,44 +115,50 @@ exp_synapse_cond_mutable_param_map = [
 class IF_curr_exp(cells.IF_curr_exp):
     __doc__ = cells.IF_curr_exp.__doc__
 
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    max_neurons_per_core = 1024
-
-    # JK: not necessary
-    neuron_region_class = regions.Neuron
-    
-    directly_connectable = False
-
     translations = deepcopy(if_curr_neuron_translations)
     translations.update(exp_synapse_translations)
 
-    neuron_immutable_param_map = if_curr_neuron_immutable_param_map
-    neuron_mutable_param_map = if_curr_neuron_mutable_param_map
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    _max_neurons_per_core = 1024
 
-    synapse_immutable_param_map = exp_synapse_immutable_param_map
-    synapse_mutable_param_map = exp_synapse_curr_mutable_param_map
+    # JK: not necessary
+    _neuron_region_class = regions.Neuron
+    
+    _directly_connectable = False
+
+    _neuron_immutable_param_map = if_curr_neuron_immutable_param_map
+    _neuron_mutable_param_map = if_curr_neuron_mutable_param_map
+
+    _synapse_immutable_param_map = exp_synapse_immutable_param_map
+    _synapse_mutable_param_map = exp_synapse_curr_mutable_param_map
 
 
 class IF_cond_exp(cells.IF_cond_exp):
     __doc__ = cells.IF_cond_exp.__doc__
 
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    max_neurons_per_core = 1024
-
-    neuron_region_class = regions.Neuron
-
-    directly_connectable = False
-
     translations = deepcopy(if_cond_neuron_translations)
     translations.update(exp_synapse_translations)
 
-    neuron_immutable_param_map = if_cond_neuron_immutable_param_map
-    neuron_mutable_param_map = if_cond_neuron_mutable_param_map
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    _max_neurons_per_core = 1024
 
-    synapse_immutable_param_map = exp_synapse_immutable_param_map
-    synapse_mutable_param_map = exp_synapse_cond_mutable_param_map
+    _neuron_region_class = regions.Neuron
+
+    _directly_connectable = False
+
+    _neuron_immutable_param_map = if_cond_neuron_immutable_param_map
+    _neuron_mutable_param_map = if_cond_neuron_mutable_param_map
+
+    _synapse_immutable_param_map = exp_synapse_immutable_param_map
+    _synapse_mutable_param_map = exp_synapse_cond_mutable_param_map
 
 '''
 class Izhikevich(cells.Izhikevich):
@@ -166,29 +172,33 @@ class Izhikevich(cells.Izhikevich):
 class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     __doc__ = cells.SpikeSourcePoisson.__doc__
 
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    max_neurons_per_core = 256
-    max_current_inputs_per_core = 2048
-
-    directly_connectable = True
-    neuron_region_class = regions.SpikeSourcePoisson
-    current_input_region_class = regions.SpikeSourcePoisson
-
     translations = build_translations(
         ("start",    "start_time"),
         ("rate",     "rate"),
         ("duration", "end_time",  "start + duration", "end_time - start_time"),
     )
 
-    slow_immutable_param_map = [
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    _max_neurons_per_core = 256
+    _max_current_inputs_per_core = 2048
+
+    _directly_connectable = True
+    _neuron_region_class = regions.SpikeSourcePoisson
+    _current_input_region_class = regions.SpikeSourcePoisson
+
+
+    _slow_immutable_param_map = [
         (lazy_param_map.Indices, "u4"),
         ("start_time", "u4", lazy_param_map.integer_time_divide),
         ("end_time", "u4", lazy_param_map.integer_time_divide),
         ("rate", "i4", lazy_param_map.s1615_rate_isi),
     ]
 
-    fast_immutable_param_map = [
+    _fast_immutable_param_map = [
         (lazy_param_map.Indices, "u4"),
         ("start_time", "u4", lazy_param_map.integer_time_divide),
         ("end_time", "u4", lazy_param_map.integer_time_divide),
@@ -199,15 +209,18 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
 class SpikeSourceArray(cells.SpikeSourceArray):
     __doc__ = cells.SpikeSourceArray.__doc__
 
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    max_neurons_per_core = 256
-    max_current_inputs_per_core = 512
-
-    directly_connectable = True
-    neuron_region_class = regions.SpikeSourceArray
-    current_input_region_class = regions.SpikeSourceArray
-
     translations = build_translations(
         ("spike_times", "spike_times"),
     )
+
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    _max_neurons_per_core = 256
+    _max_current_inputs_per_core = 512
+
+    _directly_connectable = True
+    _neuron_region_class = regions.SpikeSourceArray
+    _current_input_region_class = regions.SpikeSourceArray

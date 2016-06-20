@@ -150,7 +150,7 @@ class NeuralCluster(object):
         self.regions = {}
         self.regions[Regions.system] = regions.System(
             timer_period_us, sim_ticks)
-        self.regions[Regions.neuron] = cell_type.neuron_region_class(
+        self.regions[Regions.neuron] = cell_type._neuron_region_class(
             cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.back_prop_output] = regions.SDRAMBackPropOutput(
             requires_back_prop)
@@ -164,8 +164,8 @@ class NeuralCluster(object):
         if len(cell_type.receptor_types) > 0:
             # Add a synapse region and an input buffer
             self.regions[Regions.synapse] = regions.ParameterSpace(
-                cell_type.synapse_mutable_param_map,
-                cell_type.synapse_immutable_param_map,
+                cell_type._synapse_mutable_param_map,
+                cell_type._synapse_immutable_param_map,
                 parameters, initial_values, pop_size,
                 sim_timestep_ms=sim_timestep_ms)
 
@@ -175,7 +175,7 @@ class NeuralCluster(object):
         if hasattr(cell_type, "intrinsic_plasticity_param_map"):
             self.regions[Regions.intrinsic_plasticity] =\
                 regions.HomogeneousParameterSpace(
-                    cell_type.intrinsic_plasticity_param_map,
+                    cell_type._intrinsic_plasticity_param_map,
                     parameters,
                     sim_timestep_ms)
 

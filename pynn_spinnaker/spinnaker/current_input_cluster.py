@@ -45,7 +45,7 @@ class CurrentInputCluster(object):
         self.regions = {}
         self.regions[Regions.system] = regions.System(
             timer_period_us, sim_ticks)
-        self.regions[Regions.neuron] = cell_type.neuron_region_class(
+        self.regions[Regions.neuron] = cell_type._neuron_region_class(
             cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.output_weight] = regions.OutputWeight()
