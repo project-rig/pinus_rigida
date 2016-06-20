@@ -201,7 +201,7 @@ $(BUILDDIR)/%.o: $(RUNTIME)/%.cpp $(INC_DIR)/spinnaker.h $(INC_DIR)/sark.h $(INC
 # Tidy and cleaning dependencies
 
 tidy:
-	$(RM) $(OBJECTS) $(APP).elf $(APP).txt $(APP).aplx
+	$(RM) $(OBJECTS) $(APP).elf $(APP).txt $(APP).aplx $(APP).nm
 clean: tidy
 	$(RM) $(APP_DIR)/$(APP).aplx
 
