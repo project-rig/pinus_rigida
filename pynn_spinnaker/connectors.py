@@ -41,10 +41,9 @@ class AllToAllConnector(AllToAllConnector):
                                    pre_size, post_size):
         return len(post_slice)
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                               pre_size, post_size):
-        return len(pre_slice) * len(post_slice)
-
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
+        return len(post_slice)
 
 # ----------------------------------------------------------------------------
 # FixedProbabilityConnector
@@ -69,11 +68,9 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
         # Return row-length corresponding to 99.99% of rows
         return np.searchsorted(cdf, 0.9999)
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                               pre_size, post_size):
-        return int(round(self.p_connect * float(len(pre_slice)) *
-                         float(len(post_slice))))
-
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
+        return int(round(self.p_connect * float(len(post_slice))))
 
 # ----------------------------------------------------------------------------
 # OneToOneConnector
@@ -90,10 +87,10 @@ class OneToOneConnector(OneToOneConnector):
                                    pre_size, post_size):
         return 1 if pre_slice.overlaps(post_slice) else 0
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                               pre_size, post_size):
-        return min(len(pre_slice), len(post_slice))
-
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
+        # **TODO** this could be better
+        return 1
 
 # ----------------------------------------------------------------------------
 # FromListConnector
@@ -106,8 +103,7 @@ class FromListConnector(FromListConnector):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
-    def _estimate_max_row_synapses(self, pre_slice, post_slice,
-                                   pre_size, post_size):
+    def _get_slice_row_length_histogram(self, pre_slice, post_slice):
         # Extract columns of pre and post indices from connection list
         pre_indices = self.conn_list[:, 0]
         post_indices = self.conn_list[:, 1]
@@ -118,25 +114,24 @@ class FromListConnector(FromListConnector):
                 (post_indices >= post_slice.start) &
                 (post_indices < post_slice.stop))
 
-        # Use mask to select slice pre-indices
-        slice_pre_indices = pre_indices[mask].astype(int)
+        # Return histogram of masked pre-indices
+        return np.bincount(pre_indices[mask].astype(int))
 
-        # Return maximum number of list entries in each bin
-        return np.amax(np.bincount(slice_pre_indices));
+    def _estimate_max_row_synapses(self, pre_slice, post_slice,
+                                   pre_size, post_size):
+        # Get the row length histogram of slice
+        hist = self._get_slice_row_length_histogram(pre_slice, post_slice)
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                              pre_size, post_size):
-        # Extract columns of pre and post indices from connection list
-        pre_indices = self.conn_list[:, 0]
-        post_indices = self.conn_list[:, 1]
+        # Return maximum row length
+        return np.amax(hist);
 
-        # Return number of list entries which contain
-        # connections in both pre and post slices
-        # http://stackoverflow.com/questions/9560207/how-to-count-values-in-a-certain-range-in-a-numpy-array
-        return ((pre_indices >= pre_slice.start) &
-                (pre_indices < pre_slice.stop) &
-                (post_indices >= post_slice.start) &
-                (post_indices < post_slice.stop)).sum()
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
+        # Get the row length histogram of slice
+        hist = self._get_slice_row_length_histogram(pre_slice, post_slice)
+
+        # Return average row length
+        return np.average(hist)
 
 # ----------------------------------------------------------------------------
 # FixedNumberPostConnector
