@@ -233,8 +233,8 @@ class SynapseCluster(object):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
                         vert_sdram.append(vert_sdram_bytes)
-                        logger.debug("\t\t\t\t\t\tSDRAM:%u bytes",
-                                     vert_sdram_bytes)
+                        logger.debug("\t\t\t\t\t\tVertex: CPU cycles:%u, SDRAM:%u bytes",
+                                     vert_cpu_cycles, vert_sdram_bytes)
                         # Create replacement and reset event rate and SDRAM
                         vert = Vertex(post_slice, receptor_index)
                         vert_cpu_cycles = available_cpu_cycles
@@ -244,8 +244,8 @@ class SynapseCluster(object):
             if len(vert.incoming_connections) > 0:
                 self.verts.append(vert)
                 vert_sdram.append(vert_sdram_bytes)
-                logger.debug("\t\t\t\t\t\tVertex: SDRAM:%u bytes",
-                             vert_sdram_bytes)
+                logger.debug("\t\t\t\t\t\tVertex: CPU cycles:%u, SDRAM:%u bytes",
+                             vert_cpu_cycles, vert_sdram_bytes)
 
         logger.debug("\t\t\t%u synapse vertices", len(self.verts))
 
