@@ -1,7 +1,7 @@
 # --------------------------------------------------------------------------
 # Song, S., Miller, K. D., & Abbott, L. F. (2000).
 # Competitive Hebbian learning through spike-timing-dependent synaptic plasticity.
-# Nature Neuroscience, 3(9), 919–26. http://doi.org/10.1038/78829
+# Nature Neuroscience, 3(9), 919-26. http://doi.org/10.1038/78829
 # --------------------------------------------------------------------------
 
 import itertools
