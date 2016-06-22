@@ -197,8 +197,10 @@ class MultiplicativeWeightDependence(synapses.MultiplicativeWeightDependence):
     _comparable_param_names =  ("w_max", "w_min")
 
     def _update_weight_range(self, weight_range):
-        weight_range.update(get_homogeneous_param(self.parameter_space, "w_max"))
-        weight_range.update(get_homogeneous_param(self.parameter_space, "w_min"))
+        # **HACK** So we can use 16-bit DSP instructions on weights we need to be
+        # able to treat them as SIGNED 16-bit numbers so require an extra bit of headroom
+        weight_range.update(2.0 * get_homogeneous_param(self.parameter_space, "w_max"))
+        weight_range.update(2.0 * get_homogeneous_param(self.parameter_space, "w_min"))
 
 
 # ------------------------------------------------------------------------------
