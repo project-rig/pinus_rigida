@@ -64,7 +64,8 @@ class STDPMechanism(synapses.STDPMechanism):
 
     base_translations = build_translations(
         ("weight", "weight"),
-        ("delay", "delay")
+        ("delay", "delay"),
+        ("dendritic_delay_fraction", "dendritic_delay_fraction")
     )
 
     def _get_minimum_delay(self):
