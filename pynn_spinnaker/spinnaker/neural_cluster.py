@@ -330,6 +330,9 @@ class NeuralCluster(object):
         # Begin with size of spike recording region
         sdram = self.regions[Regions.spike_recording].sizeof(vertex_slice);
 
+        # Add on size of neuron region
+        sdram += self.regions[Regions.neuron].sizeof(vertex_slice)
+        
         # If profiler region exists, add its size
         if Regions.profiler in self.regions:
             sdram += self.regions[Regions.profiler].sizeof()

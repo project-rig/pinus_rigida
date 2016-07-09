@@ -68,7 +68,10 @@ class CurrentInputCluster(object):
         # Loop through slice
         self.verts = []
         for post_slice in post_slices:
-            logger.debug("\t\t\tPost slice:%s", str(post_slice))
+            # Estimate SDRAM usage
+            sdram = self._estimate_sdram(post_slice)
+            logger.debug("\t\t\tPost slice %s: %u bytes SDRAM",
+                         str(post_slice), sdram)
 
             # Build input vert and add to list
             input_vert = InputVertex(post_slice, receptor_index)
@@ -79,7 +82,7 @@ class CurrentInputCluster(object):
 
             # Add resources to dictionary
             # **TODO** add SDRAM
-            vertex_resources[input_vert] = {machine.Cores: 1}
+            vertex_resources[input_vert] = {machine.Cores: 1, machine.SDRAM: sdram}
 
     # --------------------------------------------------------------------------
     # Public methods
@@ -164,6 +167,19 @@ class CurrentInputCluster(object):
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
+    def _estimate_sdram(self, vertex_slice):
+        # Begin with size of spike recording region
+        sdram = self.regions[Regions.spike_recording].sizeof(vertex_slice);
+
+        # Add on size of neuron region
+        sdram += self.regions[Regions.neuron].sizeof(vertex_slice)
+
+        # If profiler region exists, add its size
+        if Regions.profiler in self.regions:
+            sdram += self.regions[Regions.profiler].sizeof()
+
+        return sdram
+
     def _get_region_arguments(self, post_vertex_slice, weights, out_buffers):
         region_arguments = defaultdict(Args)
 
