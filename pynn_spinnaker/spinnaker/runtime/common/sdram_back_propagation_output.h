@@ -4,17 +4,14 @@
 #include <cstdint>
 
 // Common includes
-#include "../common/bit_field.h"
-#include "../common/log.h"
-#include "../common/spinnaker.h"
-
-// Namespaces
-using namespace Common;
+#include "bit_field.h"
+#include "log.h"
+#include "spinnaker.h"
 
 //-----------------------------------------------------------------------------
-// NeuronProcessor::SDRAMBackPropagationOutput
+// Common::SDRAMBackPropagationOutput
 //-----------------------------------------------------------------------------
-namespace NeuronProcessor
+namespace Common
 {
 class SDRAMBackPropagationOutput
 {
@@ -113,4 +110,4 @@ private:
   // Addresses of SDRAM buffers
   uint32_t *m_SDRAMBuffers[2];
 };
-}
+} // namespace Common

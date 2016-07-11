@@ -8,10 +8,10 @@ namespace SynapseProcessor
 }
 
 // Synapse processor includes
-#include "../../key_lookup_binary_search.h"
+#include "../../../common/key_lookup_binary_search.h"
 namespace SynapseProcessor
 {
-  typedef KeyLookupBinarySearch<10> KeyLookup;
+  typedef Common::KeyLookupBinarySearch<10> KeyLookup;
 }
 
 

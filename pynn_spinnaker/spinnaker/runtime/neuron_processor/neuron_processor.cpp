@@ -9,6 +9,7 @@
 #include "../common/flush.h"
 #include "../common/log.h"
 #include "../common/profiler.h"
+#include "../common/sdram_back_propagation_output.h"
 #include "../common/spike_recording.h"
 #include "../common/spinnaker.h"
 #include "../common/utils.h"
@@ -16,7 +17,6 @@
 // Neuron processor includes
 #include "analogue_recording.h"
 #include "input_buffer.h"
-#include "sdram_back_propagation_output.h"
 
 // Configuration include
 #include "config.h"

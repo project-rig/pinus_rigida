@@ -5,10 +5,8 @@
 
 // Common include
 #include "../common/log.h"
+#include "../common/row_offset_length.h"
 #include "../common/spinnaker.h"
-
-// Synapse processor includes
-#include "row_offset_length.h"
 
 //-----------------------------------------------------------------------------
 // SynapseProcessor::DelayBufferBase
@@ -22,7 +20,7 @@ public:
   //-----------------------------------------------------------------------------
   // Typedefines
   //-----------------------------------------------------------------------------
-  typedef RowOffsetLength<S> R;
+  typedef Common::RowOffsetLength<S> R;
 
   DelayBufferBase() : m_DelayMask(0), m_BufferSize(0), m_SDRAMRowBuffers(NULL),
     m_RowCount(NULL), m_DMABuffer(NULL)
