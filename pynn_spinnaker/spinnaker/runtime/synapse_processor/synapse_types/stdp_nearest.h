@@ -192,7 +192,7 @@ public:
     return 5 + GetNumPlasticWords(rowSynapses) + GetNumControlWords(rowSynapses);
   }
 
-  bool ReadSDRAMData(uint32_t *region, uint32_t flags)
+  bool ReadSDRAMData(uint32_t *region, uint32_t flags, uint32_t weightFixedPoint)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::STDPNearest::ReadSDRAMData");
 
@@ -203,7 +203,7 @@ public:
     }
 
     // Read weight dependence data
-    if(!m_WeightDependence.ReadSDRAMData(region, flags))
+    if(!m_WeightDependence.ReadSDRAMData(region, flags, weightFixedPoint))
     {
       return false;
     }

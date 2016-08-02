@@ -74,7 +74,7 @@ public:
     return 3 + ((rowSynapses * sizeof(T)) / 4);
   }
 
-  bool ReadSDRAMData(uint32_t*, uint32_t)
+  bool ReadSDRAMData(uint32_t*, uint32_t, uint32_t)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "SynapseTypes::Static::ReadSDRAMData");
     return true;

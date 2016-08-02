@@ -155,6 +155,34 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
         weight_range.update(get_homogeneous_param(self.parameter_space, "w_min"))
 
 # ------------------------------------------------------------------------------
+# MultiplicativeWeightDependence
+# ------------------------------------------------------------------------------
+class MultiplicativeWeightDependence(synapses.MultiplicativeWeightDependence):
+    __doc__ = synapses.MultiplicativeWeightDependence.__doc__
+
+    translations = build_translations(
+        ("w_max",     "w_max"),
+        ("w_min",     "w_min"),
+    )
+
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    _plasticity_param_map = [
+        ("w_min", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("w_max", "i4", lazy_param_map.s32_weight_fixed_point),
+    ]
+
+    _comparable_param_names =  ("w_max", "w_min")
+
+    def _update_weight_range(self, weight_range):
+        # **HACK** So we can use 16-bit DSP instructions on weights we need to be
+        # able to treat them as SIGNED 16-bit numbers so require an extra bit of headroom
+        weight_range.update(2.0 * get_homogeneous_param(self.parameter_space, "w_max"))
+        weight_range.update(2.0 * get_homogeneous_param(self.parameter_space, "w_min"))
+
+
+# ------------------------------------------------------------------------------
 # SpikePairRule
 # ------------------------------------------------------------------------------
 class SpikePairRule(synapses.SpikePairRule):

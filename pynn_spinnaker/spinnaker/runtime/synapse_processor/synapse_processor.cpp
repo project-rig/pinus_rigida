@@ -192,7 +192,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
    // Read plasticity region
   if(!g_Synapse.ReadSDRAMData(
     Config::GetRegionStart(baseAddress, RegionPlasticity),
-    flags))
+    flags, g_AppWords[AppWordWeightFixedPoint]))
   {
     return false;
   }
