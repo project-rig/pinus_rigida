@@ -267,11 +267,11 @@ class Population(common.Population):
         max_neurons_per_core = (
             self.spinnaker_config.max_neurons_per_core
             if self.spinnaker_config.max_neurons_per_core is not None
-            else self.celltype._max_neurons_per_core)
+            else int(self.celltype._max_neurons_per_core * timestep_mul))
 
         # Clamp constraint to actual size of population
         self.neuron_j_constraint = self._clamp_j_constraint(
-            int(max_neurons_per_core * timestep_mul))
+            max_neurons_per_core)
         logger.debug("\t\tNeuron j constraint:%u",
                      self.neuron_j_constraint)
 
@@ -303,10 +303,12 @@ class Population(common.Population):
             for p in directly_connectable_projections:
                 # Apply timestep multipliers to the
                 # hard maximum specified in celltype
-                current_input_constraint =\
-                    int(p.pre.celltype._max_current_inputs_per_core *
-                        timestep_mul)
-
+                current_input_constraint = (
+                    p.pre.spinnaker_config.max_neurons_per_core
+                    if p.pre.spinnaker_config.max_neurons_per_core is not None
+                    else int(p.pre.celltype._max_current_inputs_per_core *
+                             timestep_mul))
+                
                 # Clamp constraint to actual size of
                 # population and add to dictionary
                 current_input_constraint =\
