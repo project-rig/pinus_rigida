@@ -259,7 +259,7 @@ def get_model_comparable(value):
     # have the same attributes, they'll just be property object
     if not inspect.isclass(value):
         # If model type has a list of param names to use for hash
-        if hasattr(value, "comparable_param_names"):
+        if hasattr(value, "_comparable_param_names"):
             # Start tuple with class type - various STDP components
             # are likely to have similarly named parameters
             # with simular values so this is important 1st check
@@ -267,14 +267,14 @@ def get_model_comparable(value):
 
             # Loop through names of parameters which much match for objects
             # to be equal and read them from parameter space into tuple
-            for p in value.comparable_param_names:
+            for p in value._comparable_param_names:
                 comp += (get_homogeneous_param(value.parameter_space, p),)
             return comp
         # Otherwise, if model type has a collection of comparable properties,
         # Loop through the properties and recursively call this function
-        elif hasattr(value, "comparable_properties"):
+        elif hasattr(value, "_comparable_properties"):
             return tuple(itertools.chain.from_iterable(
-                get_model_comparable(p) for p in value.comparable_properties))
+                get_model_comparable(p) for p in value._comparable_properties))
     # Otherwise, return value itself
     return (value,)
 
