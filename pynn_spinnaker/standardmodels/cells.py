@@ -227,7 +227,7 @@ class SpikeSourceArray(cells.SpikeSourceArray):
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
     _max_neurons_per_core = 256
-    _max_current_inputs_per_core = 512
+    _max_current_inputs_per_core = 2048
 
     _directly_connectable = True
     _neuron_region_class = regions.SpikeSourceArray
