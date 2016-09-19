@@ -12,11 +12,11 @@ namespace ARMIntrinsics
 // This instruction multiplies two signed 32-bit integers
 inline int64_t __smull(int32_t x, int32_t y)
 {
-  register union {struct {int32_t lo; int32_t hi;} words; int64_t val;} result;
+  register union {struct {uint32_t lo; uint32_t hi;} words; int64_t val;} result;
 
   asm volatile("smull %[r_lo], %[r_hi], %[x], %[y]"
-              : [r_lo] "=r" ((result.words).lo),
-                [r_hi] "=r" ((result.words).hi)
+              : [r_lo] "=&r" ((result.words).lo),
+                [r_hi] "=&r" ((result.words).hi)
               : [x] "r" (x),
                 [y] "r" (y)
               :);
@@ -28,7 +28,7 @@ inline int64_t __smull(int32_t x, int32_t y)
 // result.
 inline int64_t __smlal(int64_t acc, int32_t x, int32_t y)
 {
-  register union {struct {int32_t lo; int32_t hi;} words; int64_t val;} result;
+  register union {struct {uint32_t lo; uint32_t hi;} words; int64_t val;} result;
   result.val = acc;
 
   asm volatile("smlal %[r_lo], %[r_hi], %[x], %[y]"
