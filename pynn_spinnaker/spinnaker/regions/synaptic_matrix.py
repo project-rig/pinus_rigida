@@ -227,6 +227,31 @@ class SynapticMatrix(Region):
 
         return sub_matrix_props, sub_matrix_rows
 
+    def partition_on_chip_matrix(self, post_vertex_slice, incoming_connections):
+        # Loop through all incoming connections
+        sub_matrix_props = []
+        for pre_pop, pre_n_verts in iteritems(incoming_connections):
+            # Loop through presynaptic vertices
+            for pre_n_vert in pre_n_verts:
+                max_cols = 1
+                num_ext_words = 0
+                any_connections = False
+
+
+                if any_connections:
+                    # Calculate matrix size in words - size of square
+                    # matrix added to number of extension words
+                    size_words = num_ext_words +\
+                        (len(vert_sub_rows) * self._get_num_row_words(max_cols))
+
+                    # Add sub matrix to list
+                    sub_matrix_props.append(
+                        SubMatrix(pre_n_vert.routing_key,
+                                  pre_n_vert.routing_mask,
+                                  size_words, max_cols))
+
+        return sub_matrix_props
+
     def read_sub_matrix(self, pre_n_vert, post_s_vert, names, region_mem):
         # Find the matrix properties and placement of sub-matrix
         # associated with pre-synaptic neuron vertex

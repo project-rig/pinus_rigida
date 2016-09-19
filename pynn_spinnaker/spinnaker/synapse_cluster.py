@@ -305,43 +305,55 @@ class SynapseCluster(object):
             # Loop through unique presynaptic populations with connections
             # terminating in any of the vertices in this postsynaptic slice
             pre_pop_sub_rows = {}
+            pre_pop_on_chip_projection = {}
             for pre_pop in set(itertools.chain.from_iterable(
                 iterkeys(v.incoming_connections)
                 for v in post_slice_verts)):
 
-                # Create list of lists to contain matrix rows
-                sub_rows = [[] for _ in range(pre_pop.size)]
+                # If all incoming projections from this population
+                # are generatable on chip and there aren't multiple
+                # projections that need merging mark list of projections
+                # for generating on chip
+                incoming_from_pre = incoming_projections[pre_pop]
+                if (all(i._generatable_on_chip for i in incoming_from_pre) and
+                    len(incoming_from_pre) == 1):
+                    pre_pop_on_chip_projection[pre_pop] = incoming_from_pre
+                # Otherwise
+                else:
+                    # Create list of lists to contain matrix rows
+                    sub_rows = [[] for _ in range(pre_pop.size)]
 
-                # Loop through projections leading from pre_pop
-                for proj in incoming_projections[pre_pop]:
-                    # Check local mask isn't currently in use
-                    assert np.all(proj.post._mask_local)
+                    # Loop through projections leading from pre_pop
+                    for proj in incoming_from_pre:
+                        # Check local mask isn't currently in use
+                        assert np.all(proj.post._mask_local)
 
-                    # Cache original post mask (due to above
-                    # this is slightly pointless but still)
-                    old_post_mask = proj.post._mask_local
+                        # Cache original post mask (due to above
+                        # this is slightly pointless but still)
+                        old_post_mask = proj.post._mask_local
 
-                    # Create new local mask to select only the columns
-                    # corresponding to neurons in postsynaptic vertex
-                    proj.post._mask_local = np.zeros((proj.post.size,), dtype=bool)
-                    proj.post._mask_local[post_slice.python_slice] = True
+                        # Create new local mask to select only the columns
+                        # corresponding to neurons in postsynaptic vertex
+                        proj.post._mask_local = np.zeros((proj.post.size,),
+                                                         dtype=bool)
+                        proj.post._mask_local[post_slice.python_slice] = True
 
-                    # Cache original connector callback
-                    old_connector_callback = proj._connector.callback
-                    proj._connector.callback = None
+                        # Cache original connector callback
+                        old_connector_callback = proj._connector.callback
+                        proj._connector.callback = None
 
-                    # Add synapses from projection to rows
-                    proj._build(matrix_rows=sub_rows,
-                                weight_range=weight_range,
-                                directly_connect=False)
+                        # Add synapses from projection to rows
+                        proj._build(matrix_rows=sub_rows,
+                                    weight_range=weight_range,
+                                    directly_connect=False)
 
-                    # Restore old mask and connector callback
-                    proj.post._mask_local = old_post_mask
-                    proj._connector.callback = old_connector_callback
+                        # Restore old mask and connector callback
+                        proj.post._mask_local = old_post_mask
+                        proj._connector.callback = old_connector_callback
 
-                # Convert rows to numpy and add to dictionary
-                pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
-                                             for r in sub_rows]
+                    # Convert rows to numpy and add to dictionary
+                    pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
+                                                for r in sub_rows]
 
             # If the synapse model has a function to update weight range
             if hasattr(self.synapse_model, "_update_weight_range"):
