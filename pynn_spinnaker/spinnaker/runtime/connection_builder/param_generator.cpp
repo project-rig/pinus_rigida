@@ -19,6 +19,7 @@ void ConnectionBuilder::ParamGenerator::Constant::Generate(unsigned int number,
     output[i] = m_Value;
   }
 }
+
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ParamGenerators::Uniform
 //-----------------------------------------------------------------------------

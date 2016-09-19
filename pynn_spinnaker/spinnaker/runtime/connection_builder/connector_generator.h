@@ -65,5 +65,36 @@ private:
   }
 };
 
+//-----------------------------------------------------------------------------
+// FixedProbability
+//-----------------------------------------------------------------------------
+class FixedProbability : public Base
+{
+public:
+  ADD_FACTORY_CREATOR(FixedProbability);
+
+  //-----------------------------------------------------------------------------
+  // Base virtuals
+  //-----------------------------------------------------------------------------
+  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
+                                unsigned int numPostNeurons, MarsKiss64 &rng,
+                                uint32_t (&indices)[1024]) const;
+
+private:
+  FixedProbability(uint32_t *&region)
+  {
+    m_Probability = *region++;
+
+    LOG_PRINT(LOG_LEVEL_INFO, "\tFixed-probability connector: probability:%u",
+      m_Probability
+    );
+  }
+
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
+  uint32_t m_Probability;
+};
+
 } // ConnectorGenerators
 } // ConnectionBuilder

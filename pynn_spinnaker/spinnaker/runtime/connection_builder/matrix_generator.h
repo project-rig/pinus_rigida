@@ -54,6 +54,13 @@ public:
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
     MarsKiss64 &rng) const = 0;
+
+protected:
+  //-----------------------------------------------------------------------------
+  // Protected methods
+  //-----------------------------------------------------------------------------
+  void TraceUInt(uint32_t (&values)[1024], unsigned int number) const;
+  void TraceInt(int32_t (&values)[1024], unsigned int number) const;
 };
 
 //-----------------------------------------------------------------------------

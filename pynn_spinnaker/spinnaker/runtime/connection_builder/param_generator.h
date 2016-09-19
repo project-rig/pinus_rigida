@@ -48,7 +48,7 @@ public:
   //-----------------------------------------------------------------------------
   // Declared virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(unsigned int number, unsigned int weightFixedPoint,
+  virtual void Generate(unsigned int number, unsigned int fixedPoint,
                         MarsKiss64 &rng, int32_t (&integers)[1024]) const = 0;
 };
 
@@ -63,7 +63,7 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(unsigned int number, unsigned int weightFixedPoint,
+  virtual void Generate(unsigned int number, unsigned int fixedPoint,
                         MarsKiss64 &rng, int32_t (&output)[1024]) const;
 
 private:
@@ -91,7 +91,7 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(unsigned int number, unsigned int weightFixedPoint,
+  virtual void Generate(unsigned int number, unsigned int fixedPoint,
                         MarsKiss64 &rng, int32_t (&output)[1024]) const;
 
 private:
