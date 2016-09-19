@@ -74,7 +74,7 @@ public:
     {
       // Extract neuron ID from key
       // **NOTE** assumed to be at bottom of mask
-      const unsigned int neuronID = key &  ~lookupEntry.m_Mask;
+      const unsigned int neuronID = key &  ~mask;
 
       // Convert number of synapses to number of words
       rowWords = getRowWordsFunction(rowSynapses);
