@@ -3,7 +3,12 @@
 // Common includes
 #include "../common/config.h"
 #include "../common/log.h"
+#include "../common/key_lookup_binary_search.h"
 #include "../common/spinnaker.h"
+
+// Connection builder includes
+#include "generator_factory.h"
+#include "matrix_generator.h"
 
 // Namespaces
 using namespace Common;
@@ -15,11 +20,6 @@ using namespace ConnectionBuilder;
 namespace
 {
 //----------------------------------------------------------------------------
-// Typedefines
-//----------------------------------------------------------------------------
-typedef uint32_t* (*GenerateMatrixFunction)(uint32_t, unsigned int, unsigned int, unsigned int);
-
-//----------------------------------------------------------------------------
 // Module level variables
 //----------------------------------------------------------------------------
 Config g_Config;
@@ -29,28 +29,8 @@ uint32_t g_AppWords[AppWordMax];
 
 uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
-GenerateMatrixFunction g_MatrixGenerators[MatrixTypeMax] =
-{
-  &MatrixGenerators::Static,
-  NULL,
-  NULL,
-};
+GeneratorFactory<MatrixGenerator::Base, MatrixGeneratorTypeMax> g_MatrixGeneratorFactory;
 
-//-----------------------------------------------------------------------------
-// Module inline functions
-//-----------------------------------------------------------------------------
-template<typename G, unsigned int N>
-inline G GetGenerator(G (&generatorFunctions)[N], unsigned int i)
-{
-  if(i < N)
-  {
-    return generatorFunctions[i];
-  }
-  else
-  {
-    return NULL;
-  }
-}
 //-----------------------------------------------------------------------------
 // Module functions
 //-----------------------------------------------------------------------------
@@ -73,16 +53,16 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
 
   // Loop through matrices to generate
   const uint32_t numMatricesToGenerate = *region++;
-  for(unsigned int i = 0 < numMatricesToGenerate; i++)
+  for(unsigned int i = 0; i < numMatricesToGenerate; i++)
   {
     // Read basic matrix properties
     const uint32_t key = *region++;
-    const uint32_t matrixType = *region++;
-    const uint32_t connectorType = *region++;
-    const uint32_t delayGeneratorType = *region++;
-    const uint32_t weightGeneratorType = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay generator type:%u, weight generator type:%u",
-              key, matrixType, connectorType, delayGeneratorType, weightGeneratorType);
+    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(*region++, region);
+    //const uint32_t connectorType = *region++;
+    //const uint32_t delayGeneratorType = *region++;
+    //const uint32_t weightGeneratorType = *region++;
+    //LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay generator type:%u, weight generator type:%u",
+    //          key, matrixType, connectorType, delayGeneratorType, weightGeneratorType);
 
     // Find matrix in key lookup
     unsigned int matrixRowSynapses;
@@ -91,7 +71,10 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
     if(g_KeyLookup.LookupMatrix(key, matrixRowSynapses, matrixWordOffset, matrixKeyMask))
     {
       // Calculate start address of matrix
-      uint32_t *matrixLocation = g_SynapticMatrixBaseAddress + matrixWordOffset;
+      uint32_t *matrixAddress = g_SynapticMatrixBaseAddress + matrixWordOffset;
+
+      matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
+                                g_AppWords[AppWordWeightFixedPoint]);
 
     }
     else
@@ -151,6 +134,12 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 extern "C" void c_main()
 {
+  // Register matrix generators with factories
+  g_MatrixGeneratorFactory.Register(MatrixGeneratorTypeStatic, MatrixGenerator::Static<3, 10>::Create, sizeof(MatrixGenerator::Static<3, 10>));
+
+  // Allocate memory for factories
+  g_MatrixGeneratorFactory.Allocate();
+
   // Get this core's base address using alloc tag
   uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
 
@@ -160,19 +149,6 @@ extern "C" void c_main()
     LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
     return;
   }
-
-  // Initialise
-  g_DMABusy = false;
-  g_DMARowBufferIndex = 0;
-
-  // Set timer tick (in microseconds) in both timer and
-  spin1_set_timer_tick(g_Config.GetTimerPeriod());
-
-  // Register callbacks
-  spin1_callback_on(MC_PACKET_RECEIVED, MCPacketReceived, -1);
-  spin1_callback_on(DMA_TRANSFER_DONE,  DMATransferDone,   0);
-  spin1_callback_on(USER_EVENT,         UserEvent,         0);
-  spin1_callback_on(TIMER_TICK,         TimerTick,         2);
 
   // Start simulation
   spin1_start(SYNC_WAIT);

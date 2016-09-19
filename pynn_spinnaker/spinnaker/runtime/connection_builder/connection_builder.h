@@ -29,12 +29,12 @@ enum AppWord
 };
 
 // Supported types of synaptic matrix
-enum MatrixType
+enum MatrixGeneratorType
 {
-  MatrixTypeStatic,
-  MatrixTypePlastic,
-  MatrixTypeExtendedPlastic,
-  MatrixTypeMax,
+  MatrixGeneratorTypeStatic,
+  MatrixGeneratorTypePlastic,
+  MatrixGeneratorTypeExtendedPlastic,
+  MatrixGeneratorTypeMax,
 };
 
 } // ConnectionBuilder
