@@ -20,6 +20,10 @@ class StaticSynapticMatrix(SynapticMatrix):
     # **NOTE** weights are only 16-bit, but final words need to be 32-bit
     FixedPointWeightBits = 32
 
+    # Can synaptic matrices of this type be generated
+    # on chip using connection builder executable
+    GeneratableOnChip = True
+
     # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------

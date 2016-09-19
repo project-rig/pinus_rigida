@@ -34,6 +34,10 @@ class AllToAllConnector(AllToAllConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = True
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -53,6 +57,10 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = True
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -83,6 +91,10 @@ class OneToOneConnector(OneToOneConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = True
 
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = False
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -102,6 +114,10 @@ class FromListConnector(FromListConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = False
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -146,6 +162,10 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = False
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -179,6 +199,10 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = False
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -214,6 +238,10 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    # Can this connector be generated on chip
+    # using connection builder executable
+    _generatable_on_chip = False
+    
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------

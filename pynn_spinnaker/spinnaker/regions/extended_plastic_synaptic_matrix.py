@@ -16,6 +16,10 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
     # How many bits should fixed point weights be converted into
     FixedPointWeightBits = 16
 
+    # Can synaptic matrices of this type be generated
+    # on chip using connection builder executable
+    GeneratableOnChip = False
+
     def __init__(self, synapse_type):
         # Superclass
         super(ExtendedPlasticSynapticMatrix, self).__init__(synapse_type)

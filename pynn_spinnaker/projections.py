@@ -3,6 +3,7 @@ try:
 except ImportError:
     izip = zip  # Python 3 zip returns an iterator already
 from pyNN import common
+from pyNN.random import RandomDistribution
 from pyNN.space import Space
 from pyNN.standardmodels import StandardCellType
 from . import simulator
@@ -17,6 +18,7 @@ from collections import namedtuple
 from rig.utils.contexts import ContextMixin
 from spinnaker.current_input_cluster import CurrentInputCluster
 from .standardmodels.synapses import StaticSynapse
+from .random import NativeRNG
 
 # Import functions
 from spinnaker.utils import get_model_comparable
@@ -303,3 +305,28 @@ class Projection(common.Projection, ContextMixin):
         return (self.pre.celltype._directly_connectable and
                 self._connector._directly_connectable and
                 type(self.synapse_type) is self._static_synapse_class)
+
+    @property
+    def _generatable_on_chip(self):
+        # If generation of connections on chip is disabled, return false
+        if not self._simulator.state.generate_connections_on_chip:
+            return False
+
+        # If connector isn't generatable on chip, return false
+        if not self._connector._generatable_on_chip:
+            return False
+
+        # If synaptic matrix type is not generatable on chip, return false
+        if not self.synapse_type._synaptic_matrix_region_class.GeneratableOnChip:
+            return False
+
+        # Return true if all parameters of connection are either
+        # specified using the SpiNNaker native RNG or are constants
+        s_params = self.synapse_type.parameter_space._parameters.values()
+        return all(
+            (isinstance(value.base_value, RandomDistribution)
+             and isinstance(value.base_value.rng, NativeRNG))
+            or isinstance(value.base_value, (int, long, np.integer,
+                                             float, bool))
+            for value in s_params)
+
