@@ -1,11 +1,32 @@
 #pragma once
 
-//-----------------------------------------------------------------------------
-// MatrixGenerator::ParamGenerators
-//-----------------------------------------------------------------------------
-namespace MatrixGenerator
+// Standard includes
+#include <cstdint>
+
+// Common includes
+#include "../common/log.h"
+
+// Connection builder includes
+#include "generator_factory.h"
+
+// Forward declarations
+namespace Common
 {
-namespace ParamGenerators
+  namespace Random
+  {
+    class MarsKiss64;
+  }
+}
+
+// Namespaces
+using namespace Common::Random;
+
+//-----------------------------------------------------------------------------
+// ConnectionBuilder::ParamGenerator
+//-----------------------------------------------------------------------------
+namespace ConnectionBuilder
+{
+namespace ParamGenerator
 {
 /*binomial':       ('n', 'p'),
 'gamma':          ('k', 'theta'),
@@ -38,24 +59,18 @@ public:
 class Constant : public Base
 {
 public:
+  ADD_FACTORY_CREATOR(Constant);
+
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(unsigned int number, unsigned int,
-                        MarsKiss64 &, int32_t (&output)[1024])
-  {
-    // Copy constant into output
-    for(uint32_t i = 0; i < number; i++)
-    {
-      output[i] = m_Constant;
-    }
-  }
+                        MarsKiss64 &, int32_t (&output)[1024]);
 
 private:
-
-
-  Constant(const uint32_t *region)
+  Constant(uint32_t *&region)
   {
+    LOG_PRINT(LOG_LEVEL_INFO, "\tConstant parameter");
   }
 
   //-----------------------------------------------------------------------------
@@ -67,28 +82,31 @@ private:
 //-----------------------------------------------------------------------------
 // Uniform
 //-----------------------------------------------------------------------------
-class Uniform
+class Uniform : public Base
 {
 public:
+  ADD_FACTORY_CREATOR(Uniform);
+
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(unsigned int number, unsigned int,
-                        MarsKiss64 &rng, int32_t (&output)[1024])
-  {
-    // Copy constant into output
-    for(uint32_t i = 0; i < number; i++)
-    {
-      output[i] = ;
-    }
-  }
+                        MarsKiss64 &rng, int32_t (&output)[1024]);
 
 private:
+  Uniform(uint32_t *&region)
+  {
+    m_Low = *reinterpret_cast<int32_t*>(region++);
+    m_High = *reinterpret_cast<int32_t*>(region++);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tUniform parameter: low:%d, high:%d",
+              m_Low, m_High);
+  }
+
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
   int32_t m_Low;
   int32_t m_High;
 };
-} // RNG
-} // MatrixGenerator
+} // ParamGenerator
+} // ConnectionBuilder

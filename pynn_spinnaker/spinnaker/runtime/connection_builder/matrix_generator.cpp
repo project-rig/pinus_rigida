@@ -1,19 +1,24 @@
 #include "matrix_generator.h"
 
+// Connection builder includes
+#include "connector_generator.h"
+#include "param_generator.h"
+
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::MatrixGenerator::Static
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
-  unsigned int maxRowWords, unsigned int weightFixedPoint, unsigned int numPostNeurons/*,
-  const ParamGenerators::Base &delayGenerator, const ParamGenerators::Base &weightGenerator,
-  const ConnectorGenerators::Base &connectorGenerator, MarsKiss64 &rng*/) const
+  unsigned int maxRowWords, unsigned int weightFixedPoint, unsigned int numPostNeurons,
+  const ConnectorGenerator::Base *connectorGenerator,
+  const ParamGenerator::Base *delayGenerator,
+  const ParamGenerator::Base *weightGenerator) const
 {
   // Loop through rows
   for(uint32_t i = 0; i < m_NumRows; i++)
   {
     // Generate row indices
     uint32_t indices[1024];
-    unsigned int numIndices = 7;//connectorGenerator.Generate(i, maxRowWords,
+    unsigned int numIndices = 6;//connectorGenerator.Generate(i, maxRowWords,
     //                                                     rng, indices);
 
     // Generate delays and weights for each index

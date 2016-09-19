@@ -1,5 +1,8 @@
 #include "connector_generator.h"
 
+// Common includes
+#include "../common/random/mars_kiss64.h"
+
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ConnectorGenerator::AllToAll
 //-----------------------------------------------------------------------------

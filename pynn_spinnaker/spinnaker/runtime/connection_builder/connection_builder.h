@@ -37,6 +37,7 @@ enum MatrixGeneratorType
   MatrixGeneratorTypeMax,
 };
 
+// Supported types of connector
 enum ConnectorGeneratorType
 {
   ConnectorGeneratorTypeAllToAll,
@@ -45,6 +46,17 @@ enum ConnectorGeneratorType
   ConnectorGeneratorTypeFixedNumberPost,
   ConnectorGeneratorTypeFixedNumberPre,
   ConnectorGeneratorTypeMax,
+};
+
+// Supported types of parameter
+enum ParamGeneratorType
+{
+  ParamGeneratorTypeConstant,
+  ParamGeneratorTypeUniform,
+  ParamGeneratorTypeNormal,
+  ParamGeneratorTypeNormalClipped,
+  ParamGeneratorTypeLogNormal,
+  ParamGeneratorTypeMax,
 };
 
 } // ConnectionBuilder

@@ -5,10 +5,18 @@
 
 // Common includes
 #include "../common/log.h"
-#include "../common/random/mars_kiss64.h"
 
 // Connection builder includes
 #include "generator_factory.h"
+
+// Forward declarations
+namespace Common
+{
+  namespace Random
+  {
+    class MarsKiss64;
+  }
+}
 
 // Namespaces
 using namespace Common::Random;
@@ -49,7 +57,7 @@ public:
                                 MarsKiss64 &, uint32_t (&indices)[1024]) const;
 
 private:
-  AllToAll(uint32_t *&region)
+  AllToAll(uint32_t *&)
   {
     LOG_PRINT(LOG_LEVEL_INFO, "\tAll-to-all connector");
   }

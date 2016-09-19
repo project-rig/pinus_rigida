@@ -9,11 +9,34 @@
 // Connection builder includes
 #include "generator_factory.h"
 
+// Forward declarations
+namespace Common
+{
+  namespace Random
+  {
+    class MarsKiss64;
+  }
+}
+
+// Namespaces
+using namespace Common::Random;
+
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::MatrixGenerator
 //-----------------------------------------------------------------------------
 namespace ConnectionBuilder
 {
+// Forward declarations
+namespace ConnectorGenerator
+{
+  class Base;
+}
+
+namespace ParamGenerator
+{
+  class Base;
+}
+
 namespace MatrixGenerator
 {
 //-----------------------------------------------------------------------------
@@ -26,9 +49,10 @@ public:
   // Declared virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowWords,
-    unsigned int weightFixedPoint, unsigned int numPostNeurons/*,
-    const ParamGenerators::Base &delayGenerator, const ParamGenerators::Base &weightGenerator,
-    const ConnectorGenerators::Base &connectorGenerator, MarsKiss64 &rng*/) const = 0;
+    unsigned int weightFixedPoint, unsigned int numPostNeurons,
+    const ConnectorGenerator::Base *connectorGenerator,
+    const ParamGenerator::Base *delayGenerator,
+    const ParamGenerator::Base *weightGenerator) const = 0;
 };
 
 //-----------------------------------------------------------------------------
@@ -43,9 +67,10 @@ public:
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowWords,
-    unsigned int weightFixedPoint, unsigned int numPostNeurons/*
-    const ParamGenerators::Base &delayGenerator, const ParamGenerators::Base &weightGenerator,
-    const ConnectorGenerators::Base &connectorGenerator, MarsKiss64 &rng*/) const;
+    unsigned int weightFixedPoint, unsigned int numPostNeurons,
+    const ConnectorGenerator::Base *connectorGenerator,
+    const ParamGenerator::Base *delayGenerator,
+    const ParamGenerator::Base *weightGenerator) const;
 
 private:
   Static(uint32_t *&region)

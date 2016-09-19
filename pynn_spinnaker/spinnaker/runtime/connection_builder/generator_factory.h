@@ -33,7 +33,7 @@ public:
   //----------------------------------------------------------------------------
   // Static methods
   //----------------------------------------------------------------------------
-  B* Create(unsigned int i, uint32_t *&region)
+  B* Create(unsigned int i, uint32_t *&region, void *memory)
   {
     // If i is approximately valid
     if(i < N)
@@ -44,7 +44,7 @@ public:
       // If function is found
       if(createGeneratorFunction != NULL)
       {
-        return createGeneratorFunction(region, m_Memory);
+        return createGeneratorFunction(region, memory);
       }
       else
       {
@@ -61,14 +61,18 @@ public:
     return NULL;
   }
 
-  void Allocate()
+  void *Allocate()
   {
     // If there is any memory to allocate do so
     if(m_MemorySize > 0)
     {
-      m_Memory = spin1_malloc(m_MemorySize);
-      LOG_PRINT(LOG_LEVEL_INFO, "Allocated %u bytes for generator factory",
+      LOG_PRINT(LOG_LEVEL_INFO, "%u bytes required for generator factory",
                 m_MemorySize);
+      return spin1_malloc(m_MemorySize);
+    }
+    else
+    {
+      return NULL;
     }
   }
 
@@ -112,7 +116,6 @@ private:
   // Members
   //-----------------------------------------------------------------------------
   CreateGeneratorFunction m_CreateGeneratorFunctions[N];
-  void *m_Memory;
   unsigned int m_MemorySize;
 };
 

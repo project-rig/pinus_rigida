@@ -10,6 +10,7 @@
 #include "connector_generator.h"
 #include "generator_factory.h"
 #include "matrix_generator.h"
+#include "param_generator.h"
 
 // Namespaces
 using namespace Common;
@@ -30,8 +31,16 @@ uint32_t g_AppWords[AppWordMax];
 
 uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
+// Factories to create matrix, connector and parameter generators by ID
 GeneratorFactory<MatrixGenerator::Base, MatrixGeneratorTypeMax> g_MatrixGeneratorFactory;
 GeneratorFactory<ConnectorGenerator::Base, ConnectorGeneratorTypeMax> g_ConnectorGeneratorFactory;
+GeneratorFactory<ParamGenerator::Base, ParamGeneratorTypeMax> g_ParamGeneratorFactory;
+
+// Memory buffers to placement new generators into
+void *g_MatrixGeneratorBuffer = NULL;
+void *g_ConnectorGeneratorBuffer = NULL;
+void *g_DelayParamGeneratorBuffer = NULL;
+void *g_WeightParamGeneratorBuffer = NULL;
 
 //-----------------------------------------------------------------------------
 // Module functions
@@ -61,18 +70,24 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
     const uint32_t key = *region++;
     const uint32_t matrixType = *region++;
     const uint32_t connectorType = *region++;
-    const uint32_t delayGeneratorType = *region++;
-    const uint32_t weightGeneratorType = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay generator type:%u, weight generator type:%u",
-              key, matrixType, connectorType, delayGeneratorType, weightGeneratorType);
+    const uint32_t delayType = *region++;
+    const uint32_t weightType = *region++;
+    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay type:%u, weight type:%u",
+              key, matrixType, connectorType, delayType, weightType);
 
     // Generate matrix, connector, delays and weights
-    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixType, region);
-    const auto connectorGenerator = g_ConnectorGeneratorFactory.Create(connectorType, region);
-    //const auto
+    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixType, region,
+                                                                 g_MatrixGeneratorBuffer);
+    const auto connectorGenerator = g_ConnectorGeneratorFactory.Create(connectorType, region,
+                                                                       g_ConnectorGeneratorBuffer);
+    const auto delayGenerator = g_ParamGeneratorFactory.Create(delayType, region,
+                                                               g_DelayParamGeneratorBuffer);
+    const auto weightGenerator = g_ParamGeneratorFactory.Create(weightType, region,
+                                                               g_WeightParamGeneratorBuffer);
 
     // If any components couldn't be created return false
-    if(matrixGenerator == NULL || connectorGenerator == NULL)
+    if(matrixGenerator == NULL || connectorGenerator == NULL
+      || delayGenerator == NULL || weightGenerator == NULL)
     {
       return false;
     }
@@ -89,7 +104,8 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
       // Generate matrix
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
                                 g_AppWords[AppWordWeightFixedPoint],
-                                g_AppWords[AppWordNumPostNeurons]);
+                                g_AppWords[AppWordNumPostNeurons],
+                                connectorGenerator, delayGenerator, weightGenerator);
 
     }
     else
@@ -151,11 +167,21 @@ extern "C" void c_main()
 {
   // Register matrix generators with factories
   REGISTER_FACTORY_CLASS(MatrixGenerator, Static);
+
+  // Register connector generators with factories
   REGISTER_FACTORY_CLASS(ConnectorGenerator, AllToAll);
 
-  // Allocate memory for factories
-  g_MatrixGeneratorFactory.Allocate();
-  g_ConnectorGeneratorFactory.Allocate();
+  // Register parameter generators with factories
+  REGISTER_FACTORY_CLASS(ParamGenerator, Constant);
+  REGISTER_FACTORY_CLASS(ParamGenerator, Uniform);
+
+  // Allocate buffers for placement new from factories
+  // **NOTE** we need to be able to simultaneously allocate a delay and
+  // a weight generator so we need two buffers for parameter allocation
+  g_MatrixGeneratorBuffer = g_MatrixGeneratorFactory.Allocate();
+  g_ConnectorGeneratorBuffer = g_ConnectorGeneratorFactory.Allocate();
+  g_DelayParamGeneratorBuffer = g_ParamGeneratorFactory.Allocate();
+  g_WeightParamGeneratorBuffer = g_ParamGeneratorFactory.Allocate();
 
   // Get this core's base address using alloc tag
   uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
