@@ -5,10 +5,8 @@
 
 // Common include
 #include "../common/log.h"
+#include "../common/row_offset_length.h"
 #include "../common/spinnaker.h"
-
-// Synapse processor includes
-#include "row_offset_length.h"
 
 //-----------------------------------------------------------------------------
 // SynapseProcessor::DelayBufferBase

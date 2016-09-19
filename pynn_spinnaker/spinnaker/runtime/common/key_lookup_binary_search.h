@@ -4,21 +4,19 @@
 #include <cstdint>
 
 // Common includes
-#include "../common/arm_intrinsics.h"
-#include "../common/log.h"
-#include "../common/utils.h"
-
-// Synapse processor includes
+#include "arm_intrinsics.h"
+#include "log.h"
 #include "row_offset_length.h"
+#include "utils.h"
 
 // Namespaces
 using namespace Common::ARMIntrinsics;
 using namespace Common::Utils;
 
 //-----------------------------------------------------------------------------
-// SynapseProcessor::KeyLookupBinarySearch
+// Common::KeyLookupBinarySearch
 //-----------------------------------------------------------------------------
-namespace SynapseProcessor
+namespace Common
 {
 template<unsigned int S>
 class KeyLookupBinarySearch
