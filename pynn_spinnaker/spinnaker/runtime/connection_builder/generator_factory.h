@@ -10,7 +10,9 @@
     return new(memory) T(region);                      \
   }
 
-//#define REGISTER_FACTORY_CLASS(F, T)
+#define REGISTER_FACTORY_CLASS(G, T) \
+  g_##G##Factory.Register(G##Type##T, G::T::Create, sizeof(G::T))
+
 //-----------------------------------------------------------------------------
 // ConnectionBuilder
 //-----------------------------------------------------------------------------

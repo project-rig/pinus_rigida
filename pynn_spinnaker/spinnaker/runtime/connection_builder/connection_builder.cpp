@@ -135,7 +135,7 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 extern "C" void c_main()
 {
   // Register matrix generators with factories
-  g_MatrixGeneratorFactory.Register(MatrixGeneratorTypeStatic, MatrixGenerator::Static<3, 10>::Create, sizeof(MatrixGenerator::Static<3, 10>));
+  REGISTER_FACTORY_CLASS(MatrixGenerator, Static);
 
   // Allocate memory for factories
   g_MatrixGeneratorFactory.Allocate();
