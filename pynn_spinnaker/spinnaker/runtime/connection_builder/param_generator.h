@@ -98,16 +98,16 @@ private:
   Uniform(uint32_t *&region)
   {
     m_Low = *reinterpret_cast<int32_t*>(region++);
-    m_High = *reinterpret_cast<int32_t*>(region++);
-    LOG_PRINT(LOG_LEVEL_INFO, "\tUniform parameter: low:%d, high:%d",
-              m_Low, m_High);
+    m_Range = *reinterpret_cast<int32_t*>(region++);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tUniform parameter: low:%d, range:%d",
+              m_Low, m_Range);
   }
 
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
   int32_t m_Low;
-  int32_t m_High;
+  int32_t m_Range;
 };
 } // ParamGenerator
 } // ConnectionBuilder

@@ -17,8 +17,11 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
   // Loop through rows
   for(uint32_t i = 0; i < m_NumRows; i++)
   {
+    LOG_PRINT(LOG_LEVEL_TRACE, "\tRow %u", i);
+
     // Generate row indices
     uint32_t indices[1024];
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tGenerating indices");
     const unsigned int numIndices = connectorGenerator->Generate(i, maxRowSynapses,
                                                                  numPostNeurons,
                                                                  rng, indices);
@@ -26,7 +29,10 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     // Generate delays and weights for each index
     int32_t delays[1024];
     int32_t weights[1024];
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tGenerating delays");
     delayGenerator->Generate(numIndices, weightFixedPoint, rng, delays);
+
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tGenerating weights");
     weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
 
     // Write row length

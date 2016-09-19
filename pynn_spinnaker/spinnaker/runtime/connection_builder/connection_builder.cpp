@@ -188,6 +188,7 @@ extern "C" void c_main()
 
   // Register connector generators with factories
   REGISTER_FACTORY_CLASS(ConnectorGenerator, AllToAll);
+  REGISTER_FACTORY_CLASS(ConnectorGenerator, FixedProbability);
 
   // Register parameter generators with factories
   REGISTER_FACTORY_CLASS(ParamGenerator, Constant);

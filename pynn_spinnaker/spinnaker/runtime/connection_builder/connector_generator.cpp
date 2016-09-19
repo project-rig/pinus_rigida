@@ -8,11 +8,11 @@
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
-  MarsKiss64 &rng, uint32_t (&indices)[1024]) const
+  MarsKiss64 &, uint32_t (&indices)[1024]) const
 {
   if(numPostNeurons != maxRowSynapses)
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "\tCannot generate all-to-all connection row num post neurons:%u != max row synapses:%u",
+    LOG_PRINT(LOG_LEVEL_ERROR, "Cannot generate all-to-all connection row num post neurons:%u != max row synapses:%u",
       numPostNeurons, maxRowSynapses);
     return 0;
   }
@@ -24,4 +24,36 @@ unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   }
 
   return numPostNeurons;
+}
+
+//-----------------------------------------------------------------------------
+// ConnectionBuilder::ConnectorGenerator::FixedProbability
+//-----------------------------------------------------------------------------
+unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
+  unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  MarsKiss64 &rng, uint32_t (&indices)[1024]) const
+{
+  // Write indices
+  unsigned int k = 0;
+  for(unsigned int i = 0; i < numPostNeurons; i++)
+  {
+    // If draw if less than probability, add index to row
+    if(rng.GetNext() < m_Probability)
+    {
+      indices[k++] = i;
+    }
+  }
+
+  // If we have drawn less than the maximum number of synapses
+  if(k <= maxRowSynapses)
+  {
+    return k;
+  }
+  // Otherwise give error and return maximum
+  else
+  {
+    LOG_PRINT(LOG_LEVEL_ERROR, "Fixed probability connector generation has resulted in %u synapses but max is %u",
+              k, maxRowSynapses);
+    return maxRowSynapses;
+  }
 }
