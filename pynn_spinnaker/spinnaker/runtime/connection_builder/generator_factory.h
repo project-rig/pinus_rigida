@@ -46,6 +46,16 @@ public:
       {
         return createGeneratorFunction(region, m_Memory);
       }
+      else
+      {
+        LOG_PRINT(LOG_LEVEL_ERROR, "Cannot create generator with ID:%u in factory - Not registered",
+                i);
+      }
+    }
+    else
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot create generator with ID:%u in factory supporting:%u",
+                i, N);
     }
 
     return NULL;

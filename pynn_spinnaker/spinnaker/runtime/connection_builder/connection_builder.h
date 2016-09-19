@@ -37,4 +37,14 @@ enum MatrixGeneratorType
   MatrixGeneratorTypeMax,
 };
 
+enum ConnectorGeneratorType
+{
+  ConnectorGeneratorTypeAllToAll,
+  ConnectorGeneratorTypeFixedProbability,
+  ConnectorGeneratorTypeOneToOne,
+  ConnectorGeneratorTypeFixedNumberPost,
+  ConnectorGeneratorTypeFixedNumberPre,
+  ConnectorGeneratorTypeMax,
+};
+
 } // ConnectionBuilder

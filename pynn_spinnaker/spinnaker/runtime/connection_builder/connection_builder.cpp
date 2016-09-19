@@ -7,6 +7,7 @@
 #include "../common/spinnaker.h"
 
 // Connection builder includes
+#include "connector_generator.h"
 #include "generator_factory.h"
 #include "matrix_generator.h"
 
@@ -30,6 +31,7 @@ uint32_t g_AppWords[AppWordMax];
 uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
 GeneratorFactory<MatrixGenerator::Base, MatrixGeneratorTypeMax> g_MatrixGeneratorFactory;
+GeneratorFactory<ConnectorGenerator::Base, ConnectorGeneratorTypeMax> g_ConnectorGeneratorFactory;
 
 //-----------------------------------------------------------------------------
 // Module functions
@@ -57,12 +59,23 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
   {
     // Read basic matrix properties
     const uint32_t key = *region++;
-    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(*region++, region);
-    //const uint32_t connectorType = *region++;
-    //const uint32_t delayGeneratorType = *region++;
-    //const uint32_t weightGeneratorType = *region++;
-    //LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay generator type:%u, weight generator type:%u",
-    //          key, matrixType, connectorType, delayGeneratorType, weightGeneratorType);
+    const uint32_t matrixType = *region++;
+    const uint32_t connectorType = *region++;
+    const uint32_t delayGeneratorType = *region++;
+    const uint32_t weightGeneratorType = *region++;
+    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay generator type:%u, weight generator type:%u",
+              key, matrixType, connectorType, delayGeneratorType, weightGeneratorType);
+
+    // Generate matrix, connector, delays and weights
+    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixType, region);
+    const auto connectorGenerator = g_ConnectorGeneratorFactory.Create(connectorType, region);
+    //const auto
+
+    // If any components couldn't be created return false
+    if(matrixGenerator == NULL || connectorGenerator == NULL)
+    {
+      return false;
+    }
 
     // Find matrix in key lookup
     unsigned int matrixRowSynapses;
@@ -73,8 +86,10 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
       // Calculate start address of matrix
       uint32_t *matrixAddress = g_SynapticMatrixBaseAddress + matrixWordOffset;
 
+      // Generate matrix
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
-                                g_AppWords[AppWordWeightFixedPoint]);
+                                g_AppWords[AppWordWeightFixedPoint],
+                                g_AppWords[AppWordNumPostNeurons]);
 
     }
     else
@@ -136,9 +151,11 @@ extern "C" void c_main()
 {
   // Register matrix generators with factories
   REGISTER_FACTORY_CLASS(MatrixGenerator, Static);
+  REGISTER_FACTORY_CLASS(ConnectorGenerator, AllToAll);
 
   // Allocate memory for factories
   g_MatrixGeneratorFactory.Allocate();
+  g_ConnectorGeneratorFactory.Allocate();
 
   // Get this core's base address using alloc tag
   uint32_t *baseAddress = Config::GetBaseAddressAllocTag();
@@ -149,7 +166,4 @@ extern "C" void c_main()
     LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
     return;
   }
-
-  // Start simulation
-  spin1_start(SYNC_WAIT);
 }

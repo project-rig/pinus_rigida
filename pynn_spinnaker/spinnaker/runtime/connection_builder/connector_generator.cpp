@@ -1,10 +1,10 @@
-#include "connector_generators.h"
+#include "connector_generator.h"
 
 //-----------------------------------------------------------------------------
-// AllToAll
+// ConnectionBuilder::ConnectorGenerator::AllToAll
 //-----------------------------------------------------------------------------
-unsigned int MatrixGenerator::ConnectorGenerators::Generate(unsigned int, unsigned int maxRowWords,
-                                                            MarsKiss64 &, uint32_t (&indices)[1024]) const
+unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(unsigned int,
+  unsigned int maxRowWords, MarsKiss64 &, uint32_t (&indices)[1024]) const
 {
   // Write indices
   for(unsigned int i = 0; i < maxRowWords; i++)

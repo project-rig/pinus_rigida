@@ -26,7 +26,7 @@ public:
   // Declared virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowWords,
-    unsigned int weightFixedPoint/*,
+    unsigned int weightFixedPoint, unsigned int numPostNeurons/*,
     const ParamGenerators::Base &delayGenerator, const ParamGenerators::Base &weightGenerator,
     const ConnectorGenerators::Base &connectorGenerator, MarsKiss64 &rng*/) const = 0;
 };
@@ -43,7 +43,7 @@ public:
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowWords,
-    unsigned int weightFixedPoint/*,
+    unsigned int weightFixedPoint, unsigned int numPostNeurons/*
     const ParamGenerators::Base &delayGenerator, const ParamGenerators::Base &weightGenerator,
     const ConnectorGenerators::Base &connectorGenerator, MarsKiss64 &rng*/) const;
 

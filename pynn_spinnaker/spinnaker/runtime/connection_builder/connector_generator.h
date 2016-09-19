@@ -1,11 +1,24 @@
 #pragma once
 
+// Standard includes
+#include <cstdint>
+
+// Common includes
+#include "../common/log.h"
+#include "../common/random/mars_kiss64.h"
+
+// Connection builder includes
+#include "generator_factory.h"
+
+// Namespaces
+using namespace Common::Random;
+
 //-----------------------------------------------------------------------------
-// MatrixGenerator::ConnectorGenerators
+// ConnectionBuilder::ConnectorGenerators
 //-----------------------------------------------------------------------------
-namespace MatrixGenerator
+namespace ConnectionBuilder
 {
-namespace ConnectorGenerators
+namespace ConnectorGenerator
 {
 //-----------------------------------------------------------------------------
 // Base
@@ -27,23 +40,20 @@ public:
 class AllToAll : public Base
 {
 public:
+  ADD_FACTORY_CREATOR(AllToAll);
+
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual unsigned int Generate(unsigned int, unsigned int maxRowWords,
-                                MarsKiss64 &, uint32_t (&indices)[1024]) const
+                                MarsKiss64 &, uint32_t (&indices)[1024]) const;
+
+private:
+  AllToAll(uint32_t *&region)
   {
-    // Write indices
-    for(unsigned int i = 0; i < maxRowWords; i++)
-    {
-      indices[i] = i;
-    }
-
-    return maxRowWords;
+    LOG_PRINT(LOG_LEVEL_INFO, "\tAll-to-all connector");
   }
-
-
 };
 
 } // ConnectorGenerators
-} // MatrixGenerator
+} // ConnectionBuilder
