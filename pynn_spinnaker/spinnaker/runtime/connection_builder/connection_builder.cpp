@@ -5,6 +5,7 @@
 #include "../common/log.h"
 #include "../common/key_lookup_binary_search.h"
 #include "../common/spinnaker.h"
+#include "../common/random/mars_kiss64.h"
 
 // Connection builder includes
 #include "connector_generator.h"
@@ -14,6 +15,7 @@
 
 // Namespaces
 using namespace Common;
+using namespace Common::Random;
 using namespace ConnectionBuilder;
 
 //-----------------------------------------------------------------------------
@@ -62,6 +64,19 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
 {
   LOG_PRINT(LOG_LEVEL_INFO, "ReadMatrixGenerationRegion");
 
+  // Read RNG seed
+  uint32_t seed[MarsKiss64::StateSize];
+  LOG_PRINT(LOG_LEVEL_TRACE, "\tSeed:");
+  for(unsigned int s = 0; s < MarsKiss64::StateSize; s++)
+  {
+    seed[s] = *region++;
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t%u", seed[s]);
+  }
+
+  // Create RNG with this seed
+  // **TODO** multiple RNGs multiple seeds
+  MarsKiss64 rng(seed);
+
   // Loop through matrices to generate
   const uint32_t numMatricesToGenerate = *region++;
   for(unsigned int i = 0; i < numMatricesToGenerate; i++)
@@ -102,10 +117,13 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
       uint32_t *matrixAddress = g_SynapticMatrixBaseAddress + matrixWordOffset;
 
       // Generate matrix
+      LOG_PRINT(LOG_LEVEL_INFO, "\tAddress:%08x, row synapses:%u",
+                matrixAddress, matrixRowSynapses);
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
                                 g_AppWords[AppWordWeightFixedPoint],
                                 g_AppWords[AppWordNumPostNeurons],
-                                connectorGenerator, delayGenerator, weightGenerator);
+                                connectorGenerator, delayGenerator, weightGenerator,
+                                rng);
 
     }
     else

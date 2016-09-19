@@ -37,8 +37,9 @@ public:
   //-----------------------------------------------------------------------------
   // Declared virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int row, unsigned int maxRowWords,
-                                MarsKiss64 &rng, uint32_t (&indices)[1024]) const = 0;
+  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
+                                unsigned int numPostNeurons, MarsKiss64 &rng,
+                                uint32_t (&indices)[1024]) const = 0;
 
 };
 
@@ -53,8 +54,9 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int, unsigned int maxRowWords,
-                                MarsKiss64 &, uint32_t (&indices)[1024]) const;
+  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
+                                unsigned int numPostNeurons, MarsKiss64 &rng,
+                                uint32_t (&indices)[1024]) const;
 
 private:
   AllToAll(uint32_t *&)

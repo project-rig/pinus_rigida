@@ -48,9 +48,8 @@ public:
   //-----------------------------------------------------------------------------
   // Declared virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(unsigned int number, unsigned int fixedPoint,
-                        MarsKiss64 &rng, int32_t (&integers)[1024]) = 0;
-
+  virtual void Generate(unsigned int number, unsigned int weightFixedPoint,
+                        MarsKiss64 &rng, int32_t (&integers)[1024]) const = 0;
 };
 
 //-----------------------------------------------------------------------------
@@ -64,19 +63,21 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(unsigned int number, unsigned int,
-                        MarsKiss64 &, int32_t (&output)[1024]);
+  virtual void Generate(unsigned int number, unsigned int weightFixedPoint,
+                        MarsKiss64 &rng, int32_t (&output)[1024]) const;
 
 private:
   Constant(uint32_t *&region)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "\tConstant parameter");
+    m_Value = *reinterpret_cast<int32_t*>(region++);
+
+    LOG_PRINT(LOG_LEVEL_INFO, "\tConstant parameter: value:%d", m_Value);
   }
 
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  int32_t m_Constant;
+  int32_t m_Value;
 };
 
 //-----------------------------------------------------------------------------
@@ -90,8 +91,8 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(unsigned int number, unsigned int,
-                        MarsKiss64 &rng, int32_t (&output)[1024]);
+  virtual void Generate(unsigned int number, unsigned int weightFixedPoint,
+                        MarsKiss64 &rng, int32_t (&output)[1024]) const;
 
 private:
   Uniform(uint32_t *&region)

@@ -8,24 +8,26 @@
 // ConnectionBuilder::MatrixGenerator::Static
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
-  unsigned int maxRowWords, unsigned int weightFixedPoint, unsigned int numPostNeurons,
+  unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
-  const ParamGenerator::Base *weightGenerator) const
+  const ParamGenerator::Base *weightGenerator,
+  MarsKiss64 &rng) const
 {
   // Loop through rows
   for(uint32_t i = 0; i < m_NumRows; i++)
   {
     // Generate row indices
     uint32_t indices[1024];
-    unsigned int numIndices = 6;//connectorGenerator.Generate(i, maxRowWords,
-    //                                                     rng, indices);
+    const unsigned int numIndices = connectorGenerator->Generate(i, maxRowSynapses,
+                                                                 numPostNeurons,
+                                                                 rng, indices);
 
     // Generate delays and weights for each index
     int32_t delays[1024];
     int32_t weights[1024];
-    //delayGenerator.Generate(numIndices, rng, delays);
-    //weightGenerator.Generate(numIndices, rng, weights);
+    delayGenerator->Generate(numIndices, weightFixedPoint, rng, delays);
+    weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
 
     // Write row length
     *matrixAddress++ = numIndices;
@@ -43,6 +45,6 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     }
 
     // Skip end of row padding
-    *matrixAddress += (maxRowWords - numIndices);
+    *matrixAddress += (maxRowSynapses - numIndices);
   }
 }
