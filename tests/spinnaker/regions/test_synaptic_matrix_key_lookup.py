@@ -41,13 +41,13 @@ def _generate_random_matrix(pre_size, post_slice, row_length, multapse):
                          [(1000, utils.UnitStrideSlice(0, 1000), 100)])
 @pytest.mark.parametrize("pre_vert_size", [500, 1000])
 @pytest.mark.parametrize("synaptic_matrix_region", [
-    ExtendedPlasticSynapticMatrix(mock.Mock(max_dtcm_delay_slots=7,
-                                            signed_weight=False,
-                                            pre_state_bytes=10,
-                                            synapse_trace_bytes=2)),
-    PlasticSynapticMatrix(mock.Mock(max_dtcm_delay_slots=7,
-                                    signed_weight=False,
-                                    pre_state_bytes=10))])
+    ExtendedPlasticSynapticMatrix(mock.Mock(_max_dtcm_delay_slots=7,
+                                            _signed_weight=False,
+                                            _pre_state_bytes=10,
+                                            _synapse_trace_bytes=2)),
+    PlasticSynapticMatrix(mock.Mock(_max_dtcm_delay_slots=7,
+                                    _signed_weight=False,
+                                    _pre_state_bytes=10))])
 def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
                         synaptic_matrix_region):
     # Fix the seed so the test is consistent
