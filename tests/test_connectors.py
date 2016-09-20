@@ -43,7 +43,7 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     sub_rows = [[] for _ in range(pre_size)]
 
     # Create weight range
-    weight_range = WeightRange(sim.StaticSynapse.signed_weight)
+    weight_range = WeightRange(sim.StaticSynapse._signed_weight)
 
     # Local mask to select only the columns
     # corresponding to neurons in postsynaptic vertex
