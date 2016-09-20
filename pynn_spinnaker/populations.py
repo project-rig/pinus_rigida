@@ -356,30 +356,30 @@ class Population(common.Population):
                     0, self.synapse_j_constraints[s_type])
 
                 # Loop through list of projections
-                total_synaptic_event_rate = 0.0
+                total_cpu_cycles = 0.0
                 for proj in synaptic_projections:
                     # If projection is directly connectable, skip
                     if proj._directly_connectable:
                         continue
 
-                    # Estimate number of synapses the connection between
-                    # The pre and the post-slice of neurons will contain
-                    total_synapses = proj._estimate_num_synapses(
-                        UnitStrideSlice(0, proj.pre.size), post_slice)
+                    # Estimate CPU cycles required to process sub-matrix
+                    cpu_cycles = proj._estimate_row_processing_cpu_cycles(
+                        UnitStrideSlice(0, proj.pre.size), post_slice,
+                        pre_rate=proj.pre.spinnaker_config.mean_firing_rate,
+                        post_rate=proj.post.spinnaker_config.mean_firing_rate)
 
-                    # Use this to calculate event rate
-                    pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
-                    total_synaptic_event_rate += total_synapses * pre_mean_rate
+                    total_cpu_cycles += cpu_cycles
 
-                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model._max_synaptic_event_rate)))
-                logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
+                available_core_cpu_cycles = 200E6 - s_type.model._constant_cpu_overhead
+                num_i_cores = int(math.ceil(float(total_cpu_cycles) / float(available_core_cpu_cycles)))
+                logger.debug("\t\tSynapse type:%s, receptor:%s - Total CPU cycles:%f, num cores:%u",
                             s_type.model.__class__.__name__, s_type.receptor,
-                            total_synaptic_event_rate, num_i_cores)
+                            total_cpu_cycles, num_i_cores)
 
                 # Add number of i cores to dictionary
                 synapse_num_i_cores[s_type] = num_i_cores
 
-        # Now determin the maximum constraint i.e. the 'width'
+        # Now determine the maximum constraint i.e. the 'width'
         # that will be constrained together
         max_j_constraint = self.neuron_j_constraint
         if len(self.synapse_j_constraints) > 0 or len(current_input_j_constraints) > 0:

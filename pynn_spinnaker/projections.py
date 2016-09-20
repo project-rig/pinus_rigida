@@ -252,9 +252,17 @@ class Projection(common.Projection, ContextMixin):
         return self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
 
-    def _estimate_num_synapses(self, pre_slice, post_slice):
-        return self._connector._estimate_num_synapses(
+    def _estimate_row_processing_cpu_cycles(self, pre_slice, post_slice,
+                                            **kwargs):
+        # Use connector to estimate mean number of synapses in each row
+        mean_row_synapses =  self._connector._estimate_mean_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
+
+        # Use synapse type to estimate CPU cost of processing row
+        row_cpu_cost = self.synapse_type._get_row_cpu_cost(mean_row_synapses,
+                                                           **kwargs)
+
+        return (row_cpu_cost * len(pre_slice))
 
     def _allocate_out_buffers(self, placements, allocations,
                               machine_controller):
