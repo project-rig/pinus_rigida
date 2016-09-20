@@ -173,10 +173,6 @@ class SynapseCluster(object):
         # Cache synapse model
         self.synapse_model = synapse_model
 
-        # Calculate how many CPU cycles are
-        # available for row processing ever second
-        available_cpu_cycles = 200E6 - synapse_model._constant_cpu_overhead
-
         # Loop through the post-slices
         self.verts = []
         vert_sdram = []
@@ -185,7 +181,7 @@ class SynapseCluster(object):
 
             # Loop through all non-directly connectable
             # projections of this type
-            vert_cpu_cycles = available_cpu_cycles
+            vert_cpu_cycles = synapse_model._constant_cpu_overhead
             vert_sdram_bytes = 0
             vert = Vertex(post_slice, receptor_index)
             for proj in synaptic_projections:
@@ -223,28 +219,29 @@ class SynapseCluster(object):
                     # Add this connection to the synapse vertex
                     vert.add_connection(proj.pre, pre_vertex)
 
-                    # Subtract cycles and add SDRAM to totals
+                    # Add cycles and SDRAM to totals
                     # for current synapse processor
-                    vert_cpu_cycles -= cpu_cycles
+                    vert_cpu_cycles += cpu_cycles
                     vert_sdram_bytes += sdram_bytes
 
                     # If no more CPU cycles are available
-                    if vert_cpu_cycles < 0:
+                    if vert_cpu_cycles >= 200E6:
                         # Add current synapse vertex to list
                         self.verts.append(vert)
                         vert_sdram.append(vert_sdram_bytes)
-                        logger.debug("\t\t\t\t\t\tVertex: CPU cycles:%u, SDRAM:%u bytes",
+                        logger.debug("\t\t\t\t\tVertex: Used CPU cycles:%u, SDRAM:%u bytes",
                                      vert_cpu_cycles, vert_sdram_bytes)
+
                         # Create replacement and reset event rate and SDRAM
                         vert = Vertex(post_slice, receptor_index)
-                        vert_cpu_cycles = available_cpu_cycles
+                        vert_cpu_cycles = synapse_model._constant_cpu_overhead
                         vert_sdram_bytes = 0
 
             # If the last synapse vertex created had any incoming connections
             if len(vert.incoming_connections) > 0:
                 self.verts.append(vert)
                 vert_sdram.append(vert_sdram_bytes)
-                logger.debug("\t\t\t\t\t\tVertex: CPU cycles:%u, SDRAM:%u bytes",
+                logger.debug("\t\t\t\t\tVertex: Used CPU cycles:%u, SDRAM:%u bytes",
                              vert_cpu_cycles, vert_sdram_bytes)
 
         logger.debug("\t\t\t%u synapse vertices", len(self.verts))
