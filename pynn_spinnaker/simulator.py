@@ -304,12 +304,21 @@ class State(common.control.BaseState):
         if self.machine_controller is None:
             logger.info("Connecting to SpiNNaker")
 
-            # If we should use spalloc
-            if self.spalloc_num_boards is not None:
+            # If no host is specified attempt to use spalloc
+            if self.spinnaker_hostname is None:
                 from spalloc import Job
 
+                # Fudge number of cores from number of vertices
+                num_cores = len(vertex_applications) *\
+                    self.allocation_fudge_factor
+
+                # Divide down to get boards
+                num_boards = int(np.ceil((num_cores / 16.0) / 48.0))
+                logger.info("Estimate %u cores and %u boards required",
+                            num_cores, num_boards)
+
                 # Request the job
-                self.spalloc_job = Job(self.spalloc_num_boards)
+                self.spalloc_job = Job(num_boards)
                 logger.info("Allocated spalloc job ID %u",
                             self.spalloc_job.id)
 
@@ -348,7 +357,6 @@ class State(common.control.BaseState):
 
         # Convert placement values to a set to get unique list of chips
         unique_chips = set(itervalues(placements))
-
         logger.info("Placed on %u cores (%u chips)",
                     len(placements), len(unique_chips))
         logger.debug(list(itervalues(placements)))
