@@ -89,8 +89,7 @@ class OneToOneConnector(OneToOneConnector):
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
-        # **TODO** this could be better
-        return 1
+        return 1 if pre_slice.overlaps(post_slice) else 0
 
 # ----------------------------------------------------------------------------
 # FromListConnector
@@ -160,12 +159,12 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
         # Return row-length corresponding to 99.99% of rows
         return min(len(post_slice), np.searchsorted(cdf, 0.9999))
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                               pre_size, post_size):
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
         # How large a fraction of the full post populations is this
         post_fraction = float(len(post_slice)) / float(post_size)
 
-        return int(len(pre_slice) * self.n * post_fraction)
+        return int(self.n * post_fraction)
 
 # ----------------------------------------------------------------------------
 # FixedNumberPreConnector
@@ -194,12 +193,9 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
         # Return row-length corresponding to 99.99% of rows
         return np.searchsorted(cdf, 0.9999)
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                               pre_size, post_size):
-        # How large a fraction of the full pre populations is this
-        pre_fraction = float(len(pre_slice)) / float(pre_size)
-
-        return int(len(post_slice) * self.n * pre_fraction)
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
+        return int(len(post_slice) * float(self.n) / float(pre_size))
 
 # ----------------------------------------------------------------------------
 # FixedTotalNumberConnector
@@ -229,11 +225,10 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         # Return row-length corresponding to 99.9% of rows
         return min(len(post_slice), np.searchsorted(cdf, 0.999))
 
-    def _estimate_num_synapses(self, pre_slice, post_slice,
-                               pre_size, post_size):
-        # How large a fraction of the full pre and post populations is this
-        pre_fraction = float(len(pre_slice)) / float(pre_size)
+    def _estimate_mean_row_synapses(self, pre_slice, post_slice,
+                                    pre_size, post_size):
+        # How large a fraction of the full post populations is this
         post_fraction = float(len(post_slice)) / float(post_size)
 
         # Multiply these by the total number of synapses
-        return int(pre_fraction * post_fraction * float(self.n))
+        return int(pre_fraction * post_fraction * float(self.n) / float(pre_size))

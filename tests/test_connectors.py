@@ -39,7 +39,7 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     estimated_max_row_synapses = proj._estimate_max_row_synapses(
         UnitStrideSlice(0, pre_size), post_slice)
     estimated_mean_row_synapses = proj._connector._estimate_mean_row_synapses(
-            UnitStrideSlice(0, pre_size), pre_size, post_size)
+            UnitStrideSlice(0, pre_size), post_slice, pre_size, post_size)
 
     # Create list of lists to contain matrix rows
     sub_rows = [[] for _ in range(pre_size)]
@@ -68,5 +68,5 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     assert estimated_max_row_synapses <= actual_max_row_synapses * 1.25
 
     # Check estimated mean is approximately correct
-    assert (estimated_mean_row_synapses / actual_mean_row_synapses) < 1.25
-    assert (estimated_mean_row_synapses / actual_mean_row_synapses) > 0.75
+    assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
+    assert estimated_mean_row_synapses >= (0.75 * actual_mean_row_synapses)
