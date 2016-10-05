@@ -227,7 +227,8 @@ class SynapticMatrix(Region):
 
         return sub_matrix_props, sub_matrix_rows
 
-    def read_sub_matrix(self, pre_n_vert, post_s_vert, names, region_mem):
+    def read_sub_matrix(self, pre_n_vert, post_s_vert, names,
+                        region_mem, sim_timestep_ms):
         # Find the matrix properties and placement of sub-matrix
         # associated with pre-synaptic neuron vertex
         vert_matrix_prop, vert_matrix_placement = next((
@@ -271,8 +272,9 @@ class SynapticMatrix(Region):
             post_s_vert.weight_fixed_point)
 
         # Build data type for rows
-        dtype = np.dtype([(n, np.float32 if n == "weight" else np.uint32)
-                 for n in names])
+        dtype = np.dtype(
+            [(n, np.float32 if n == "weight" or n == "delay" else np.uint32)
+             for n in names])
         logger.debug("\tUsing row dtype:%s, weight fixed point:%u",
                      dtype, post_s_vert.weight_fixed_point)
 
@@ -283,6 +285,10 @@ class SynapticMatrix(Region):
             row = self._read_row(i, r, pre_n_vert.neuron_slice,
                                  post_s_vert.post_neuron_slice,
                                  weight_to_float, dtype)
+
+            # If delays are required, scale into simulation timesteps
+            if "delay" in dtype.names:
+                row[3]["delay"] *= sim_timestep_ms
 
             # Extract synapses from row
             row_synapses = row[3]
@@ -309,8 +315,10 @@ class SynapticMatrix(Region):
                                     weight_to_float, dtype)
 
                 # If delays are required, add total extended delay
+                # and scale into simulation timesteps
                 if "delay" in dtype.names:
-                    row[3]["delay"] += total_ext_delay
+                    row[3]["delay"] =\
+                        (row[3]["delay"] + total_ext_delay) * sim_timestep_ms
 
                 # Stack extension row synapses onto row
                 row_synapses = np.hstack((row_synapses, row[3]))
