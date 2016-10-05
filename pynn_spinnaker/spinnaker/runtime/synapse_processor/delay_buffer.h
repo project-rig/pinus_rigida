@@ -108,7 +108,12 @@ public:
   {
     // If there are any rows in this tick's buffer
     unsigned int rowCount = GetRowCount(tick);
-    if(rowCount > 0)
+    if(rowCount > m_BufferSize)
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot read %u rows) into DMA buffer of size %u",
+                rowCount, m_BufferSize);
+    }
+    else if(rowCount > 0)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "DMA reading %u entry delay row buffer for tick %u",
                 rowCount, tick);
