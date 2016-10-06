@@ -499,7 +499,7 @@ class SynapseCluster(object):
         region_arguments[Regions.delay_buffer].kwargs["sub_matrix_props"] =\
             sub_matrix_props
 
-        region_arguments[Regions.plasticity].kwargs["weight_fixed_point"] =\
+        region_arguments[Regions.plasticity].kwargs["fixed_point"] =\
             weight_fixed_point
 
         region_arguments[Regions.back_prop_input].kwargs["back_prop_in_buffers"] =\
