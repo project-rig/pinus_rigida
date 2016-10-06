@@ -15,6 +15,7 @@ enum Region
   RegionOutputBuffer,
   RegionDelayBuffer,
   RegionBackPropagationInput,
+  RegionConnectionBuilder,
   RegionProfiler,
   RegionStatistics,
 };

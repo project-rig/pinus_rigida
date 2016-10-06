@@ -60,9 +60,9 @@ bool ReadSynapticMatrixRegion(uint32_t *region, uint32_t)
   return true;
 }
 //-----------------------------------------------------------------------------
-bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
+bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
 {
-  LOG_PRINT(LOG_LEVEL_INFO, "ReadMatrixGenerationRegion");
+  LOG_PRINT(LOG_LEVEL_INFO, "ReadConnectionBuilderRegion");
 
   // Read RNG seed
   uint32_t seed[MarsKiss64::StateSize];
@@ -173,6 +173,13 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  // Read connection builder region
+  if(!ReadConnectionBuilderRegion(
+    Config::GetRegionStart(baseAddress, RegionConnectionBuilder),
+    flags))
+  {
+    return false;
+  }
 
   return true;
 }
