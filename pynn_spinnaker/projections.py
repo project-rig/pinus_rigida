@@ -312,8 +312,9 @@ class Projection(common.Projection, ContextMixin):
         if not self._simulator.state.generate_connections_on_chip:
             return False
 
-        # If connector isn't generatable on chip, return false
-        if not self._connector._generatable_on_chip:
+        # If connector doesn't have a parameter map
+        # for generating on-chip data, return false
+        if not hasattr(self._connector, "_on_chip_param_map"):
             return False
 
         # If synaptic matrix type is not generatable on chip, return false
