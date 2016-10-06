@@ -92,6 +92,9 @@ def s1615(values, **kwargs):
 def s2011(values, **kwargs):
     return float_to_s2011_no_copy(deepcopy(values))
 
+def u032(values, **kwargs):
+    return float_to_u032_no_copy(deepcopy(values))
+
 def u32_fixed_point(values, fixed_point, **kwargs):
     float_to_weight_no_copy = LazyArrayFloatToFixConverter(
         False, 32, fixed_point, False)
