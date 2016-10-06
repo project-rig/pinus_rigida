@@ -83,8 +83,9 @@ class Regions(enum.IntEnum):
     output_buffer = 4
     delay_buffer = 5
     back_prop_input = 6
-    profiler = 7
-    statistics = 8
+    connection_builder = 7
+    profiler = 8
+    statistics = 9
 
 # ----------------------------------------------------------------------------
 # Vertex
@@ -138,6 +139,7 @@ class SynapseCluster(object):
             synapse_model._max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
+        self.regions[Regions.connection_builder] = regions.ConnectionBuilder()
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
@@ -305,19 +307,19 @@ class SynapseCluster(object):
             # Loop through unique presynaptic populations with connections
             # terminating in any of the vertices in this postsynaptic slice
             pre_pop_sub_rows = {}
-            pre_pop_on_chip_projection = {}
+            pre_pop_on_chip_proj = {}
             for pre_pop in set(itertools.chain.from_iterable(
                 iterkeys(v.incoming_connections)
                 for v in post_slice_verts)):
 
                 # If all incoming projections from this population
                 # are generatable on chip and there aren't multiple
-                # projections that need merging mark list of projections
+                # projections that need merging, mark list of projections
                 # for generating on chip
                 incoming_from_pre = incoming_projections[pre_pop]
                 if (all(i._generatable_on_chip for i in incoming_from_pre) and
                     len(incoming_from_pre) == 1):
-                    pre_pop_on_chip_projection[pre_pop] = incoming_from_pre
+                    pre_pop_on_chip_proj[pre_pop] = incoming_from_pre
                 # Otherwise
                 else:
                     # Create list of lists to contain matrix rows
@@ -355,6 +357,8 @@ class SynapseCluster(object):
                     pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
                                                 for r in sub_rows]
 
+            logger.debug("\t\t\t\t%u generated on host, %u to generate on chip",
+                         len(pre_pop_sub_rows), len(pre_pop_on_chip_proj))
             # If the synapse model has a function to update weight range
             if hasattr(self.synapse_model, "_update_weight_range"):
                 self.synapse_model._update_weight_range(weight_range)
@@ -377,10 +381,18 @@ class SynapseCluster(object):
                             v, vertex_placement[0], vertex_placement[1],
                             core.start)
 
-                # Partition matrices
-                sub_matrix_props, sub_matrix_rows =\
+                # Partition matrices that have been generated on host
+                host_sub_matrix_props, host_sub_matrix_rows =\
                     self.regions[Regions.synaptic_matrix].partition_matrices(
                         post_slice, pre_pop_sub_rows, v.incoming_connections)
+
+                # Partition matrices that should be generated on chip
+                chip_sub_matrix_props, chip_sub_matrix_projs =\
+                    self.regions[Regions.synaptic_matrix].partition_on_chip_matrix(
+                        post_slice, pre_pop_on_chip_proj, v.incoming_connections)
+
+                # Build combined list of matrix properties
+                sub_matrix_props = host_sub_matrix_props + chip_sub_matrix_props
 
                 # Cache weight fixed-point for
                 # this synapse point in vertex
@@ -404,8 +416,8 @@ class SynapseCluster(object):
                     # calculate size and write
                     region_arguments = self._get_region_arguments(
                         v.post_neuron_slice, sub_matrix_props,
-                        sub_matrix_rows, matrix_placements,
-                        weight_fixed_point, v.out_buffers,
+                        host_sub_matrix_rows, chip_sub_matrix_projs,
+                        matrix_placements, weight_fixed_point, v.out_buffers,
                         back_prop_in_buffers, flush_mask)
 
                     # Load regions
@@ -470,7 +482,8 @@ class SynapseCluster(object):
     # Private methods
     # --------------------------------------------------------------------------
     def _get_region_arguments(self, post_vertex_slice, sub_matrix_props,
-                              sub_matrix_rows, matrix_placements,
+                              host_sub_matrix_rows, chip_sub_matrix_projs,
+                              matrix_placements,
                               weight_fixed_point, out_buffers,
                               back_prop_in_buffers, flush_mask):
         region_arguments = defaultdict(Args)
@@ -486,8 +499,8 @@ class SynapseCluster(object):
 
         region_arguments[Regions.synaptic_matrix].kwargs["sub_matrix_props"] =\
             sub_matrix_props
-        region_arguments[Regions.synaptic_matrix].kwargs["sub_matrix_rows"] =\
-            sub_matrix_rows
+        region_arguments[Regions.synaptic_matrix].kwargs["host_sub_matrix_rows"] =\
+            host_sub_matrix_rows
         region_arguments[Regions.synaptic_matrix].kwargs["matrix_placements"] =\
             matrix_placements
         region_arguments[Regions.synaptic_matrix].kwargs["weight_fixed_point"] =\
@@ -504,5 +517,10 @@ class SynapseCluster(object):
 
         region_arguments[Regions.back_prop_input].kwargs["back_prop_in_buffers"] =\
             back_prop_in_buffers
+
+        region_arguments[Regions.connection_builder].kwargs["sub_matrix_props"] =\
+            sub_matrix_props
+        region_arguments[Regions.connection_builder].kwargs["chip_sub_matrix_projs"] =\
+            chip_sub_matrix_projs
 
         return region_arguments
