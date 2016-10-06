@@ -3,6 +3,9 @@
 // Standard includes
 #include <new>
 
+// Common includes
+#include "../common/compile_time_crc.h"
+
 // Macros
 #define ADD_FACTORY_CREATOR(T)                         \
   static Base *Create(uint32_t *&region, void *memory) \
@@ -10,8 +13,8 @@
     return new(memory) T(region);                      \
   }
 
-#define REGISTER_FACTORY_CLASS(G, T) \
-  g_##G##Factory.Register(G##Type##T, G::T::Create, sizeof(G::T))
+#define REGISTER_FACTORY_CLASS(N, G, T) \
+  g_##G##Factory.Register(Common::CRC32(N), G::T::Create, sizeof(G::T))
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder
@@ -25,6 +28,10 @@ template<typename B, unsigned int N>
 class GeneratorFactory
 {
 public:
+  GeneratorFactory() : m_Count(0)
+  {
+  }
+
   //-----------------------------------------------------------------------------
   // Typedefines
   //----------------------------------------------------------------------------
@@ -33,30 +40,20 @@ public:
   //----------------------------------------------------------------------------
   // Static methods
   //----------------------------------------------------------------------------
-  B* Create(unsigned int i, uint32_t *&region, void *memory)
+  B* Create(uint32_t nameHash, uint32_t *&region, void *memory)
   {
-    // If i is approximately valid
-    if(i < N)
+    // Loop through table
+    for(unsigned int i = 0; i < m_Count; i++)
     {
-      // Get function from table
-      auto createGeneratorFunction = m_CreateGeneratorFunctions[i];
+      // If hash is correct, return newly constructed object
+      if(m_NameHashes[i] == nameHash)
+      {
+        return m_CreateGeneratorFunctions[i](region, memory);
+      }
+    }
 
-      // If function is found
-      if(createGeneratorFunction != NULL)
-      {
-        return createGeneratorFunction(region, memory);
-      }
-      else
-      {
-        LOG_PRINT(LOG_LEVEL_ERROR, "Cannot create generator with ID:%u in factory - Not registered",
-                i);
-      }
-    }
-    else
-    {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot create generator with ID:%u in factory supporting:%u",
-                i, N);
-    }
+    LOG_PRINT(LOG_LEVEL_ERROR, "Cannot create find generator for hash:%u",
+              nameHash);
 
     return NULL;
   }
@@ -76,36 +73,32 @@ public:
     }
   }
 
-  bool Register(unsigned int i, CreateGeneratorFunction function,
-                                unsigned int classSize)
+  bool Register(uint32_t nameHash, CreateGeneratorFunction function,
+                unsigned int classSize)
   {
-    // If ID is within size of table
-    if(i < N)
+    // If there is space in generator
+    if(m_Count < N)
     {
-      // If no generator function is already registered in this slot
-      if(m_CreateGeneratorFunctions[i] == NULL)
-      {
-        // Store function in table
-        m_CreateGeneratorFunctions[i] = function;
+      // Store function and hash in table
+      m_CreateGeneratorFunctions[m_Count] = function;
+      m_NameHashes[m_Count] = nameHash;
+      m_Count++;
 
-        // Update memory size
-        if(classSize > m_MemorySize)
-        {
-          m_MemorySize = classSize;
-        }
+      LOG_PRINT(LOG_LEVEL_INFO, "Registering class name hash %u with factory",
+                nameHash);
 
-        return true;
-      }
-      else
+      // Update memory size
+      if(classSize > m_MemorySize)
       {
-        LOG_PRINT(LOG_LEVEL_ERROR, "Cannot register generator with ID:%u in factory - ID already used",
-                i);
+        m_MemorySize = classSize;
       }
+
+      return true;
     }
     else
     {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot register generator with ID:%u in factory supporting:%u",
-                i, N);
+      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot register generator with ID:%u - Factory table full (capacity %u)",
+                nameHash, N);
     }
 
     return false;
@@ -115,8 +108,17 @@ private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
+  // CRC-32 name hashes of classes to create
+  uint32_t m_NameHashes[N];
+
+  // Function pointers to create objects
   CreateGeneratorFunction m_CreateGeneratorFunctions[N];
+
+  // How large is the largest class
   unsigned int m_MemorySize;
+
+  // How many classes are currently registered
+  unsigned int m_Count;
 };
 
 } // ConnectionBuilder

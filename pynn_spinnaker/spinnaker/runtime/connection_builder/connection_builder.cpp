@@ -34,9 +34,9 @@ uint32_t g_AppWords[AppWordMax];
 uint32_t *g_SynapticMatrixBaseAddress = NULL;
 
 // Factories to create matrix, connector and parameter generators by ID
-GeneratorFactory<MatrixGenerator::Base, MatrixGeneratorTypeMax> g_MatrixGeneratorFactory;
-GeneratorFactory<ConnectorGenerator::Base, ConnectorGeneratorTypeMax> g_ConnectorGeneratorFactory;
-GeneratorFactory<ParamGenerator::Base, ParamGeneratorTypeMax> g_ParamGeneratorFactory;
+GeneratorFactory<MatrixGenerator::Base, 3> g_MatrixGeneratorFactory;
+GeneratorFactory<ConnectorGenerator::Base, 5> g_ConnectorGeneratorFactory;
+GeneratorFactory<ParamGenerator::Base, 5> g_ParamGeneratorFactory;
 
 // Memory buffers to placement new generators into
 void *g_MatrixGeneratorBuffer = NULL;
@@ -83,21 +83,21 @@ bool ReadMatrixGenerationRegion(uint32_t *region, uint32_t)
   {
     // Read basic matrix properties
     const uint32_t key = *region++;
-    const uint32_t matrixType = *region++;
-    const uint32_t connectorType = *region++;
-    const uint32_t delayType = *region++;
-    const uint32_t weightType = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type:%u, connector type:%u, delay type:%u, weight type:%u",
-              key, matrixType, connectorType, delayType, weightType);
+    const uint32_t matrixTypeHash = *region++;
+    const uint32_t connectorTypeHash = *region++;
+    const uint32_t delayTypeHash = *region++;
+    const uint32_t weightTypeHash = *region++;
+    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u",
+              i, key, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash);
 
     // Generate matrix, connector, delays and weights
-    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixType, region,
+    const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixTypeHash, region,
                                                                  g_MatrixGeneratorBuffer);
-    const auto connectorGenerator = g_ConnectorGeneratorFactory.Create(connectorType, region,
+    const auto connectorGenerator = g_ConnectorGeneratorFactory.Create(connectorTypeHash, region,
                                                                        g_ConnectorGeneratorBuffer);
-    const auto delayGenerator = g_ParamGeneratorFactory.Create(delayType, region,
+    const auto delayGenerator = g_ParamGeneratorFactory.Create(delayTypeHash, region,
                                                                g_DelayParamGeneratorBuffer);
-    const auto weightGenerator = g_ParamGeneratorFactory.Create(weightType, region,
+    const auto weightGenerator = g_ParamGeneratorFactory.Create(weightTypeHash, region,
                                                                g_WeightParamGeneratorBuffer);
 
     // If any components couldn't be created return false
@@ -184,15 +184,15 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 extern "C" void c_main()
 {
   // Register matrix generators with factories
-  REGISTER_FACTORY_CLASS(MatrixGenerator, Static);
+  REGISTER_FACTORY_CLASS("Static", MatrixGenerator, Static);
 
   // Register connector generators with factories
-  REGISTER_FACTORY_CLASS(ConnectorGenerator, AllToAll);
-  REGISTER_FACTORY_CLASS(ConnectorGenerator, FixedProbability);
+  REGISTER_FACTORY_CLASS("AllToAllConnector", ConnectorGenerator, AllToAll);
+  REGISTER_FACTORY_CLASS("FixedProbabilityConnector", ConnectorGenerator, FixedProbability);
 
   // Register parameter generators with factories
-  REGISTER_FACTORY_CLASS(ParamGenerator, Constant);
-  REGISTER_FACTORY_CLASS(ParamGenerator, Uniform);
+  REGISTER_FACTORY_CLASS("constant", ParamGenerator, Constant);
+  REGISTER_FACTORY_CLASS("uniform", ParamGenerator, Uniform);
 
   // Allocate buffers for placement new from factories
   // **NOTE** we need to be able to simultaneously allocate a delay and

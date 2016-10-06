@@ -28,35 +28,5 @@ enum AppWord
   AppWordMax,
 };
 
-// Supported types of synaptic matrix
-enum MatrixGeneratorType
-{
-  MatrixGeneratorTypeStatic,
-  MatrixGeneratorTypePlastic,
-  MatrixGeneratorTypeExtendedPlastic,
-  MatrixGeneratorTypeMax,
-};
-
-// Supported types of connector
-enum ConnectorGeneratorType
-{
-  ConnectorGeneratorTypeAllToAll,
-  ConnectorGeneratorTypeFixedProbability,
-  ConnectorGeneratorTypeOneToOne,
-  ConnectorGeneratorTypeFixedNumberPost,
-  ConnectorGeneratorTypeFixedNumberPre,
-  ConnectorGeneratorTypeMax,
-};
-
-// Supported types of parameter
-enum ParamGeneratorType
-{
-  ParamGeneratorTypeConstant,
-  ParamGeneratorTypeUniform,
-  ParamGeneratorTypeNormal,
-  ParamGeneratorTypeNormalClipped,
-  ParamGeneratorTypeLogNormal,
-  ParamGeneratorTypeMax,
-};
 
 } // ConnectionBuilder
