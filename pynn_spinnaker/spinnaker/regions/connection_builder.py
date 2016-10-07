@@ -154,10 +154,10 @@ class ConnectionBuilder(Region):
         # Count number of RNGs
         num_rngs = len(_get_native_rngs(chip_sub_matrix_props,
                                         chip_sub_matrix_projs))
-        assert num_rngs == 1
+        assert num_rngs <= 1
 
         # Fixed size consists of seed for each RNG and connection count
-        size = 4 + (num_rngs * self.SeedWords * 4)
+        size = 4 + (self.SeedWords * 4)
 
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
@@ -205,7 +205,7 @@ class ConnectionBuilder(Region):
 
         # Get list of RNGs
         rngs = _get_native_rngs(chip_sub_matrix_props, chip_sub_matrix_projs)
-        assert len(rngs) == 1
+        assert len(rngs) <= 1
 
         # Write seed
         seed = np.random.randint(
