@@ -45,7 +45,7 @@ def _get_param_size(param):
         assert isinstance(rng, NativeRNG)
 
         # Return distribution size
-        return rng._get_distribution_size(distribution)
+        return rng._get_dist_size(distribution)
     # Otherwise if it's a scalar, return 4 bytes
     elif isinstance(param.base_value,
                     (int, long, np.integer, float, bool)):
@@ -55,7 +55,7 @@ def _get_param_size(param):
         assert False
 
 def _write_param(fp, param, fixed_point):
-    # If parameter is a random distribution
+    # If parameter is randomly distributed
     if isinstance(param.base_value, RandomDistribution):
         # Get RNG and distribution
         rng = param.base_value.rng
@@ -66,12 +66,11 @@ def _write_param(fp, param, fixed_point):
         assert isinstance(rng, NativeRNG)
 
         # Return distribution size
-        fp._write_distribution(self, fp, distribution, parameters, fixed_point)
+        fp._write_dist(self, fp, distribution, parameters, fixed_point)
     # Otherwise if it's a scalar, apply fixed point scaling, round and write
     elif isinstance(param.base_value,
                     (int, long, np.integer, float, bool)):
         scaled_value = round(param.base_value * (2.0 ** fixed_point))
-        print param.base_value, fixed_point, scaled_value
         fp.write(struct.pack("i", scaled_value))
     # Otherwise assert
     else:
@@ -225,12 +224,11 @@ class ConnectionBuilder(Region):
             delay = synapse_type.parameter_space["delay"]
             weight = synapse_type.parameter_space["weight"]
 
-            logger.debug(
-                "\t\t\t\t\tWriting connection builder data for projection "
-                "key:%08x, synapse type:%s, connector type:%s, delay type:%s, "
-                "weight type:%s", prop.key, synapse_type.__class__.__name__,
-                connector.__class__.__name__, _get_param_type_name(delay),
-                _get_param_type_name(weight))
+            logger.debug("\t\t\t\t\tWriting connection builder data for "
+                "projection key:%08x, synapse type:%s, connector type:%s, "
+                "delay type:%s, weight type:%s", prop.key,
+                synapse_type.__class__.__name__, connector.__class__.__name__,
+                _get_param_type_name(delay), _get_param_type_name(weight))
 
             # Write type hashes
             fp.write(struct.pack("IIIII", prop.key,
@@ -242,11 +240,11 @@ class ConnectionBuilder(Region):
             # **TODO** write synapse type parameters
 
             # Build dictionary of connector parameters from attributes
-            connector_params = {name: la.larray(getattr(connector, name))
-                                for (name, _, _) in connector._on_chip_param_map}
-            # Write to region
-            fp.write(lazy_param_map.apply(connector_params,
-                                          connector._on_chip_param_map, 1))
+            connector_params = {n: la.larray(getattr(connector, n))
+                                for (n, _, _) in connector._on_chip_param_map}
+            # Apply parameter map to parameters and write to region
+            fp.write(lazy_param_map.apply(
+                connector_params, connector._on_chip_param_map, 1).tostring())
 
             # Write delay parameter with fixed point of zero to round to nearest timestep
             _write_param(fp, delay, 0)
