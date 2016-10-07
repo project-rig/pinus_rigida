@@ -71,7 +71,7 @@ private:
   {
     m_Value = *reinterpret_cast<int32_t*>(region++);
 
-    LOG_PRINT(LOG_LEVEL_INFO, "\tConstant parameter: value:%d", m_Value);
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tConstant parameter: value:%d", m_Value);
   }
 
   //-----------------------------------------------------------------------------
@@ -99,7 +99,7 @@ private:
   {
     m_Low = *reinterpret_cast<int32_t*>(region++);
     m_Range = *reinterpret_cast<int32_t*>(region++);
-    LOG_PRINT(LOG_LEVEL_INFO, "\tUniform parameter: low:%d, range:%d",
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tUniform parameter: low:%d, range:%d",
               m_Low, m_Range);
   }
 

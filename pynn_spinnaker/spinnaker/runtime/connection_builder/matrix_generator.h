@@ -85,7 +85,7 @@ private:
   Static(uint32_t *&region)
   {
     m_NumRows = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tStatic synaptic matrix: num rows:%u", m_NumRows);
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix: num rows:%u", m_NumRows);
   }
 
   //-----------------------------------------------------------------------------

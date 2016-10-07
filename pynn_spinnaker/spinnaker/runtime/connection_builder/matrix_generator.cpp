@@ -44,11 +44,11 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
   // Loop through rows
   for(uint32_t i = 0; i < m_NumRows; i++)
   {
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tRow %u", i);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tRow %u (%08x)", i, matrixAddress);
 
     // Generate row indices
     uint32_t indices[1024];
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tGenerating indices");
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating indices");
     const unsigned int numIndices = connectorGenerator->Generate(i, maxRowSynapses,
                                                                  numPostNeurons,
                                                                  rng, indices);
@@ -57,11 +57,11 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     // Generate delays and weights for each index
     int32_t delays[1024];
     int32_t weights[1024];
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tGenerating delays");
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating delays");
     delayGenerator->Generate(numIndices, 0, rng, delays);
     TraceInt(delays, numIndices);
 
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\tGenerating weights");
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
     weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
     TraceInt(weights, numIndices);
 
@@ -72,15 +72,26 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     *matrixAddress++ = 0;
     *matrixAddress++ = 0;
 
-    // Loop through synapses and write synaptic words
+    // Loop through synapses
     for(unsigned int j = 0; j < numIndices; j++)
     {
-      *matrixAddress++ = (indices[j] & IndexMask) |
+      // Build synaptic word
+      const uint32_t word = (indices[j] & IndexMask) |
         (((uint32_t)delays[j] & DelayMask) << IndexBits) |
         (weights[j] << (DelayBits + IndexBits));
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+      io_printf(IO_BUF, "%u,", word);
+#endif
+      // Write word to matrix
+      *matrixAddress++ = word;
     }
 
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    io_printf(IO_BUF, "\n");
+#endif
+
     // Skip end of row padding
-    *matrixAddress += (maxRowSynapses - numIndices);
+    matrixAddress += (maxRowSynapses - numIndices);
   }
 }

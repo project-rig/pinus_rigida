@@ -95,8 +95,12 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
                                                                  g_MatrixGeneratorBuffer);
     const auto connectorGenerator = g_ConnectorGeneratorFactory.Create(connectorTypeHash, region,
                                                                        g_ConnectorGeneratorBuffer);
+
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tDelay");
     const auto delayGenerator = g_ParamGeneratorFactory.Create(delayTypeHash, region,
                                                                g_DelayParamGeneratorBuffer);
+
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tWeight");
     const auto weightGenerator = g_ParamGeneratorFactory.Create(weightTypeHash, region,
                                                                g_WeightParamGeneratorBuffer);
 
@@ -117,7 +121,7 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
       uint32_t *matrixAddress = g_SynapticMatrixBaseAddress + matrixWordOffset;
 
       // Generate matrix
-      LOG_PRINT(LOG_LEVEL_INFO, "\tAddress:%08x, row synapses:%u",
+      LOG_PRINT(LOG_LEVEL_INFO, "\t\tAddress:%08x, row synapses:%u",
                 matrixAddress, matrixRowSynapses);
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
                                 g_AppWords[AppWordWeightFixedPoint],

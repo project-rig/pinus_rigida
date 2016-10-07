@@ -61,7 +61,7 @@ public:
 private:
   AllToAll(uint32_t *&)
   {
-    LOG_PRINT(LOG_LEVEL_INFO, "\tAll-to-all connector");
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tAll-to-all connector");
   }
 };
 
@@ -85,7 +85,7 @@ private:
   {
     m_Probability = *region++;
 
-    LOG_PRINT(LOG_LEVEL_INFO, "\tFixed-probability connector: probability:%u",
+    LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed-probability connector: probability:%u",
       m_Probability
     );
   }
