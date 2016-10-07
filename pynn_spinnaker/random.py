@@ -30,12 +30,24 @@ class NativeRNG(NativeRNG):
         "uniform_int":  lambda parameters: parameters["high"]
     }
 
+    def __init__(self, seed=None, host_rng=None):
+        # Superclass
+        super(NativeRNG, self).__init__(seed)
+
+        # Cache RNG to use on the host
+        self._host_rng = host_rng
+
     # ------------------------------------------------------------------------
     # AbstractRNG methods
     # ------------------------------------------------------------------------
     def next(self, n=None, distribution=None, parameters=None, mask_local=None):
-        raise NotImplementedError("Parameters chosen using SpiNNaker native"
-                                  "RNG can only be evaluated on SpiNNaker")
+        # If a host RNG was specified, draw from that
+        if self._host_rng is not None:
+            return self._host_rng.next(n, distribution, parameters, mask_local)
+        else:
+            raise NotImplementedError("Parameters chosen using SpiNNaker "
+                                      "native RNG without a fallback host "
+                                      "RNG can only be evaluated on SpiNNaker")
 
     # ------------------------------------------------------------------------
     # Internal SpiNNaker methods
