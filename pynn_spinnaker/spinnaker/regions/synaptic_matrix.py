@@ -262,17 +262,19 @@ class SynapticMatrix(Region):
                 if max_cols > 0:
                     # **TODO** this takes no account of extension rows
 
+                    # Count rows
+                    num_rows = len(pre_n_vert.neuron_slice)
+
                     # Calculate matrix size in words -
                     # size of square matrix
-                    size_words = len(pre_n_vert.neuron_slice) *\
-                        self._get_num_row_words(max_cols)
+                    size_words = num_rows * self._get_num_row_words(max_cols)
 
                     # Add sub matrix to list
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
                                   size_words, max_cols))
-                    sub_matrix_projs.append(proj)
+                    sub_matrix_projs.append((proj, num_rows))
 
         return sub_matrix_props, sub_matrix_projs
 

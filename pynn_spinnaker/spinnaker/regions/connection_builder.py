@@ -94,8 +94,8 @@ def _get_native_rngs(chip_sub_matrix_props, chip_sub_matrix_projs):
     rngs = []
     for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
         # Extract required properties from projections
-        connector = proj._connector
-        synapse_type = proj.synapse_type
+        connector = proj[0]._connector
+        synapse_type = proj[0].synapse_type
 
         # If connector has an RNG
         if hasattr(connector, "rng"):
@@ -162,11 +162,11 @@ class ConnectionBuilder(Region):
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
             # Extract required properties from projections
-            synapse_type = proj.synapse_type
-            connector = proj._connector
+            synapse_type = proj[0].synapse_type
+            connector = proj[0]._connector
 
             # Add words for key and type hashes to size
-            size += (5 * 4)
+            size += (6 * 4)
 
             # **TODO** add size of synapse type parameters
 
@@ -218,17 +218,18 @@ class ConnectionBuilder(Region):
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
             # Extract required properties from projections
-            synapse_type = proj.synapse_type
-            connector = proj._connector
+            synapse_type = proj[0].synapse_type
+            connector = proj[0]._connector
 
             delay = synapse_type.parameter_space["delay"]
             weight = synapse_type.parameter_space["weight"]
 
             logger.debug("\t\t\t\t\tWriting connection builder data for "
                 "projection key:%08x, synapse type:%s, connector type:%s, "
-                "delay type:%s, weight type:%s", prop.key,
+                "delay type:%s, weight type:%s, num rows:%u", prop.key,
                 synapse_type.__class__.__name__, connector.__class__.__name__,
-                _get_param_type_name(delay), _get_param_type_name(weight))
+                _get_param_type_name(delay), _get_param_type_name(weight),
+                proj[1])
 
             # Write type hashes
             fp.write(struct.pack("IIIII", prop.key,
@@ -236,6 +237,11 @@ class ConnectionBuilder(Region):
                                  _crc_u32(connector.__class__.__name__),
                                  _crc_u32(_get_param_type_name(delay)),
                                  _crc_u32(_get_param_type_name(weight))))
+
+            # Write number of rows
+            # **THINK** does this really belong in the synapse
+            # or should it be 'officially' a header field
+            fp.write(struct.pack("I", proj[1]))
 
             # **TODO** write synapse type parameters
 
