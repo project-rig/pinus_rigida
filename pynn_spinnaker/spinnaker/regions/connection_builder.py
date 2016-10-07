@@ -1,6 +1,9 @@
 # Import modules
+from .. import lazy_param_map
+import lazyarray as la
 import logging
 import numpy as np
+import struct
 
 # Import classes
 from ...random import NativeRNG
@@ -15,31 +18,112 @@ logger = logging.getLogger("pynn_spinnaker")
 def _crc_u32(value):
     return crc32(value) & 0xFFFFFFFF
 
-def _get_param_type_name(parameter):
+def _get_param_type_name(param):
     # If parameter is a random distribution
-    if isinstance(parameter.base_value, RandomDistribution):
+    if isinstance(param.base_value, RandomDistribution):
         # Assert that it uses our native RNG
-        assert isinstance(parameter.base_value.rng, NativeRNG)
+        assert isinstance(param.base_value.rng, NativeRNG)
 
         # Return distribution name
-        return parameter.base_value.name
+        return param.base_value.name
     # Otherwise if it's a scalar, return the magic string constant
-    elif isinstance(parameter.base_value,
+    elif isinstance(param.base_value,
                     (int, long, np.integer, float, bool)):
         return "constant"
     # Otherwise assert
     else:
         assert False
 
+def _get_param_size(param):
+    # If parameter is a random distribution
+    if isinstance(param.base_value, RandomDistribution):
+        # Get RNG and distribution
+        rng = param.base_value.rng
+        distribution = param.base_value.name
+
+        # Assert that it uses our native RNG
+        assert isinstance(rng, NativeRNG)
+
+        # Return distribution size
+        return rng._get_distribution_size(distribution)
+    # Otherwise if it's a scalar, return 4 bytes
+    elif isinstance(param.base_value,
+                    (int, long, np.integer, float, bool)):
+        return 4
+    # Otherwise assert
+    else:
+        assert False
+
+def _write_param(fp, param, fixed_point):
+    # If parameter is a random distribution
+    if isinstance(param.base_value, RandomDistribution):
+        # Get RNG and distribution
+        rng = param.base_value.rng
+        distribution = param.base_value.name
+        parameters = param.base_value.params
+
+        # Assert that it uses our native RNG
+        assert isinstance(rng, NativeRNG)
+
+        # Return distribution size
+        fp._write_distribution(self, fp, distribution, parameters, fixed_point)
+    # Otherwise if it's a scalar, apply fixed point scaling, round and write
+    elif isinstance(param.base_value,
+                    (int, long, np.integer, float, bool)):
+        scaled_value = round(param.base_value * (2.0 ** fixed_point))
+        print param.base_value, fixed_point, scaled_value
+        fp.write(struct.pack("i", scaled_value))
+    # Otherwise assert
+    else:
+        assert False
+
+
+def _get_native_rng(param):
+    # If parameter is randomly distributed
+    if isinstance(param.base_value, RandomDistribution):
+        # Assert that it uses our native RNG
+        assert isinstance(param.base_value.rng, NativeRNG)
+
+        # Return list containing RNG used to generate parameter
+        return [param.base_value.rng]
+    # Otherwise return empty list
+    else:
+        return []
+
+def _get_native_rngs(chip_sub_matrix_props, chip_sub_matrix_projs):
+    # Loop through all matrices to generate on chip
+    rngs = []
+    for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
+        # Extract required properties from projections
+        connector = proj._connector
+        synapse_type = proj.synapse_type
+
+        # If connector has an RNG
+        if hasattr(connector, "rng"):
+            # Assert that it uses our native RNG
+            assert isinstance(connector.rng, NativeRNG)
+
+            # Add RNG to list
+            rngs.append(connector.rng)
+
+        # Add RNGs from delay and weight parameters
+        rngs.extend(_get_native_rng(synapse_type.parameter_space["delay"]))
+        rngs.extend(_get_native_rng(synapse_type.parameter_space["weight"]))
+
+    # Make RNG list unique and return
+    return list(set(rngs))
+
 # ------------------------------------------------------------------------------
 # ConnectionBuilder
 # ------------------------------------------------------------------------------
 class ConnectionBuilder(Region):
+    SeedWords = 4
+
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
     def sizeof(self, post_vertex_slice, sub_matrix_props,
-               chip_sub_matrix_projs):
+               chip_sub_matrix_projs, weight_fixed_point):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -65,13 +149,40 @@ class ConnectionBuilder(Region):
             A list of Projections from which to extract
             properties required to build matrices on chip
         """
+        # Slice sub matrices to generate on chip out from end of sub matrix properties
+        chip_sub_matrix_props = sub_matrix_props[-len(chip_sub_matrix_projs):]
 
-        # A word for each weight
-        #return 4 + (len(chip_sub_matrix_props) * )
-        return 0
+        # Count number of RNGs
+        num_rngs = len(_get_native_rngs(chip_sub_matrix_props,
+                                        chip_sub_matrix_projs))
+        assert num_rngs == 1
+
+        # Fixed size consists of seed for each RNG and connection count
+        size = 4 + (num_rngs * self.SeedWords * 4)
+
+        # Loop through projections
+        for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
+            # Extract required properties from projections
+            synapse_type = proj.synapse_type
+            connector = proj._connector
+
+            # Add words for key and type hashes to size
+            size += (5 * 4)
+
+            # **TODO** add size of synapse type parameters
+
+            # Add size required to specify connector
+            size += lazy_param_map.size(connector._on_chip_param_map, 1)
+
+            # Add size required to specify delay and weight parameters
+            size += _get_param_size(synapse_type.parameter_space["delay"])
+            size += _get_param_size(synapse_type.parameter_space["weight"])
+
+        # Return complete size
+        return size
 
     def write_subregion_to_file(self, fp, post_vertex_slice, sub_matrix_props,
-                                chip_sub_matrix_projs):
+                                chip_sub_matrix_projs, weight_fixed_point):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -87,15 +198,26 @@ class ConnectionBuilder(Region):
             A list of Projections from which to extract
             properties required to build matrices on chip
         """
-        # **TODO** write RNG seed
-
+        # Count number of sub matrices to generate on chip
         num_chip_matrices = len(chip_sub_matrix_projs)
 
+        # Slice these out from end of sub matrix properties
+        chip_sub_matrix_props = sub_matrix_props[-num_chip_matrices:]
+
+        # Get list of RNGs
+        rngs = _get_native_rngs(chip_sub_matrix_props, chip_sub_matrix_projs)
+        assert len(rngs) == 1
+
+        # Write seed
+        seed = np.random.randint(
+            0x7FFFFFFF, size=self.SeedWords).astype(np.uint32)
+        fp.write(seed.tostring())
+
         # Write number of matrices
-        #fp.write(struct.pack("I", len(chip_sub_matrix_props)))
+        fp.write(struct.pack("I", num_chip_matrices))
 
         # Loop through projections
-        for prop, proj in zip(sub_matrix_props[-num_chip_matrices:], chip_sub_matrix_projs):
+        for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
             # Extract required properties from projections
             synapse_type = proj.synapse_type
             connector = proj._connector
@@ -110,5 +232,24 @@ class ConnectionBuilder(Region):
                 connector.__class__.__name__, _get_param_type_name(delay),
                 _get_param_type_name(weight))
 
-            #fp.write(struct.pack("IIIII", prop.key, _crc_u32()
-            assert False
+            # Write type hashes
+            fp.write(struct.pack("IIIII", prop.key,
+                                 _crc_u32(synapse_type.__class__.__name__),
+                                 _crc_u32(connector.__class__.__name__),
+                                 _crc_u32(_get_param_type_name(delay)),
+                                 _crc_u32(_get_param_type_name(weight))))
+
+            # **TODO** write synapse type parameters
+
+            # Build dictionary of connector parameters from attributes
+            connector_params = {name: la.larray(getattr(connector, name))
+                                for (name, _, _) in connector._on_chip_param_map}
+            # Write to region
+            fp.write(lazy_param_map.apply(connector_params,
+                                          connector._on_chip_param_map, 1))
+
+            # Write delay parameter with fixed point of zero to round to nearest timestep
+            _write_param(fp, delay, 0)
+
+            # Write weights using weight fixed point
+            _write_param(fp, weight, weight_fixed_point)
