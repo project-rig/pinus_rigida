@@ -116,26 +116,26 @@ class TestS2011(BaseTestMapping):
         return np.round(np.multiply(p, 2.0 ** 11)).astype(int)
 
 # ----------------------------------------------------------------------------
-# TestU32WeightFixedPoint
+# TestU32FixedPoint
 # ----------------------------------------------------------------------------
-class TestU32WeightFixedPoint(BaseTestMapping):
-    mapping_func = staticmethod(lazy_param_map.u32_weight_fixed_point)
+class TestU32FixedPoint(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.u32_fixed_point)
     data_type = "u4"
-    kwargs = [{"weight_fixed_point": 24}, {"weight_fixed_point": 10}]
+    kwargs = [{"fixed_point": 24}, {"fixed_point": 10}]
 
-    def correct_value_func(self, p, weight_fixed_point):
-        return np.round(np.multiply(p, 2.0 ** weight_fixed_point)).astype(int)
+    def correct_value_func(self, p, fixed_point):
+        return np.round(np.multiply(p, 2.0 ** fixed_point)).astype(int)
 
 # ----------------------------------------------------------------------------
-# TestS32WeightFixedPoint
+# TestS32FixedPoint
 # ----------------------------------------------------------------------------
-class TestS32WeightFixedPoint(BaseTestMapping):
-    mapping_func = staticmethod(lazy_param_map.s32_weight_fixed_point)
+class TestS32FixedPoint(BaseTestMapping):
+    mapping_func = staticmethod(lazy_param_map.s32_fixed_point)
     data_type = "i4"
-    kwargs = [{"weight_fixed_point": 24}, {"weight_fixed_point": 10}]
+    kwargs = [{"fixed_point": 24}, {"fixed_point": 10}]
 
-    def correct_value_func(self, p, weight_fixed_point):
-        return np.round(np.multiply(p, 2.0 ** weight_fixed_point)).astype(int)
+    def correct_value_func(self, p, fixed_point):
+        return np.round(np.multiply(p, 2.0 ** fixed_point)).astype(int)
 '''
 s1615_time_multiply = partial(time_multiply, float_to_fixed=float_to_s1615_no_copy)
 s1615_exp_decay = partial(exp_decay, float_to_fixed=float_to_s1615_no_copy)
