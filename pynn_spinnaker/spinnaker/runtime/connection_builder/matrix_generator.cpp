@@ -15,6 +15,7 @@ void ConnectionBuilder::MatrixGenerator::Base::TraceUInt(uint32_t (&values)[1024
   {
     io_printf(IO_BUF, "%u,", values[i]);
   }
+  io_printf(IO_BUF, "\n");
 #endif
 }
 //-----------------------------------------------------------------------------
@@ -26,6 +27,7 @@ void ConnectionBuilder::MatrixGenerator::Base::TraceInt(int32_t (&values)[1024],
   {
     io_printf(IO_BUF, "%u,", values[i]);
   }
+  io_printf(IO_BUF, "\n");
 #endif
 }
 

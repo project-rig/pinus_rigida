@@ -191,13 +191,16 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 extern "C" void c_main()
 {
   // Register matrix generators with factories
-  REGISTER_FACTORY_CLASS("Static", MatrixGenerator, Static);
+  LOG_PRINT(LOG_LEVEL_INFO, "Matrix generators");
+  REGISTER_FACTORY_CLASS("StaticSynapse", MatrixGenerator, Static);
 
   // Register connector generators with factories
+  LOG_PRINT(LOG_LEVEL_INFO, "Connector generators");
   REGISTER_FACTORY_CLASS("AllToAllConnector", ConnectorGenerator, AllToAll);
   REGISTER_FACTORY_CLASS("FixedProbabilityConnector", ConnectorGenerator, FixedProbability);
 
   // Register parameter generators with factories
+  LOG_PRINT(LOG_LEVEL_INFO, "Parameter generators");
   REGISTER_FACTORY_CLASS("constant", ParamGenerator, Constant);
   REGISTER_FACTORY_CLASS("uniform", ParamGenerator, Uniform);
 
