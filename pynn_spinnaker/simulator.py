@@ -413,8 +413,6 @@ class State(common.control.BaseState):
                                     AppState.init, AppState.exit,
                                     len(vertex_load_applications))
 
-            assert False
-
         # Build map of vertex run applications to load
         run_app_map = build_application_map(vertex_run_applications,
                                             placements, allocations, Cores)
