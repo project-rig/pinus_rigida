@@ -11,10 +11,8 @@ from six import iteritems
 # ----------------------------------------------------------------------------
 # NativeRNG
 # ----------------------------------------------------------------------------
+# Signals that the random numbers will be supplied by RNG running on SpiNNaker
 class NativeRNG(NativeRNG):
-    """
-    Signals that the random numbers will be supplied by RNG running on SpiNNaker
-    """
     # Maps specifying how each distribution type's
     # parameters will be written to SpiNNaker
     param_maps = {
@@ -29,8 +27,19 @@ class NativeRNG(NativeRNG):
         raise NotImplementedError("Parameters chosen using SpiNNaker native"
                                   "RNG can only be evaluated on SpiNNaker")
 
+    # ------------------------------------------------------------------------
     # Internal SpiNNaker methods
-    def _write_distribution(self, distribution, parameters, fixed_point):
+    # ------------------------------------------------------------------------
+    def _get_distribution_size(self, distribution):
+        # Check translation and parameter map exists for this distribution
+        if (distribution not in self.param_maps):
+            raise NotImplementedError("SpiNNaker native RNG does not support"
+                                      "%s distributions" % distribution)
+
+        # Return size of parameter map
+        return lazy_param_map.size(self.param_maps[distribution], 1)
+
+    def _write_distribution(self, fp, distribution, parameters, fixed_point):
         # Check translation and parameter map exists for this distribution
         if (distribution not in self.param_maps):
             raise NotImplementedError("SpiNNaker native RNG does not support"
@@ -40,10 +49,9 @@ class NativeRNG(NativeRNG):
         parameters = {name: la.larray(value)
                       for name, value in iteritems(parameters)}
 
-        # Evaluate parameters
-        spinnaker_params = lazy_param_map.apply(parameters,
-                                                self.param_maps[distribution],
-                                                1, fixed_point=fixed_point)
-        print spinnaker_params
+        # Evaluate parameters and write to file
+        data = lazy_param_map.apply(parameters, self.param_maps[distribution],
+                                    1, fixed_point=fixed_point)
+        fp.write(data.tostring())
 
 
