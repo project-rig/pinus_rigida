@@ -522,5 +522,7 @@ class SynapseCluster(object):
             sub_matrix_props
         region_arguments[Regions.connection_builder].kwargs["chip_sub_matrix_projs"] =\
             chip_sub_matrix_projs
+        region_arguments[Regions.connection_builder].kwargs["post_vertex_slice"] =\
+            post_vertex_slice
 
         return region_arguments

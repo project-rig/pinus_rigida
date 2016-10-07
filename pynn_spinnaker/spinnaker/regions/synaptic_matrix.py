@@ -93,7 +93,7 @@ class SynapticMatrix(Region):
         # on host are included, in sub_matrix_rows, this
         # loop will not loop over the matrices to generate on chip
         for matrix, matrix_rows, placement in zip(sub_matrix_props,
-                                                  sub_matrix_rows,
+                                                  host_sub_matrix_rows,
                                                   matrix_placements):
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
@@ -274,7 +274,7 @@ class SynapticMatrix(Region):
                                   size_words, max_cols))
                     sub_matrix_projs.append(proj)
 
-        return sub_matrix_props
+        return sub_matrix_props, sub_matrix_projs
 
     def read_sub_matrix(self, pre_n_vert, post_s_vert, names, region_mem):
         # Find the matrix properties and placement of sub-matrix

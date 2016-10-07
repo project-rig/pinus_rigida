@@ -1,7 +1,10 @@
 # Import modules
 import logging
+import numpy as np
 
 # Import classes
+from ...random import NativeRNG
+from pyNN.random import RandomDistribution
 from region import Region
 
 # Import functions
@@ -26,7 +29,7 @@ def _get_param_type_name(parameter):
         return "constant"
     # Otherwise assert
     else:
-        assert False:
+        assert False
 
 # ------------------------------------------------------------------------------
 # ConnectionBuilder
@@ -35,7 +38,7 @@ class ConnectionBuilder(Region):
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, vertex_slice, sub_matrix_props,
+    def sizeof(self, post_vertex_slice, sub_matrix_props,
                chip_sub_matrix_projs):
         """Get the size requirements of the region in bytes.
 
@@ -50,6 +53,11 @@ class ConnectionBuilder(Region):
         int
             The number of bytes required to store the data in the given slice
             of the region.
+
+        Parameters
+        ----------
+        post_vertex_slice : :py:func:`slice`
+            A slice object which indicates the slice of postsynaptic neurons.
         sub_matrix_props :
             A list of SubMatrix structures
             specifying matrices to generate on chip
@@ -62,7 +70,7 @@ class ConnectionBuilder(Region):
         #return 4 + (len(chip_sub_matrix_props) * )
         return 0
 
-    def write_subregion_to_file(self, fp, vertex_slice, sub_matrix_props,
+    def write_subregion_to_file(self, fp, post_vertex_slice, sub_matrix_props,
                                 chip_sub_matrix_projs):
         """Write a portion of the region to a file applying the formatter.
 
@@ -71,9 +79,8 @@ class ConnectionBuilder(Region):
         fp : file-like object
             The file-like object to which data from the region will be written.
             This must support a `write` method.
-        vertex_slice : :py:func:`slice`
-            A slice object which indicates which rows, columns or other
-            elements of the region should be included.
+        post_vertex_slice : :py:func:`slice`
+            A slice object which indicates the slice of postsynaptic neurons.
         sub_matrix_props :
             A list of SubMatrix structures
         chip_sub_matrix_projs :
@@ -100,8 +107,8 @@ class ConnectionBuilder(Region):
                 "\t\t\t\t\tWriting connection builder data for projection "
                 "key:%08x, synapse type:%s, connector type:%s, delay type:%s, "
                 "weight type:%s", prop.key, synapse_type.__class__.__name__,
-                connector.__class__.__name, _get_param_type_name(delay),
+                connector.__class__.__name__, _get_param_type_name(delay),
                 _get_param_type_name(weight))
 
             #fp.write(struct.pack("IIIII", prop.key, _crc_u32()
-        assert False
+            assert False
