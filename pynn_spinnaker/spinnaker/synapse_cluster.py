@@ -524,5 +524,7 @@ class SynapseCluster(object):
             chip_sub_matrix_projs
         region_arguments[Regions.connection_builder].kwargs["post_vertex_slice"] =\
             post_vertex_slice
+        region_arguments[Regions.connection_builder].kwargs["weight_fixed_point"] =\
+            weight_fixed_point
 
         return region_arguments
