@@ -3,9 +3,6 @@
 // Standard includes
 #include <cstdint>
 
-// Common includes
-#include "../common/log.h"
-
 // Connection builder includes
 #include "generator_factory.h"
 
@@ -67,12 +64,7 @@ public:
                         MarsKiss64 &rng, int32_t (&output)[1024]) const;
 
 private:
-  Constant(uint32_t *&region)
-  {
-    m_Value = *reinterpret_cast<int32_t*>(region++);
-
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tConstant parameter: value:%d", m_Value);
-  }
+  Constant(uint32_t *&region);
 
   //-----------------------------------------------------------------------------
   // Members
@@ -95,13 +87,7 @@ public:
                         MarsKiss64 &rng, int32_t (&output)[1024]) const;
 
 private:
-  Uniform(uint32_t *&region)
-  {
-    m_Low = *reinterpret_cast<int32_t*>(region++);
-    m_Range = *reinterpret_cast<int32_t*>(region++);
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tUniform parameter: low:%d, range:%d",
-              m_Low, m_Range);
-  }
+  Uniform(uint32_t *&region);
 
   //-----------------------------------------------------------------------------
   // Members

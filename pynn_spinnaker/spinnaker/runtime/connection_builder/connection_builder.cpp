@@ -87,8 +87,9 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
     const uint32_t connectorTypeHash = *region++;
     const uint32_t delayTypeHash = *region++;
     const uint32_t weightTypeHash = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u",
-              i, key, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash);
+    const uint32_t numRows = *region++;
+    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u, num rows:%u",
+              i, key, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash, numRows);
 
     // Generate matrix, connector, delays and weights
     const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixTypeHash, region,
@@ -125,7 +126,7 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
                 matrixAddress, matrixRowSynapses);
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
                                 g_AppWords[AppWordWeightFixedPoint],
-                                g_AppWords[AppWordNumPostNeurons],
+                                g_AppWords[AppWordNumPostNeurons], numRows,
                                 connectorGenerator, delayGenerator, weightGenerator,
                                 rng);
 

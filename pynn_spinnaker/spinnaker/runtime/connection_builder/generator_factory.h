@@ -5,6 +5,7 @@
 
 // Common includes
 #include "../common/compile_time_crc.h"
+#include "../common/log.h"
 
 // Macros
 #define ADD_FACTORY_CREATOR(T)                         \
@@ -84,7 +85,7 @@ public:
       m_NameHashes[m_Count] = nameHash;
       m_Count++;
 
-      LOG_PRINT(LOG_LEVEL_INFO, "Registering class name hash %u with factory",
+      LOG_PRINT(LOG_LEVEL_INFO, "\tRegistering class name hash %u with factory",
                 nameHash);
 
       // Update memory size

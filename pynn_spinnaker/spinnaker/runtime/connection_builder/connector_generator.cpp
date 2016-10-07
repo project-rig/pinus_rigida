@@ -1,10 +1,16 @@
 #include "connector_generator.h"
 
 // Common includes
+#include "../common/log.h"
 #include "../common/random/mars_kiss64.h"
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ConnectorGenerator::AllToAll
+//-----------------------------------------------------------------------------
+ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&)
+{
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tAll-to-all connector");
+}
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
@@ -28,6 +34,15 @@ unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ConnectorGenerator::FixedProbability
+//-----------------------------------------------------------------------------
+ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32_t *&region)
+{
+  m_Probability = *region++;
+
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed-probability connector: probability:%u",
+    m_Probability
+  );
+}
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,

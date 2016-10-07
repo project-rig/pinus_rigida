@@ -3,9 +3,6 @@
 // Standard includes
 #include <cstdint>
 
-// Common includes
-#include "../common/log.h"
-
 // Connection builder includes
 #include "generator_factory.h"
 
@@ -59,10 +56,7 @@ public:
                                 uint32_t (&indices)[1024]) const;
 
 private:
-  AllToAll(uint32_t *&)
-  {
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\tAll-to-all connector");
-  }
+  AllToAll(uint32_t *&);
 };
 
 //-----------------------------------------------------------------------------
@@ -81,14 +75,7 @@ public:
                                 uint32_t (&indices)[1024]) const;
 
 private:
-  FixedProbability(uint32_t *&region)
-  {
-    m_Probability = *region++;
-
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed-probability connector: probability:%u",
-      m_Probability
-    );
-  }
+  FixedProbability(uint32_t *&region);
 
   //-----------------------------------------------------------------------------
   // Members

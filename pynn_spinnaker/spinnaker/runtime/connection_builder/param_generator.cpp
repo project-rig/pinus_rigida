@@ -2,6 +2,7 @@
 
 // Common includes
 #include "../common/arm_intrinsics.h"
+#include "../common/log.h"
 #include "../common/random/mars_kiss64.h"
 
 // Namespaces
@@ -9,6 +10,13 @@ using namespace Common::ARMIntrinsics;
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ParamGenerator::Constant
+//-----------------------------------------------------------------------------
+ConnectionBuilder::ParamGenerator::Constant::Constant(uint32_t *&region)
+{
+  m_Value = *reinterpret_cast<int32_t*>(region++);
+
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tConstant parameter: value:%d", m_Value);
+}
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::ParamGenerator::Constant::Generate(unsigned int number,
   unsigned int, MarsKiss64 &, int32_t (&output)[1024]) const
@@ -22,6 +30,14 @@ void ConnectionBuilder::ParamGenerator::Constant::Generate(unsigned int number,
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ParamGenerators::Uniform
+//-----------------------------------------------------------------------------
+ConnectionBuilder::ParamGenerator::Uniform::Uniform(uint32_t *&region)
+{
+  m_Low = *reinterpret_cast<int32_t*>(region++);
+  m_Range = *reinterpret_cast<int32_t*>(region++);
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tUniform parameter: low:%d, range:%d",
+            m_Low, m_Range);
+}
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::ParamGenerator::Uniform::Generate(unsigned int number,
   unsigned int, MarsKiss64 &rng, int32_t (&output)[1024]) const

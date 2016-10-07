@@ -3,9 +3,6 @@
 // Standard includes
 #include <cstdint>
 
-// Common includes
-#include "../common/log.h"
-
 // Connection builder includes
 #include "generator_factory.h"
 
@@ -49,7 +46,7 @@ public:
   // Declared virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
-    unsigned int weightFixedPoint, unsigned int numPostNeurons,
+    unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
@@ -75,18 +72,14 @@ public:
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
-    unsigned int weightFixedPoint, unsigned int numPostNeurons,
+    unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
     MarsKiss64 &rng) const;
 
 private:
-  Static(uint32_t *&region)
-  {
-    m_NumRows = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix: num rows:%u", m_NumRows);
-  }
+  Static(uint32_t *&region);
 
   //-----------------------------------------------------------------------------
   // Constants
@@ -95,11 +88,6 @@ private:
   static const uint32_t IndexBits = 10;
   static const uint32_t DelayMask = ((1 << DelayBits) - 1);
   static const uint32_t IndexMask = ((1 << IndexBits) - 1);
-
-  //-----------------------------------------------------------------------------
-  // Members
-  //-----------------------------------------------------------------------------
-  uint32_t m_NumRows;
 };
 
 } // MatrixGenerator

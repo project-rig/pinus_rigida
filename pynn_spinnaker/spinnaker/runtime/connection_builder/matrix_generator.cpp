@@ -1,5 +1,8 @@
 #include "matrix_generator.h"
 
+// Common includes
+#include "../common/log.h"
+
 // Connection builder includes
 #include "connector_generator.h"
 #include "param_generator.h"
@@ -34,15 +37,21 @@ void ConnectionBuilder::MatrixGenerator::Base::TraceInt(int32_t (&values)[1024],
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::MatrixGenerator::Static
 //-----------------------------------------------------------------------------
+ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region)
+{
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix");
+}
+//-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
-  unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
+  unsigned int maxRowSynapses, unsigned int weightFixedPoint,
+  unsigned int numPostNeurons, unsigned int numRows,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
   MarsKiss64 &rng) const
 {
   // Loop through rows
-  for(uint32_t i = 0; i < m_NumRows; i++)
+  for(uint32_t i = 0; i < numRows; i++)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tRow %u (%08x)", i, matrixAddress);
 
@@ -63,6 +72,7 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
 
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
     weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
+
     TraceInt(weights, numIndices);
 
     // Write row length
@@ -75,6 +85,13 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     // Loop through synapses
     for(unsigned int j = 0; j < numIndices; j++)
     {
+      // Static synaptic matrices are unsigned
+      // so if weight is negative, flip sign
+      if(weights[j] < 0)
+      {
+        weights[j] = -weights[j];
+      }
+
       // Build synaptic word
       const uint32_t word = (indices[j] & IndexMask) |
         (((uint32_t)delays[j] & DelayMask) << IndexBits) |
