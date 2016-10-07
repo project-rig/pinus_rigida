@@ -1,9 +1,11 @@
 # Import modules
 import enum
+import inspect
 import itertools
 import logging
 import math
 import numpy as np
+from os import path
 import regions
 from rig import machine
 import sys
@@ -128,7 +130,8 @@ class SynapseCluster(object):
     def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
                  max_delay_ms, config, post_pop_size, synapse_model,
                  receptor_index, synaptic_projections,
-                 vertex_applications, vertex_resources, post_synaptic_width):
+                 vertex_load_applications, vertex_run_applications,
+                 vertex_resources, post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(timer_period_us,
@@ -176,6 +179,7 @@ class SynapseCluster(object):
         self.synapse_model = synapse_model
 
         # Loop through the post-slices
+        generate_matrix_on_chip = False
         self.verts = []
         vert_sdram = []
         for post_slice in self.post_slices:
@@ -188,6 +192,11 @@ class SynapseCluster(object):
             vert = Vertex(post_slice, receptor_index)
             for proj in synaptic_projections:
                 logger.debug("\t\t\t\tProjection:%s", proj.label)
+
+                # If this projection can be generated on chip, set flag
+                if proj._generatable_on_chip:
+                    generate_matrix_on_chip = True
+
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
                 for pre_vertex in proj.pre._neural_cluster.verts:
@@ -252,10 +261,24 @@ class SynapseCluster(object):
 
         logger.debug("\t\t\t%u synapse vertices", len(self.verts))
 
+        # If any matrices should be generated on chip, show message
+        if generate_matrix_on_chip:
+            # **YUCK** find connection builder executable
+            spinnaker_path = path.dirname(inspect.getfile(self.__class__))
+            connection_builder_app = path.join(spinnaker_path,
+                                            "../standardmodels/binaries",
+                                            "connection_builder.aplx")
+            logger.debug("\t\t\tConnection builder application:%s",
+                         connection_builder_app)
+
         # Loop through synapse vertices
         for v, s in zip(self.verts, vert_sdram):
             # Add application to dictionary
-            vertex_applications[v] = synapse_app
+            vertex_run_applications[v] = synapse_app
+
+            # Add connection builder app
+            if generate_matrix_on_chip:
+                vertex_load_applications[v] = connection_builder_app
 
             # Add resources to dictionary
             vertex_resources[v] = {machine.Cores: 1, machine.SDRAM: s}

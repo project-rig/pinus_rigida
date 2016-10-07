@@ -12,10 +12,12 @@ from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.consts import AppState, signal_types, AppSignal, MessageType
 from rig.machine_control.machine_controller import MachineController
+from rig.place_and_route.machine import Cores
 from rig.place_and_route.constraints import SameChipConstraint
 
 # Import functions
 from rig.place_and_route import place_and_route_wrapper
+from rig.place_and_route.utils import build_application_map
 from six import iteritems, itervalues
 
 logger = logging.getLogger("pynn_spinnaker")
@@ -253,7 +255,8 @@ class State(common.control.BaseState):
 
         # Create empty dictionaries to contain Rig mappings
         # of vertices to  applications and resources
-        vertex_applications = {}
+        vertex_load_applications = {}
+        vertex_run_applications = {}
         vertex_resources = {}
 
         # Allocate clusters
@@ -263,20 +266,23 @@ class State(common.control.BaseState):
         for pop_id, pop in enumerate(self.populations):
             logger.debug("\tPopulation:%s", pop.label)
             pop._create_neural_cluster(pop_id, hardware_timestep_us, duration_timesteps,
-                                       vertex_applications, vertex_resources, keyspace)
+                                       vertex_load_applications, vertex_run_applications,
+                                       vertex_resources, keyspace)
 
         logger.info("Allocating synapse clusters")
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
             pop._create_synapse_clusters(hardware_timestep_us, duration_timesteps,
-                                       vertex_applications, vertex_resources)
+                                       vertex_load_applications, vertex_run_applications,
+                                       vertex_resources)
 
         logger.info("Allocating current input clusters")
         for proj in self.projections:
             # Create cluster
             c = proj._create_current_input_cluster(
                 hardware_timestep_us, duration_timesteps,
-                vertex_applications, vertex_resources)
+                vertex_load_applications, vertex_run_applications,
+                vertex_resources)
 
             # Add cluster to data structures
             if c is not None:
@@ -341,9 +347,10 @@ class State(common.control.BaseState):
             logger.debug("Found %u chip machine", len(self.system_info))
 
         # Place-and-route
+        # **NOTE** don't create application map at this stage
         logger.info("Placing and routing")
-        placements, allocations, application_map, routing_tables =\
-            place_and_route_wrapper(vertex_resources, vertex_applications,
+        placements, allocations, _, routing_tables =\
+            place_and_route_wrapper(vertex_resources, {},
                                     nets, net_keys, self.system_info, constraints)
 
         # Convert placement values to a set to get unique list of chips
@@ -390,8 +397,30 @@ class State(common.control.BaseState):
         # Load routing tables and applications
         logger.info("Loading routing tables")
         self.machine_controller.load_routing_tables(routing_tables)
+
+        # If an on-chip generation phase is required
+        if len(vertex_load_applications) > 0:
+            # Build map of vertex load applications to load
+            load_app_map = build_application_map(vertex_load_applications,
+                                                 placements, allocations,
+                                                 Cores)
+            logger.info("Loading loader applications")
+            self.machine_controller.load_application(load_app_map)
+
+            # Wait for all cores to exit
+            logger.info("Waiting for loader exit")
+            self._wait_for_transition(placements, allocations,
+                                    AppState.init, AppState.exit,
+                                    len(vertex_load_applications))
+
+            assert False
+
+        # Build map of vertex run applications to load
+        run_app_map = build_application_map(vertex_run_applications,
+                                            placements, allocations, Cores)
+
         logger.info("Loading applications")
-        self.machine_controller.load_application(application_map)
+        self.machine_controller.load_application(run_app_map)
 
         # Wait for all cores to hit SYNC0
         logger.info("Waiting for synch")

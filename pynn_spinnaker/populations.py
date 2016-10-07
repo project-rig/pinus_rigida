@@ -419,7 +419,8 @@ class Population(common.Population):
             proj.current_input_j_constraint = constraint
 
     def _create_neural_cluster(self, pop_id, timer_period_us, simulation_ticks,
-                               vertex_applications, vertex_resources, keyspace):
+                               vertex_load_applications, vertex_run_applications,
+                               vertex_resources, keyspace):
         # Create neural cluster
         if not self._entirely_directly_connectable:
             # Determine if any of the incoming projections
@@ -433,13 +434,15 @@ class Population(common.Population):
                 self._simulator.state.dt, timer_period_us,
                 simulation_ticks, self.recorder.sampling_interval,
                 self.recorder.indices_to_record, self.spinnaker_config,
-                vertex_applications, vertex_resources, keyspace,
-                self.neuron_j_constraint, requires_back_prop, self.size)
+                vertex_load_applications, vertex_run_applications,
+                vertex_resources, keyspace, self.neuron_j_constraint,
+                requires_back_prop, self.size)
         else:
             self._neural_cluster = None
 
     def _create_synapse_clusters(self, timer_period_us, simulation_ticks,
-                                 vertex_applications, vertex_resources):
+                                 vertex_load_applications, vertex_run_applications,
+                                 vertex_resources):
         # Loop through newly partioned incoming projections
         self._synapse_clusters = {}
         for s_type, pre_pop_projs in iteritems(self.incoming_projections):
@@ -459,8 +462,8 @@ class Population(common.Population):
                                    self._simulator.state.max_delay,
                                    self.spinnaker_config, self.size,
                                    s_type.model, receptor_index,
-                                   synaptic_projs, vertex_applications,
-                                   vertex_resources,
+                                   synaptic_projs, vertex_load_applications,
+                                   vertex_run_applications, vertex_resources,
                                    self.synapse_j_constraints[s_type])
 
                 # Add cluster to dictionary
