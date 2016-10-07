@@ -314,12 +314,18 @@ class SynapseCluster(object):
 
                 # If all incoming projections from this population
                 # are generatable on chip and there aren't multiple
-                # projections that need merging, mark list of projections
-                # for generating on chip
+                # projections that need merging
                 incoming_from_pre = incoming_projections[pre_pop]
                 if (all(i._generatable_on_chip for i in incoming_from_pre) and
                     len(incoming_from_pre) == 1):
+
+                    # Mark list of projections for generating on chip
                     pre_pop_on_chip_proj[pre_pop] = incoming_from_pre
+
+                    # Loop through projections to generate on chip and update
+                    # weight range based on estimated maximum weight
+                    for proj in incoming_from_pre:
+                        weight_range.update(proj._estimate_max_weight())
                 # Otherwise
                 else:
                     # Create list of lists to contain matrix rows

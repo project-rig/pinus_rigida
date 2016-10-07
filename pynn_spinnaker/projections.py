@@ -250,6 +250,32 @@ class Projection(common.Projection, ContextMixin):
 
         return direct_weights
 
+    def _estimate_max_weight(self):
+        # Extract weight parameters
+        weights = self.synapse_type.parameter_space["weight"]
+
+        # If weights are randomly distributed
+        if isinstance(weights.base_value, RandomDistribution):
+            # Get RNG and distribution
+            rng = weights.base_value.rng
+            distribution = weights.base_value.name
+            parameters = weights.base_value.params
+
+            # Assert that it uses our native RNG
+            assert isinstance(rng, NativeRNG)
+
+            # Update weight range based on the
+            # estimated maximum value of distribution
+            return rng._estimate_dist_max_value(distribution, parameters)
+        # Otherwise if it's a scalar,
+        # use it to update weight range directly
+        elif isinstance(weights.base_value,
+                        (int, long, np.integer, float, bool)):
+            return weights.base_value
+        # Otherwise assert
+        else:
+            assert False
+
     def _estimate_max_row_synapses(self, pre_slice, post_slice):
         return self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
