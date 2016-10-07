@@ -239,9 +239,11 @@ class SynapseCluster(object):
                     vert_event_rate += pre_rate
                     vert_sdram_bytes += sdram_bytes
 
-                    # If it's more than this type of
-                    # synapse processor can handle
-                    if (vert_event_rate > synapse_model._max_synaptic_event_rate):
+                    # If the event rate is more than this type of synapse
+                    # processor can handle or the matrix requires more
+                    # than the 16mb the key lookup data structure can address
+                    if (vert_event_rate > synapse_model._max_synaptic_event_rate
+                        or vert_sdram_bytes > (16 * 1024 * 1024)):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
                         vert_sdram.append(vert_sdram_bytes)
