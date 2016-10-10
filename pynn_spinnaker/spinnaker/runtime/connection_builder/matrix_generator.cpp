@@ -63,16 +63,16 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
                                                                  rng, indices);
     TraceUInt(indices, numIndices);
 
-    // Generate delays and weights for each index
-    int32_t delays[1024];
-    int32_t weights[1024];
+    // Generate delays for each index
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating delays");
+    int32_t delays[1024];
     delayGenerator->Generate(numIndices, 0, rng, delays);
     TraceInt(delays, numIndices);
 
+    // Generate weights for each index
+    int32_t weights[1024];
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
     weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
-
     TraceInt(weights, numIndices);
 
     // Write row length
