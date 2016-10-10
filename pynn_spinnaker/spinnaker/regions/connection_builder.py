@@ -60,13 +60,13 @@ def _write_param(fp, param, fixed_point):
         # Get RNG and distribution
         rng = param.base_value.rng
         distribution = param.base_value.name
-        parameters = param.base_value.params
+        parameters = param.base_value.parameters
 
         # Assert that it uses our native RNG
         assert isinstance(rng, NativeRNG)
 
         # Return distribution size
-        rng._write_dist(self, fp, distribution, parameters, fixed_point)
+        rng._write_dist(fp, distribution, parameters, fixed_point)
     # Otherwise if it's a scalar, apply fixed point scaling, round and write
     elif isinstance(param.base_value,
                     (int, long, np.integer, float, bool)):

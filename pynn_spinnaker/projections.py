@@ -260,7 +260,7 @@ class Projection(common.Projection, ContextMixin):
             # Get RNG and distribution
             rng = weights.base_value.rng
             distribution = weights.base_value.name
-            parameters = weights.base_value.params
+            parameters = weights.base_value.parameters
 
             # Assert that it uses our native RNG
             assert isinstance(rng, NativeRNG)
