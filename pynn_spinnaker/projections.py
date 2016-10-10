@@ -253,7 +253,7 @@ class Projection(common.Projection, ContextMixin):
 
     def _estimate_max_weight(self):
         # Extract weight parameters
-        weights = self.synapse_type.parameter_space["weight"]
+        weights = self.synapse_type.native_parameters["weight"]
 
         # If weights are randomly distributed
         if isinstance(weights.base_value, RandomDistribution):
@@ -315,7 +315,7 @@ class Projection(common.Projection, ContextMixin):
 
     def _get_native_rngs(self, synapse_param_name):
         # Get named parameter
-        param = self.synapse_type.parameter_space[synapse_param_name]
+        param = self.synapse_type.native_parameters[synapse_param_name]
 
         # If parameter is randomly distributed
         if isinstance(param.base_value, RandomDistribution):
@@ -376,7 +376,7 @@ class Projection(common.Projection, ContextMixin):
         # **NOTE** Intuition is that parameters specified using arrays are
         # a)Not well-defined by PyNN
         # b)Probably wasteful to transfer to board
-        s_params = self.synapse_type.parameter_space._parameters.values()
+        s_params = self.synapse_type.native_parameters._parameters.values()
         return all(
             (isinstance(value.base_value, RandomDistribution)
              and isinstance(value.base_value.rng, NativeRNG))

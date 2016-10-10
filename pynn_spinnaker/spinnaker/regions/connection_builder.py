@@ -146,8 +146,8 @@ class ConnectionBuilder(Region):
             size += lazy_param_map.size(connector._on_chip_param_map, 1)
 
             # Add size required to specify delay and weight parameters
-            size += _get_param_size(synapse_type.parameter_space["delay"])
-            size += _get_param_size(synapse_type.parameter_space["weight"])
+            size += _get_param_size(synapse_type.native_parameters["delay"])
+            size += _get_param_size(synapse_type.native_parameters["weight"])
 
         # Return complete size
         return size
@@ -194,8 +194,8 @@ class ConnectionBuilder(Region):
             synaptic_matrix = synapse_type._synaptic_matrix_region_class
             connector = proj[0]._connector
 
-            delay = synapse_type.parameter_space["delay"]
-            weight = synapse_type.parameter_space["weight"]
+            delay = synapse_type.native_parameters["delay"]
+            weight = synapse_type.native_parameters["weight"]
 
             logger.debug("\t\t\t\t\tWriting connection builder data for "
                 "projection key:%08x, num rows:%u, matrix type:%s, "
