@@ -219,6 +219,7 @@ class ConnectionBuilder(Region):
             # Build dictionary of connector parameters from attributes
             connector_params = {n: la.larray(getattr(connector, n))
                                 for (n, _, _) in connector._on_chip_param_map}
+
             # Apply parameter map to parameters and write to region
             fp.write(lazy_param_map.apply(
                 connector_params, connector._on_chip_param_map, 1).tostring())
