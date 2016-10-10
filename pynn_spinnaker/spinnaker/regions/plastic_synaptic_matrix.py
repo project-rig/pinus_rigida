@@ -2,6 +2,7 @@
 import logging
 import math
 import numpy as np
+from .. import lazy_param_map
 
 # Import classes
 from synaptic_matrix import SynapticMatrix
@@ -16,9 +17,8 @@ class PlasticSynapticMatrix(SynapticMatrix):
     # How many bits should fixed point weights be converted into
     FixedPointWeightBits = 16
 
-    # Can synaptic matrices of this type be generated
-    # on chip using connection builder executable
-    GeneratableOnChip = False
+    # Parameters required from synapse type for on-chip generation
+    OnChipParamMap = [(("_pre_state_bytes", "u4", lazy_param_map.u032))]
 
     def __init__(self, synapse_type):
         # Superclass

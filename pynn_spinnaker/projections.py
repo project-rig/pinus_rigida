@@ -365,8 +365,10 @@ class Projection(common.Projection, ContextMixin):
             not isinstance(self._connector.rng, NativeRNG)):
             return False
 
-        # If synaptic matrix type is not generatable on chip, return false
-        if not self.synapse_type._synaptic_matrix_region_class.GeneratableOnChip:
+        # If synaptic matrix type doesn't have a parameters
+        # map for generating on chip data, return false
+        if not hasattr(self.synapse_type._synaptic_matrix_region_class,
+                       "OnChipParamMap"):
             return False
 
         # Return true if all parameters of connection are either
