@@ -8,6 +8,7 @@ import itertools
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
+from pyNN.random import NumpyRNG, RandomDistribution
 from six import iteritems, iterkeys, itervalues
 
 dt = 1.0
@@ -16,7 +17,7 @@ num_neurons = 1
 g_max = 0.01
 duration = 300000
 
-def simulate(sim, setup_kwargs, scale_a):
+def simulate(sim, rng, setup_kwargs, scale_a):
     sim.setup(timestep=dt, **setup_kwargs)
 
     # Brian was performing synaptic input with ge*(Ee-vr)
@@ -35,12 +36,15 @@ def simulate(sim, setup_kwargs, scale_a):
         a_plus *= g_max
         a_minus *= g_max
 
+    # Create weight distribution
+    weight_dist = RandomDistribution("uniform", low=0, high=g_max, rng=rng)
+
     # Plastic Connection between pre_pop and post_pop
     stdp_model = sim.STDPMechanism(
         timing_dependence=sim.SpikePairRule(tau_plus=20.0, tau_minus=20.00,
                                             A_plus=a_plus, A_minus=a_minus),
         weight_dependence=sim.AdditiveWeightDependence(w_min=0.0, w_max=g_max),
-        weight=np.random.rand(num_ex_synapses, num_neurons) * g_max, delay=dt, dendritic_delay_fraction=1.0,
+        weight=weight_dist, delay=dt, dendritic_delay_fraction=1.0,
     )
 
     proj = sim.Projection(ex_poisson, neuron, sim.AllToAllConnector(),
@@ -64,11 +68,14 @@ def simulate_spinnaker():
     logger.setLevel(logging.DEBUG)
     logger.addHandler(logging.StreamHandler())
 
+    rng = sim.NativeRNG(host_rng=NumpyRNG())
+
     return simulate(sim, {"spalloc_num_boards": 1, "max_delay": dt}, True)
 
 def simulate_nest():
     import pyNN.nest as sim
-    return simulate(sim, {"spike_precision": "on_grid"}, False)
+    rng = NumpyRNG()
+    return simulate(sim, rng, {"spike_precision": "on_grid"}, False)
 
 # Simulate network
 weights, data = simulate_spinnaker()
