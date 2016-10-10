@@ -220,7 +220,7 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
         (((uint32_t)delays[j] & DelayMask) << IndexBits);
 
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
-      io_printf(IO_BUF, "%u/%u,", weight, controlWord);
+      io_printf(IO_BUF, "%u/%u,", weights[j], controlWord);
 #endif
       // Write control word
       *controlAddress++ = controlWord;
