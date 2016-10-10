@@ -83,13 +83,13 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
   {
     // Read basic matrix properties
     const uint32_t key = *region++;
+    const uint32_t numRows = *region++;
     const uint32_t matrixTypeHash = *region++;
     const uint32_t connectorTypeHash = *region++;
     const uint32_t delayTypeHash = *region++;
     const uint32_t weightTypeHash = *region++;
-    const uint32_t numRows = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u, num rows:%u",
-              i, key, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash, numRows);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, num rows:%u, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u",
+              i, key, numRows, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash);
 
     // Generate matrix, connector, delays and weights
     const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixTypeHash, region,

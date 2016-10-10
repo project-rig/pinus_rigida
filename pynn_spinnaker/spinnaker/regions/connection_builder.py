@@ -133,12 +133,14 @@ class ConnectionBuilder(Region):
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
             # Extract required properties from projections
             synapse_type = proj[0].synapse_type
+            synaptic_matrix = synapse_type._synaptic_matrix_region_class
             connector = proj[0]._connector
 
             # Add words for key and type hashes to size
             size += (6 * 4)
 
-            # **TODO** add size of synapse type parameters
+            # Add size required for any synaptic matrix parameters
+            size += lazy_param_map.size(synaptic_matrix.OnChipParamMap, 1)
 
             # Add size required to specify connector
             size += lazy_param_map.size(connector._on_chip_param_map, 1)
@@ -189,34 +191,32 @@ class ConnectionBuilder(Region):
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
             # Extract required properties from projections
             synapse_type = proj[0].synapse_type
-            synaptic_matrix_region = synapse_type._synaptic_matrix_region_class
+            synaptic_matrix = synapse_type._synaptic_matrix_region_class
             connector = proj[0]._connector
 
             delay = synapse_type.parameter_space["delay"]
             weight = synapse_type.parameter_space["weight"]
 
             logger.debug("\t\t\t\t\tWriting connection builder data for "
-                "projection key:%08x, matrix type:%s, connector type:%s, "
-                "delay type:%s, weight type:%s, num rows:%u", prop.key,
-                synaptic_matrix_region.__name__, connector.__class__.__name__,
-                _get_param_type_name(delay), _get_param_type_name(weight),
-                proj[1])
+                "projection key:%08x, num rows:%u, matrix type:%s, "
+                "connector type:%s, delay type:%s, weight type:%s, ",
+                prop.key, proj[1], synaptic_matrix.__name__,
+                connector.__class__.__name__, _get_param_type_name(delay),
+                _get_param_type_name(weight))
 
-            # Write type hashes
-            fp.write(struct.pack("IIIII", prop.key,
-                                 _crc_u32(synaptic_matrix_region.__name__),
+            # Write header
+            fp.write(struct.pack("IIIIII", prop.key, proj[1],
+                                 _crc_u32(synaptic_matrix.__name__),
                                  _crc_u32(connector.__class__.__name__),
                                  _crc_u32(_get_param_type_name(delay)),
                                  _crc_u32(_get_param_type_name(weight))))
 
-            # Write number of rows
-            # **THINK** does this really belong in the synapse
-            # or should it be 'officially' a header field
-            fp.write(struct.pack("I", proj[1]))
 
-            # **TODO** write synapse type parameters
+            # Apply parameter map to synapse type parameters and write to region
+            fp.write(lazy_param_map.apply_attributes(
+                synapse_type, synaptic_matrix.OnChipParamMap).tostring())
 
-            # Apply parameter map to parameters and write to region
+            # Apply parameter map to connector parameters and write to region
             fp.write(lazy_param_map.apply_attributes(
                 connector, connector._on_chip_param_map).tostring())
 
