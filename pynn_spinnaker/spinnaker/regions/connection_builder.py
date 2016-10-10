@@ -1,7 +1,6 @@
 # Import modules
 from .. import lazy_param_map
 import itertools
-import lazyarray as la
 import logging
 import numpy as np
 import struct
@@ -217,13 +216,9 @@ class ConnectionBuilder(Region):
 
             # **TODO** write synapse type parameters
 
-            # Build dictionary of connector parameters from attributes
-            connector_params = {n: la.larray(getattr(connector, n))
-                                for (n, _, _) in connector._on_chip_param_map}
-
             # Apply parameter map to parameters and write to region
-            fp.write(lazy_param_map.apply(
-                connector_params, connector._on_chip_param_map, 1).tostring())
+            fp.write(lazy_param_map.apply_attributes(
+                connector, connector._on_chip_param_map).tostring())
 
             # Write delay parameter with fixed point of zero to round to nearest timestep
             _write_param(fp, delay, 0)
