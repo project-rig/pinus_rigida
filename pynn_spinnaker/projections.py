@@ -359,12 +359,21 @@ class Projection(common.Projection, ContextMixin):
         if not hasattr(self._connector, "_on_chip_param_map"):
             return False
 
+        # If connector has an RNG and it is not a native RNG, return false
+        # **YUCK** this more by convention than anything else
+        if (hasattr(self._connector, "rng") and
+            not isinstance(self._connector.rng, NativeRNG)):
+            return False
+
         # If synaptic matrix type is not generatable on chip, return false
         if not self.synapse_type._synaptic_matrix_region_class.GeneratableOnChip:
             return False
 
         # Return true if all parameters of connection are either
         # specified using the SpiNNaker native RNG or are constants
+        # **NOTE** Intuition is that parameters specified using arrays are
+        # a)Not well-defined by PyNN
+        # b)Probably wasteful to transfer to board
         s_params = self.synapse_type.parameter_space._parameters.values()
         return all(
             (isinstance(value.base_value, RandomDistribution)
@@ -376,6 +385,7 @@ class Projection(common.Projection, ContextMixin):
     @property
     def _native_rngs(self):
         # If connector has an RNG
+        # **YUCK** this more by convention than anything else
         rngs = []
         if hasattr(self._connector, "rng"):
             # Assert that it uses our native RNG
