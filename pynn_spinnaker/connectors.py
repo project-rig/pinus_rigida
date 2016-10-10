@@ -36,7 +36,7 @@ class AllToAllConnector(AllToAllConnector):
     _directly_connectable = False
 
     # If this connector can be generated on chip, parameter map to use
-    _on_chip_param_map = [],
+    _on_chip_param_map = []
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
