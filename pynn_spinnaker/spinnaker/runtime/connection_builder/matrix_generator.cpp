@@ -160,6 +160,9 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
   const ParamGenerator::Base *weightGenerator,
   MarsKiss64 &rng) const
 {
+  const unsigned int maxArrayWords = (maxRowSynapses / 2)
+      + (((maxRowSynapses & 1) != 0) ? 1 : 0);
+
   // Loop through rows
   unsigned int numSynapses = 0;
   for(unsigned int i = 0; i < numRows; i++)
@@ -210,7 +213,7 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
       }
 
       // Write weight
-      *weightAddress++ = weights[j];
+      *weightAddress++ = (uint16_t)weights[j];
 
       // Build control word
       const uint16_t controlWord = (uint16_t)(indices[j] & IndexMask) |
@@ -227,11 +230,8 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
     io_printf(IO_BUF, "\n");
 #endif
 
-    // Advance over weight and control half words
-    matrixAddress += (2 * numArrayWords);
-
-    // Advance over padding to next row
-    matrixAddress += (maxRowSynapses - numIndices);
+    // Advance over weight and control half words and padding to next word
+    matrixAddress += (2 * maxArrayWords);
   }
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tGenerated %u synapses", numSynapses);
