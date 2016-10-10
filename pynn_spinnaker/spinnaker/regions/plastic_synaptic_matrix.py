@@ -18,7 +18,7 @@ class PlasticSynapticMatrix(SynapticMatrix):
     FixedPointWeightBits = 16
 
     # Parameters required from synapse type for on-chip generation
-    OnChipParamMap = [(("_pre_state_bytes", "u4", lazy_param_map.u032))]
+    OnChipParamMap = [(("_pre_state_bytes", "u4", lazy_param_map.integer))]
 
     def __init__(self, synapse_type):
         # Superclass
