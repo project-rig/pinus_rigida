@@ -112,7 +112,7 @@ class State(common.control.BaseState):
 
     def _wait_for_transition(self, placements, allocations,
                              from_state, to_state,
-                             num_verts):
+                             num_verts, timeout=5.0):
         while True:
             # If no cores are still in from_state, stop
             if self.machine_controller.count_cores_in_state(from_state) == 0:
@@ -124,7 +124,7 @@ class State(common.control.BaseState):
         # Wait for all cores to reach to_state
         cores_in_to_state =\
             self.machine_controller.wait_for_cores_to_reach_state(
-                to_state, num_verts, timeout=5.0)
+                to_state, num_verts, timeout=timeout)
         if cores_in_to_state != num_verts:
             # Loop through all placed vertices
             for vertex, (x, y) in iteritems(placements):
@@ -411,7 +411,8 @@ class State(common.control.BaseState):
             logger.info("Waiting for loader exit")
             self._wait_for_transition(placements, allocations,
                                     AppState.init, AppState.exit,
-                                    len(vertex_load_applications))
+                                    len(vertex_load_applications),
+                                    60.0)
 
         # Build map of vertex run applications to load
         run_app_map = build_application_map(vertex_run_applications,
