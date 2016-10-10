@@ -190,21 +190,22 @@ class ConnectionBuilder(Region):
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
             # Extract required properties from projections
             synapse_type = proj[0].synapse_type
+            synaptic_matrix_region = synapse_type._synaptic_matrix_region_class
             connector = proj[0]._connector
 
             delay = synapse_type.parameter_space["delay"]
             weight = synapse_type.parameter_space["weight"]
 
             logger.debug("\t\t\t\t\tWriting connection builder data for "
-                "projection key:%08x, synapse type:%s, connector type:%s, "
+                "projection key:%08x, matrix type:%s, connector type:%s, "
                 "delay type:%s, weight type:%s, num rows:%u", prop.key,
-                synapse_type.__class__.__name__, connector.__class__.__name__,
+                synaptic_matrix_region.__name__, connector.__class__.__name__,
                 _get_param_type_name(delay), _get_param_type_name(weight),
                 proj[1])
 
             # Write type hashes
             fp.write(struct.pack("IIIII", prop.key,
-                                 _crc_u32(synapse_type.__class__.__name__),
+                                 _crc_u32(synaptic_matrix_region.__name__),
                                  _crc_u32(connector.__class__.__name__),
                                  _crc_u32(_get_param_type_name(delay)),
                                  _crc_u32(_get_param_type_name(weight))))
