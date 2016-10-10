@@ -313,6 +313,21 @@ class Projection(common.Projection, ContextMixin):
         self._current_input_cluster.load(placements, allocations,
                                          machine_controller, direct_weights)
 
+    def _get_native_rngs(self, synapse_param_name):
+        # Get named parameter
+        param = self.synapse_type.parameter_space[synapse_param_name]
+
+        # If parameter is randomly distributed
+        if isinstance(param.base_value, RandomDistribution):
+            # Assert that it uses our native RNG
+            assert isinstance(param.base_value.rng, NativeRNG)
+
+            # Return list containing RNG used to generate parameter
+            return [param.base_value.rng]
+        # Otherwise return empty list
+        else:
+            return []
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
@@ -358,3 +373,20 @@ class Projection(common.Projection, ContextMixin):
                                              float, bool))
             for value in s_params)
 
+    @property
+    def _native_rngs(self):
+        # If connector has an RNG
+        rngs = []
+        if hasattr(self._connector, "rng"):
+            # Assert that it uses our native RNG
+            assert isinstance(self._connector.rng, NativeRNG)
+
+            # Add RNG to list
+            rngs.append(self._connector.rng)
+
+        # Add any RNGs required to generate delay and weight parameters
+        rngs.extend(self._get_native_rngs("delay"))
+        rngs.extend(self._get_native_rngs("weight"))
+
+        # Return uniquified list of required RNGs
+        return list(set(rngs))

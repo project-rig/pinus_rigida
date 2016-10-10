@@ -1,5 +1,6 @@
 # Import modules
 from .. import lazy_param_map
+import itertools
 import lazyarray as la
 import logging
 import numpy as np
@@ -66,7 +67,7 @@ def _write_param(fp, param, fixed_point):
         assert isinstance(rng, NativeRNG)
 
         # Return distribution size
-        fp._write_dist(self, fp, distribution, parameters, fixed_point)
+        rng._write_dist(self, fp, distribution, parameters, fixed_point)
     # Otherwise if it's a scalar, apply fixed point scaling, round and write
     elif isinstance(param.base_value,
                     (int, long, np.integer, float, bool)):
@@ -76,39 +77,10 @@ def _write_param(fp, param, fixed_point):
     else:
         assert False
 
-
-def _get_native_rng(param):
-    # If parameter is randomly distributed
-    if isinstance(param.base_value, RandomDistribution):
-        # Assert that it uses our native RNG
-        assert isinstance(param.base_value.rng, NativeRNG)
-
-        # Return list containing RNG used to generate parameter
-        return [param.base_value.rng]
-    # Otherwise return empty list
-    else:
-        return []
-
-def _get_native_rngs(chip_sub_matrix_props, chip_sub_matrix_projs):
-    # Loop through all matrices to generate on chip
-    rngs = []
-    for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
-        # Extract required properties from projections
-        connector = proj[0]._connector
-        synapse_type = proj[0].synapse_type
-
-        # If connector has an RNG
-        if hasattr(connector, "rng"):
-            # Assert that it uses our native RNG
-            assert isinstance(connector.rng, NativeRNG)
-
-            # Add RNG to list
-            rngs.append(connector.rng)
-
-        # Add RNGs from delay and weight parameters
-        rngs.extend(_get_native_rng(synapse_type.parameter_space["delay"]))
-        rngs.extend(_get_native_rng(synapse_type.parameter_space["weight"]))
-
+def _get_native_rngs(chip_sub_matrix_projs):
+    # Chain together the native RNGs required for each projection
+    rngs = itertools.chain.from_iterable(proj._native_rngs
+                                         for proj, _ in chip_sub_matrix_projs)
     # Make RNG list unique and return
     return list(set(rngs))
 
@@ -152,8 +124,7 @@ class ConnectionBuilder(Region):
         chip_sub_matrix_props = sub_matrix_props[-len(chip_sub_matrix_projs):]
 
         # Count number of RNGs
-        num_rngs = len(_get_native_rngs(chip_sub_matrix_props,
-                                        chip_sub_matrix_projs))
+        num_rngs = len(_get_native_rngs(chip_sub_matrix_projs))
         assert num_rngs <= 1
 
         # Fixed size consists of seed for each RNG and connection count
@@ -204,12 +175,12 @@ class ConnectionBuilder(Region):
         chip_sub_matrix_props = sub_matrix_props[-num_chip_matrices:]
 
         # Get list of RNGs
-        rngs = _get_native_rngs(chip_sub_matrix_props, chip_sub_matrix_projs)
+        rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(rngs) <= 1
 
         # Write seed
-        seed = np.random.randint(
-            0x7FFFFFFF, size=self.SeedWords).astype(np.uint32)
+        seed = np.random.randint(0x7FFFFFFF,
+                                 size=self.SeedWords).astype(np.uint32)
         fp.write(seed.tostring())
 
         # Write number of matrices
