@@ -67,7 +67,9 @@ unsigned int ConnectionBuilder::MatrixGenerator::Base::GenerateRow(unsigned int 
 //-----------------------------------------------------------------------------
 ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region)
 {
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix");
+  m_SignedWeight = *region++;
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix: %u signed weights",
+    m_SignedWeight);
 }
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
@@ -106,9 +108,8 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     // Loop through synapses
     for(unsigned int j = 0; j < numIndices; j++)
     {
-      // Static synaptic matrices are unsigned
-      // so if weight is negative, flip sign
-      if(weights[j] < 0)
+      // If weights aren't signed and weight is negative, flip sign
+      if(!m_SignedWeight && weights[j] < 0)
       {
         weights[j] = -weights[j];
       }
@@ -141,6 +142,9 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
 //-----------------------------------------------------------------------------
 ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region)
 {
+  // Read signedness of weights
+  m_SignedWeight = *region++;
+
   // Read number of presynaptic state words from region
   const uint32_t preStateBytes = *region++;
   m_SynapseTraceBytes = *region++;
@@ -149,8 +153,8 @@ ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region)
   m_PreStateWords = (preStateBytes / 4)
       + (((preStateBytes & 3) != 0) ? 1 : 0);
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tPlastic synaptic matrix: %u bytes presynaptic state (%u words), %u bytes synapse trace",
-            preStateBytes, m_PreStateWords, m_SynapseTraceBytes);
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tPlastic synaptic matrix: %u signed weights, %u bytes presynaptic state (%u words), %u bytes synapse trace",
+            m_SignedWeight, preStateBytes, m_PreStateWords, m_SynapseTraceBytes);
 }
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddress,
@@ -204,19 +208,19 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
     }
 
     // Calculate the size of each array (fixed and plastic) in words
-    const unsigned int numArrayWords = (numIndices / 2)
-      + (((numIndices & 1) != 0) ? 1 : 0);
+    const unsigned int numSynapseArrayBytes = numIndices * (2 + m_SynapseTraceBytes);
+    const unsigned int numPlasticArrayWords = (numSynapseArrayBytes / 4)
+      + (((numSynapseArrayBytes & 3) != 0) ? 1 : 0);
 
     // From this get 8-bit pointer to synapses and 16-bit pointer to control half words
     uint8_t *synapseAddress = reinterpret_cast<uint8_t*>(matrixAddress);
-    uint16_t *controlAddress = reinterpret_cast<uint16_t*>(matrixAddress + numArrayWords);
+    uint16_t *controlAddress = reinterpret_cast<uint16_t*>(matrixAddress + numPlasticArrayWords);
 
     // Loop through synapses
     for(unsigned int j = 0; j < numIndices; j++)
     {
-      // Static synaptic matrices are unsigned
-      // so if weight is negative, flip sign
-      if(weights[j] < 0)
+      // If weights aren't signed and weight is negative, flip sign
+      if(!m_SignedWeight && weights[j] < 0)
       {
         weights[j] = -weights[j];
       }

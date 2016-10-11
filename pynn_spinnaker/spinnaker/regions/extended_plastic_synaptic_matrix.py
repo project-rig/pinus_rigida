@@ -18,7 +18,8 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
     FixedPointWeightBits = 16
 
     # Parameters required from synapse type for on-chip generation
-    OnChipParamMap = [("_pre_state_bytes", "u4", lazy_param_map.integer),
+    OnChipParamMap = [("_signed_weight", "u4", lazy_param_map.integer),
+                      ("_pre_state_bytes", "u4", lazy_param_map.integer),
                       ("_synapse_trace_bytes", "u4", lazy_param_map.integer)]
 
     def __init__(self, synapse_type):
