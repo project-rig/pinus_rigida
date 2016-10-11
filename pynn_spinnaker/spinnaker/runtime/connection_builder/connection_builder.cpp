@@ -196,10 +196,12 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 extern "C" void c_main()
 {
   // Register matrix generators with factories
+  // **NOTE** plastic matrix generator is capable of generating
+  // both standard and extended plastic matrices
   LOG_PRINT(LOG_LEVEL_INFO, "Matrix generators");
   REGISTER_FACTORY_CLASS("StaticSynapticMatrix", MatrixGenerator, Static);
   REGISTER_FACTORY_CLASS("PlasticSynapticMatrix", MatrixGenerator, Plastic);
-  REGISTER_FACTORY_CLASS("ExtendedPlasticSynapticMatrix", MatrixGenerator, ExtendedPlastic);
+  REGISTER_FACTORY_CLASS("ExtendedPlasticSynapticMatrix", MatrixGenerator, Plastic);
 
   // Register connector generators with factories
   LOG_PRINT(LOG_LEVEL_INFO, "Connector generators");

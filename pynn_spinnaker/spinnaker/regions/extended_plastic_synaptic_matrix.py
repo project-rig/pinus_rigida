@@ -2,6 +2,7 @@
 import logging
 import math
 import numpy as np
+from .. import lazy_param_map
 
 # Import classes
 from synaptic_matrix import SynapticMatrix

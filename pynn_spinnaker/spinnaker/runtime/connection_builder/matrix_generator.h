@@ -123,33 +123,6 @@ private:
   // Members
   //-----------------------------------------------------------------------------
   uint32_t m_PreStateWords;
-};
-
-//-----------------------------------------------------------------------------
-// Plastic
-//-----------------------------------------------------------------------------
-class ExtendedPlastic : public Base
-{
-public:
-  ADD_FACTORY_CREATOR(ExtendedPlastic);
-
-  //-----------------------------------------------------------------------------
-  // Base virtuals
-  //-----------------------------------------------------------------------------
-  virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
-    unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
-    const ConnectorGenerator::Base *connectorGenerator,
-    const ParamGenerator::Base *delayGenerator,
-    const ParamGenerator::Base *weightGenerator,
-    MarsKiss64 &rng) const;
-
-private:
-  ExtendedPlastic(uint32_t *&region);
-
-  //-----------------------------------------------------------------------------
-  // Members
-  //-----------------------------------------------------------------------------
-  uint32_t m_PreStateWords;
   uint32_t m_SynapseTraceBytes;
 };
 } // MatrixGenerator
