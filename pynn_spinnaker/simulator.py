@@ -315,7 +315,7 @@ class State(common.control.BaseState):
                 from spalloc import Job
 
                 # Fudge number of cores from number of vertices
-                num_cores = len(vertex_applications) *\
+                num_cores = len(vertex_run_applications) *\
                     self.allocation_fudge_factor
 
                 # Divide down to get boards
