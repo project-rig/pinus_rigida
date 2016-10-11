@@ -33,9 +33,6 @@ cell_params = {
 # (Number of inhibitory neurons is proportional to this)
 NUM_EXCITATORY = 2000
 
-# SpiNNaker setup
-setup_kwargs =  {"spalloc_num_boards": 1}
-
 # Function to build the basic network - dynamics should be a PyNN synapse dynamics object
 def build_network(ie_synapse, e_mean_firing_rate):
     # Create excitatory and inhibitory populations of neurons
@@ -75,7 +72,7 @@ def build_network(ie_synapse, e_mean_firing_rate):
 
 
 # Build static network
-sim.setup(timestep=1.0, **setup_kwargs)
+sim.setup(timestep=1.0)
 static_ex_pop,_ = build_network(sim.StaticSynapse(weight=0.0, delay=1.0), 300.0)
 
 # Run for 1s
@@ -85,7 +82,7 @@ sim.run(1000)
 static_data = static_ex_pop.get_data()
 
 # Clear simulation state
-sim.setup(min_delay=1.0, max_delay=7.0, timestep=1.0, **setup_kwargs)
+sim.setup(min_delay=1.0, max_delay=7.0, timestep=1.0)
 
 # Build inhibitory plasticity  model
 stdp_model = sim.STDPMechanism(

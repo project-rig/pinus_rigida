@@ -70,7 +70,7 @@ def simulate_spinnaker():
 
     rng = sim.NativeRNG(host_rng=NumpyRNG())
 
-    return simulate(sim, {"spalloc_num_boards": 1, "max_delay": dt}, True)
+    return simulate(sim, rng, {"max_delay": dt}, True)
 
 def simulate_nest():
     import pyNN.nest as sim
