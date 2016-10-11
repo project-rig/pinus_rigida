@@ -199,6 +199,7 @@ extern "C" void c_main()
   LOG_PRINT(LOG_LEVEL_INFO, "Matrix generators");
   REGISTER_FACTORY_CLASS("StaticSynapticMatrix", MatrixGenerator, Static);
   REGISTER_FACTORY_CLASS("PlasticSynapticMatrix", MatrixGenerator, Plastic);
+  REGISTER_FACTORY_CLASS("ExtendedPlasticSynapticMatrix", MatrixGenerator, ExtendedPlastic);
 
   // Register connector generators with factories
   LOG_PRINT(LOG_LEVEL_INFO, "Connector generators");
