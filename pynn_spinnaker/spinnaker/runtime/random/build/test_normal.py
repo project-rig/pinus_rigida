@@ -1,28 +1,43 @@
-from rig.machine_control import MachineController
-import numpy as np
+# Import modules
 import matplotlib.pyplot as plt
+import numpy as np
+import struct
+
+# Import classes
+from rig.machine_control import MachineController
+from rig.type_casts import NumpyFixToFloatConverter
 from StringIO import StringIO
 
-# Load application
+NUM_SAMPLES = 100000
+
+# Create machine controller, booting machine if necessary
 mc = MachineController("192.168.1.1")
-mc.load_application("random.aplx", {(0, 0): set([1])})
+mc.boot()
 
-# Wait for it to exit
-mc.wait_for_cores_to_reach_state("exit", 1)
+# Select first processor of ethernet-connected chip
+with mc(x=0, y=0, p=1):
+    # Allocation enough SDRAM for header word and samples - tag as 1
+    sdram_data_pointer = mc.sdram_alloc(4 + (NUM_SAMPLES * 4), tag=1)
 
-# Build a string IO from the IO buffer
-input_data = StringIO(mc.get_iobuf(1, 0, 0))
+    # Write number of samples to first word of SDRAM
+    mc.write(sdram_data_pointer, struct.pack("i", NUM_SAMPLES))
 
-# Stop the application
-mc.send_signal("stop")
+    # Load application
+    mc.load_application("random.aplx", {(0, 0): set([1])})
 
-# Read data into numpy
-data = np.genfromtxt(input_data, skip_header=1, delimiter=",")
+    # Wait for it to exit
+    mc.wait_for_cores_to_reach_state("exit", 1)
 
-# Extract column containing normally distributed samples
-normal = data[:,1]
+    # Read fixed point normal samples from SDRAM
+    normal_fixed = np.fromstring(mc.read(sdram_data_pointer + 4, 4 * NUM_SAMPLES),
+                           dtype=np.int32)
+    # Stop the application
+    mc.send_signal("stop")
+
+# Convert samples to floating point
+normal_float = NumpyFixToFloatConverter(15)(normal_fixed)
 
 # Plot histogram
 fig, axis = plt.subplots()
-axis.hist(normal, 100)
+axis.hist(normal_float, 100)
 plt.show()
