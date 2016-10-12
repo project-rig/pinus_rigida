@@ -371,18 +371,46 @@ class Projection(common.Projection, ContextMixin):
                        "OnChipParamMap"):
             return False
 
-        # Return true if all parameters of connection are either
-        # specified using the SpiNNaker native RNG or are constants
-        # **NOTE** Intuition is that parameters specified using arrays are
-        # a)Not well-defined by PyNN
-        # b)Probably wasteful to transfer to board
-        s_params = self.synapse_type.native_parameters._parameters.values()
-        return all(
-            (isinstance(value.base_value, RandomDistribution)
-             and isinstance(value.base_value.rng, NativeRNG))
-            or isinstance(value.base_value, (int, long, np.integer,
-                                             float, bool))
-            for value in s_params)
+        # Get synapse native parameters
+        s_params = self.synapse_type.native_parameters._parameters
+        for p in s_params.values():
+            # If parameter is specified using a random distribution
+            if isinstance(p.base_value, RandomDistribution):
+                # If it doesn't use the native RNG, return false
+                if not isinstance(p.base_value.rng, NativeRNG):
+                    return False
+
+                # If the distribution isn't supported, return false
+                if not p.base_value.rng._supports_dist(p.base_value.name):
+                    return False
+            # Otherwise, if parameter isn't a scalar, return false
+            # **NOTE** Intuition is that parameters specified using arrays are
+            # a)Not well-defined by PyNN
+            # b)Probably wasteful to transfer to board
+            elif not isinstance(p.base_value, (int, long, np.integer,
+                                               float, bool)):
+                return False
+
+        # Calculate maximum delay that is supported using ring-buffer
+        # **TODO** support on-chip generation of rowlets
+        max_delay_slots = self.synapse_type._max_dtcm_delay_slots
+        max_delay = float(max_delay_slots) * self._simulator.state.dt
+
+        # If delay is random and its maximum value is
+        # larger than the maximum, return false
+        delay = s_params["delay"].base_value
+        if (isinstance(delay, RandomDistribution)
+            and delay.rng._estimate_dist_max_value(delay.name,
+                                                   delay.parameters) > max_delay):
+            return False
+
+        # If delay is a constant larger than the maximum, return false
+        if (isinstance(delay, (int, long, np.integer, float, bool))
+            and delay > max_delay):
+            return False
+
+        # All checks passed
+        return True
 
     @property
     def _native_rngs(self):

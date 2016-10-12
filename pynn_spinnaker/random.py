@@ -52,9 +52,12 @@ class NativeRNG(NativeRNG):
     # ------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # ------------------------------------------------------------------------
+    def _supports_dist(self, distribution):
+        return distribution in self._dist_param_maps
+
     def _estimate_dist_max_value(self, distribution, parameters):
          # Check translation and parameter map exists for this distribution
-        if (distribution not in self._dist_estimate_max_value):
+        if not self._supports_dist(distribution):
             raise NotImplementedError("SpiNNaker native RNG does not support"
                                       "%s distributions" % distribution)
         else:
@@ -62,7 +65,7 @@ class NativeRNG(NativeRNG):
 
     def _get_dist_param_map(self, distribution):
         # Check translation and parameter map exists for this distribution
-        if (distribution not in self._dist_param_maps):
+        if not self._supports_dist(distribution):
             raise NotImplementedError("SpiNNaker native RNG does not support"
                                       "%s distributions" % distribution)
         else:
@@ -83,4 +86,10 @@ class NativeRNG(NativeRNG):
             1, fixed_point=fixed_point)
         fp.write(data.tostring())
 
+    # ------------------------------------------------------------------------
+    # Properties
+    # ------------------------------------------------------------------------
+    @property
+    def parallel_safe(self):
+        return self._host_rng.parallel_safe
 
