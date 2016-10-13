@@ -30,24 +30,20 @@ class NativeRNG(NativeRNG):
         "uniform_int":  lambda parameters: parameters["high"]
     }
 
-    def __init__(self, seed=None, host_rng=None):
+    def __init__(self, host_rng, seed=None):
         # Superclass
         super(NativeRNG, self).__init__(seed)
 
         # Cache RNG to use on the host
+        assert host_rng is not None
         self._host_rng = host_rng
 
     # ------------------------------------------------------------------------
     # AbstractRNG methods
     # ------------------------------------------------------------------------
     def next(self, n=None, distribution=None, parameters=None, mask_local=None):
-        # If a host RNG was specified, draw from that
-        if self._host_rng is not None:
-            return self._host_rng.next(n, distribution, parameters, mask_local)
-        else:
-            raise NotImplementedError("Parameters chosen using SpiNNaker "
-                                      "native RNG without a fallback host "
-                                      "RNG can only be evaluated on SpiNNaker")
+        # Draw from host RNG
+        return self._host_rng.next(n, distribution, parameters, mask_local)
 
     # ------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -72,8 +68,13 @@ class NativeRNG(NativeRNG):
             return self._dist_param_maps[distribution]
 
     def _get_dist_size(self, distribution):
-        # Return size of parameter map
-        return lazy_param_map.size(self._get_dist_param_map(distribution), 1)
+        # Check translation and parameter map exists for this distribution
+        if not self._supports_dist(distribution):
+            raise NotImplementedError("SpiNNaker native RNG does not support"
+                                      "%s distributions" % distribution)
+        else:
+            return lazy_param_map.size(self._get_dist_param_map(distribution),
+                                       1)
 
     def _write_dist(self, fp, distribution, parameters, fixed_point):
         # Wrap parameters in lazy arrays
