@@ -12,6 +12,7 @@ from region import Region
 
 # Import functions
 from zlib import crc32
+from ..utils import is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -27,8 +28,7 @@ def _get_param_type_name(param):
         # Return distribution name
         return param.base_value.name
     # Otherwise if it's a scalar, return the magic string constant
-    elif isinstance(param.base_value,
-                    (int, long, np.integer, float, bool)):
+    elif is_scalar(param.base_value):
         return "constant"
     # Otherwise assert
     else:
@@ -47,8 +47,7 @@ def _get_param_size(param):
         # Return distribution size
         return rng._get_dist_size(distribution)
     # Otherwise if it's a scalar, return 4 bytes
-    elif isinstance(param.base_value,
-                    (int, long, np.integer, float, bool)):
+    elif is_scalar(param.base_value):
         return 4
     # Otherwise assert
     else:
@@ -68,8 +67,7 @@ def _write_param(fp, param, fixed_point):
         # Return distribution size
         rng._write_dist(fp, distribution, parameters, fixed_point)
     # Otherwise if it's a scalar, apply fixed point scaling, round and write
-    elif isinstance(param.base_value,
-                    (int, long, np.integer, float, bool)):
+    elif is_scalar(param.base_value):
         scaled_value = round(param.base_value * (2.0 ** fixed_point))
         fp.write(struct.pack("i", scaled_value))
     # Otherwise assert
