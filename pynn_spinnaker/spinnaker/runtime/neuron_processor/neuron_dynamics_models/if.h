@@ -70,8 +70,8 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline S1615 Update(MutableState &mutableState, const ImmutableState &immutableState,
-                            S1615 inputCurrent)
+  static S1615 Update(MutableState &mutableState, const ImmutableState &immutableState,
+                      S1615 inputCurrent)
   {
     // If outside of the refractory period
     if (mutableState.m_RefractoryTimer <= 0)

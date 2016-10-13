@@ -50,7 +50,7 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline void ApplyInput(MutableState &mutableState, const ImmutableState &, S1615 input, unsigned int receptorType)
+  static void ApplyInput(MutableState &mutableState, const ImmutableState &, S1615 input, unsigned int receptorType)
   {
     // Apply input to correct receptor
     if(receptorType == 0)
@@ -63,17 +63,17 @@ public:
     }
   }
 
-  static inline S1615 GetExcInput(const MutableState &mutableState, const ImmutableState &immutableState)
+  static S1615 GetExcInput(const MutableState &mutableState, const ImmutableState &immutableState)
   {
     return MulS1615(mutableState.m_ISynExc, immutableState.m_InitExc);
   }
 
-  static inline S1615 GetInhInput(const MutableState &mutableState, const ImmutableState &immutableState)
+  static S1615 GetInhInput(const MutableState &mutableState, const ImmutableState &immutableState)
   {
     return MulS1615(mutableState.m_ISynInh, immutableState.m_InitInh);
   }
 
-  static inline void Shape(MutableState &mutableState, const ImmutableState &immutableState)
+  static void Shape(MutableState &mutableState, const ImmutableState &immutableState)
   {
     // Decay both currents
     mutableState.m_ISynExc = MulS1615U032(mutableState.m_ISynExc, immutableState.m_ExpTauSynExc);

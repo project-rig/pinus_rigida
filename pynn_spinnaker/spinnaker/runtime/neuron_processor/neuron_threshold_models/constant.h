@@ -44,7 +44,7 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline bool HasCrossed(const MutableState &, const ImmutableState &immutableState,
+  static bool HasCrossed(const MutableState &, const ImmutableState &immutableState,
                                 S1615 membraneVoltage)
   {
     return (membraneVoltage >= immutableState.m_V_Threshold);

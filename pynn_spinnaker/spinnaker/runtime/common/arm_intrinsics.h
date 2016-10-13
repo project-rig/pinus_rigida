@@ -48,7 +48,7 @@ inline int64_t __smlal(int64_t acc, int32_t x, int32_t y)
 //! \param[in] y second argument.
 //! \return signed result.
 
-static inline int32_t __smulbb (int32_t x, int32_t y)
+inline int32_t __smulbb (int32_t x, int32_t y)
 {
   register int32_t r;
 
@@ -63,7 +63,7 @@ static inline int32_t __smulbb (int32_t x, int32_t y)
 //! \param[in] y second argument.
 //! \return signed result.
 
-static inline int32_t __smulbt (int32_t x, int32_t y)
+inline int32_t __smulbt (int32_t x, int32_t y)
 {
   register int32_t r;
 
@@ -78,7 +78,7 @@ static inline int32_t __smulbt (int32_t x, int32_t y)
 //! \param[in] y second argument.
 //! \return signed result.
 
-static inline int32_t __smultb (int32_t x, int32_t y)
+inline int32_t __smultb (int32_t x, int32_t y)
 {
   register int32_t r;
 
@@ -93,7 +93,7 @@ static inline int32_t __smultb (int32_t x, int32_t y)
 //! \param[in] y second argument.
 //! \return signed result.
 
-static inline int32_t __smultt (int32_t x, int32_t y)
+inline int32_t __smultt (int32_t x, int32_t y)
 {
   register int32_t r;
 
@@ -110,7 +110,7 @@ static inline int32_t __smultt (int32_t x, int32_t y)
 //! \param[in] y second argument.
 //! \return signed result.
 
-static inline int32_t __smulwb (int32_t x, int32_t y)
+inline int32_t __smulwb (int32_t x, int32_t y)
 {
   register int32_t r;
 
@@ -127,7 +127,7 @@ static inline int32_t __smulwb (int32_t x, int32_t y)
 //! \param[in] y second argument.
 //! \return signed result.
 
-static inline int32_t __smulwt (int32_t x, int32_t y)
+inline int32_t __smulwt (int32_t x, int32_t y)
 {
   register int32_t r;
 
@@ -150,7 +150,7 @@ static inline int32_t __smulwt (int32_t x, int32_t y)
 //! \param[in] acc accumulation argument.
 //! \return x*y+acc.
 
-static inline int32_t __smlabb (int32_t x, int32_t y, int32_t acc)
+inline int32_t __smlabb (int32_t x, int32_t y, int32_t acc)
 {
     register int32_t r;
 
@@ -171,7 +171,7 @@ static inline int32_t __smlabb (int32_t x, int32_t y, int32_t acc)
 //! \param[in] acc accumulation argument.
 //! \return x*y+acc.
 
-static inline int32_t __smlabt (int32_t x, int32_t y, int32_t acc)
+inline int32_t __smlabt (int32_t x, int32_t y, int32_t acc)
 {
     register int32_t r;
 
@@ -191,7 +191,7 @@ static inline int32_t __smlabt (int32_t x, int32_t y, int32_t acc)
 //! \param[in] acc accumulation argument.
 //! \return x*y+acc.
 
-static inline  int32_t __smlatb (int32_t x, int32_t y, int32_t acc)
+inline  int32_t __smlatb (int32_t x, int32_t y, int32_t acc)
 {
     register int32_t r;
 
@@ -211,7 +211,7 @@ static inline  int32_t __smlatb (int32_t x, int32_t y, int32_t acc)
 //! \param[in] acc accumulation argument.
 //! \return x*y+acc.
 
-static inline  int32_t __smlatt (int32_t x, int32_t y, int32_t acc)
+inline  int32_t __smlatt (int32_t x, int32_t y, int32_t acc)
 {
     register int32_t r;
 
@@ -233,7 +233,7 @@ static inline  int32_t __smlatt (int32_t x, int32_t y, int32_t acc)
 //! \param[in] acc accumulation argument.
 //! \return x*y+acc.
 
-static inline  int32_t __smlawb (int32_t x, int32_t y, int32_t acc)
+inline  int32_t __smlawb (int32_t x, int32_t y, int32_t acc)
 {
     register int32_t r;
 
@@ -254,7 +254,7 @@ static inline  int32_t __smlawb (int32_t x, int32_t y, int32_t acc)
 //! \param[in] acc accumulation argument.
 //! \return x*y+acc.
 
-static inline  int32_t __smlawt (int32_t x, int32_t y, int32_t acc)
+inline  int32_t __smlawt (int32_t x, int32_t y, int32_t acc)
 {
     register int32_t r;
 

@@ -49,7 +49,7 @@ public:
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline S1615 GetInputCurrent(MutableState &, const ImmutableState &immutableState,
+  static S1615 GetInputCurrent(MutableState &, const ImmutableState &immutableState,
                                       S1615 excInput, S1615 inhInput,
                                       S1615 membraneVoltage)
   {
