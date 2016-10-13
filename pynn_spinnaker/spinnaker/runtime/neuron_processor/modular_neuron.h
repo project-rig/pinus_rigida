@@ -12,7 +12,7 @@ using namespace Common::FixedPointNumber;
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
-template<typename Dynamics, typename Input, typename Threshold>
+template<typename Dynamics, typename Input, typename Threshold, typename ExtraInput>
 class ModularNeuron
 {
 public:
@@ -21,13 +21,14 @@ public:
   //-----------------------------------------------------------------------------
   static const unsigned int RecordingChannelMax = Dynamics::RecordingChannelMax +\
                                                   Input::RecordingChannelMax +\
-                                                  Threshold::RecordingChannelMax;
+                                                  Threshold::RecordingChannelMax +\
+                                                  ExtraInput::RecordingChannelMax;
 
   //-----------------------------------------------------------------------------
   // MutableState
   //-----------------------------------------------------------------------------
   struct MutableState : Dynamics::MutableState, Input::MutableState,
-                        Threshold::MutableState
+                        Threshold::MutableState, ExtraInput::MutableState
   {
   };
 
@@ -35,14 +36,14 @@ public:
   // ImmutableState
   //-----------------------------------------------------------------------------
   struct ImmutableState : Dynamics::ImmutableState, Input::ImmutableState,
-                          Threshold::ImmutableState
+                          Threshold::ImmutableState, ExtraInput::ImmutableState
   {
   };
 
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline bool Update(MutableState &mutableState, const ImmutableState &immutableState,
+  static bool Update(MutableState &mutableState, const ImmutableState &immutableState,
                             S1615 excInput, S1615 inhInput, S1615 extCurrent)
   {
     // Get membrane voltage from dynamics
@@ -52,9 +53,12 @@ public:
     const S1615 synapticInputCurrent = Input::GetInputCurrent(mutableState, immutableState,
                                                               excInput, inhInput, membraneVoltage);
 
+    // Get any extra input current
+    const S1615 extraInputCurrent = ExtraInput::GetInputCurrent(mutableState, immutableState,
+                                                                membraneVoltage);
+
     // Add together all sources of input current
-    // **TODO** additional input
-    const S1615 totalInputCurrent = synapticInputCurrent + extCurrent;
+    const S1615 totalInputCurrent = synapticInputCurrent + extraInputCurrent + extCurrent;
 
     // Update membrane dynamics to get new membrane voltage
     const S1615 newMembraneVoltage = Dynamics::Update(mutableState, immutableState,
@@ -64,11 +68,11 @@ public:
     const bool spike = Threshold::HasCrossed(mutableState, immutableState,
                                                     newMembraneVoltage);
 
-    // If a spike occurs, notify dynamics
-    // **TODO** notify additional input too
+    // If a spike occurs, notify dynamics and extra input
     if(spike)
     {
       Dynamics::SetSpiked(mutableState, immutableState);
+      ExtraInput::SetSpiked(mutableState, immutableState);
     }
 
     return spike;
@@ -96,7 +100,6 @@ public:
                                   excInput, inhInput);
     }
 
-    // **TODO** additional input
     // Otherwise, if recording channel comes from spiking threshold
     c -= Input::RecordingChannelMax;
     if(c < Threshold::RecordingChannelMax)
@@ -104,10 +107,18 @@ public:
       return Threshold::GetRecordable((typename Threshold::RecordingChannel)c,
                                       mutableState, immutableState);
     }
+
+    // Otherwise, if recording channel comes from extra input
+    c -= ExtraInput::RecordingChannelMax;
+    if(c < ExtraInput::RecordingChannelMax)
+    {
+      return ExtraInput::GetRecordable((typename ExtraInput::RecordingChannel)c,
+                                       mutableState, immutableState);
+    }
     // Otherwise
     else
     {
-      LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant dynamics recording channel %u", c);
+      LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant recording channel %u", c);
       return 0;
     }
   }

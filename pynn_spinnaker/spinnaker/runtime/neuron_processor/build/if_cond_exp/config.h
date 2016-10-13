@@ -7,6 +7,7 @@
 #include "../../neuron_dynamics_models/if.h"
 #include "../../neuron_input_models/cond.h"
 #include "../../neuron_threshold_models/constant.h"
+#include "../../neuron_extra_input_models/stub.h"
 #include "../../synapse_models/exp.h"
 
 namespace NeuronProcessor
@@ -15,7 +16,8 @@ namespace NeuronProcessor
 // Typedefines
 //-----------------------------------------------------------------------------
 typedef ModularNeuron<NeuronDynamicsModels::IF, NeuronInputModels::Cond,
-                      NeuronThresholdModels::Constant> Neuron;
+                      NeuronThresholdModels::Constant,
+                      NeuronExtraInputModels::Stub> Neuron;
 typedef SynapseModels::Exp Synapse;
 typedef IntrinsicPlasticityModels::Stub IntrinsicPlasticity;
 
