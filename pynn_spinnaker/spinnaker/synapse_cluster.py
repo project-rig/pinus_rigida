@@ -348,9 +348,9 @@ class SynapseCluster(object):
                     pre_pop_on_chip_proj[pre_pop] = incoming_from_pre
 
                     # Loop through projections to generate on chip and update
-                    # weight range based on estimated maximum weight
+                    # weight range based on maximum weight estimates
                     for proj in incoming_from_pre:
-                        weight_range.update(proj._estimate_max_weight())
+                        weight_range.update(proj._max_weight_estimate)
                 # Otherwise
                 else:
                     # Create list of lists to contain matrix rows
