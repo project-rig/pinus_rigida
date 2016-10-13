@@ -424,5 +424,5 @@ class Projection(common.Projection, ContextMixin):
         rngs.update(self._get_native_rngs("delay"))
         rngs.update(self._get_native_rngs("weight"))
 
-        # Return unique list of required RNGs
+        # Return list of unique RNGs required
         return list(rngs)
