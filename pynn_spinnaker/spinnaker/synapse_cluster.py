@@ -15,6 +15,7 @@ from collections import defaultdict
 from utils import Args, InputVertex
 
 # Import functions
+from pkg_resources import resource_filename
 from six import iteritems, iterkeys
 from utils import (get_model_executable_filename, load_regions, split_slice)
 
@@ -265,11 +266,10 @@ class SynapseCluster(object):
 
         # If any matrices should be generated on chip, show message
         if generate_matrix_on_chip:
-            # **YUCK** find connection builder executable
-            spinnaker_path = path.dirname(inspect.getfile(self.__class__))
-            connection_builder_app = path.join(spinnaker_path,
-                                            "../standardmodels/binaries",
-                                            "connection_builder.aplx")
+            # Find path to connection builder aplx
+            connection_builder_app = resource_filename(
+                "pynn_spinnaker",
+                "standardmodels/binaries/connection_builder.aplx")
             logger.debug("\t\t\tConnection builder application:%s",
                          connection_builder_app)
 
