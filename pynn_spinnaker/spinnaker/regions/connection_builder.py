@@ -11,7 +11,9 @@ from pyNN.random import RandomDistribution
 from region import Region
 
 # Import functions
+from rig.type_casts import float_to_fp
 from zlib import crc32
+from ..utils import is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -27,8 +29,7 @@ def _get_param_type_name(param):
         # Return distribution name
         return param.base_value.name
     # Otherwise if it's a scalar, return the magic string constant
-    elif isinstance(param.base_value,
-                    (int, long, np.integer, float, bool)):
+    elif is_scalar(param.base_value):
         return "constant"
     # Otherwise assert
     else:
@@ -47,8 +48,7 @@ def _get_param_size(param):
         # Return distribution size
         return rng._get_dist_size(distribution)
     # Otherwise if it's a scalar, return 4 bytes
-    elif isinstance(param.base_value,
-                    (int, long, np.integer, float, bool)):
+    elif is_scalar(param.base_value):
         return 4
     # Otherwise assert
     else:
@@ -67,11 +67,11 @@ def _write_param(fp, param, fixed_point):
 
         # Return distribution size
         rng._write_dist(fp, distribution, parameters, fixed_point)
-    # Otherwise if it's a scalar, apply fixed point scaling, round and write
-    elif isinstance(param.base_value,
-                    (int, long, np.integer, float, bool)):
-        scaled_value = round(param.base_value * (2.0 ** fixed_point))
-        fp.write(struct.pack("i", scaled_value))
+    # Otherwise if it's a scalar, convert to fixed point and write
+    elif is_scalar(param.base_value):
+        convert = float_to_fp(signed=True, n_bits=32, n_frac=fixed_point)
+        fixed_point = convert(param.base_value)
+        fp.write(struct.pack("i", fixed_point))
     # Otherwise assert
     else:
         assert False
@@ -205,7 +205,7 @@ class ConnectionBuilder(Region):
                 _get_param_type_name(weight))
 
             # Write header
-            fp.write(struct.pack("IIIIII", prop.key, proj[1],
+            fp.write(struct.pack("6I", prop.key, proj[1],
                                  _crc_u32(synaptic_matrix.__name__),
                                  _crc_u32(connector.__class__.__name__),
                                  _crc_u32(_get_param_type_name(delay)),

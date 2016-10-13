@@ -21,7 +21,7 @@ from .standardmodels.synapses import StaticSynapse
 from .random import NativeRNG
 
 # Import functions
-from spinnaker.utils import get_model_comparable
+from spinnaker.utils import get_model_comparable, is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -251,32 +251,6 @@ class Projection(common.Projection, ContextMixin):
 
         return direct_weights
 
-    def _estimate_max_weight(self):
-        # Extract weight parameters
-        weights = self.synapse_type.native_parameters["weight"]
-
-        # If weights are randomly distributed
-        if isinstance(weights.base_value, RandomDistribution):
-            # Get RNG and distribution
-            rng = weights.base_value.rng
-            distribution = weights.base_value.name
-            parameters = weights.base_value.parameters
-
-            # Assert that it uses our native RNG
-            assert isinstance(rng, NativeRNG)
-
-            # Update weight range based on the
-            # estimated maximum value of distribution
-            return rng._estimate_dist_max_value(distribution, parameters)
-        # Otherwise if it's a scalar,
-        # use it to update weight range directly
-        elif isinstance(weights.base_value,
-                        (int, long, np.integer, float, bool)):
-            return weights.base_value
-        # Otherwise assert
-        else:
-            assert False
-
     def _estimate_max_row_synapses(self, pre_slice, post_slice):
         return self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
@@ -323,10 +297,10 @@ class Projection(common.Projection, ContextMixin):
             assert isinstance(param.base_value.rng, NativeRNG)
 
             # Return list containing RNG used to generate parameter
-            return [param.base_value.rng]
+            return (param.base_value.rng,)
         # Otherwise return empty list
         else:
-            return []
+            return ()
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
@@ -349,7 +323,31 @@ class Projection(common.Projection, ContextMixin):
                 type(self.synapse_type) is self._static_synapse_class)
 
     @property
-    def _generatable_on_chip(self):
+    def _max_weight_estimate(self):
+        # Extract weight parameters
+        weights = self.synapse_type.native_parameters["weight"]
+
+        # If weights are randomly distributed
+        if isinstance(weights.base_value, RandomDistribution):
+            # Get RNG and distribution
+            rng = weights.base_value.rng
+            distribution = weights.base_value.name
+            parameters = weights.base_value.parameters
+
+            # Assert that it uses our native RNG
+            assert isinstance(rng, NativeRNG)
+
+            # Return estimated maximum value of distribution
+            return rng._estimate_dist_max_value(distribution, parameters)
+        # Otherwise, if it's a scalar, return it
+        elif is_scalar(weights.base_value):
+            return weights.base_value
+        # Otherwise assert
+        else:
+            assert False
+
+    @property
+    def _can_generate_on_chip(self):
         # If generation of connections on chip is disabled, return false
         if not self._simulator.state.generate_connections_on_chip:
             return False
@@ -387,8 +385,7 @@ class Projection(common.Projection, ContextMixin):
             # **NOTE** Intuition is that parameters specified using arrays are
             # a)Not well-defined by PyNN
             # b)Probably wasteful to transfer to board
-            elif not isinstance(p.base_value, (int, long, np.integer,
-                                               float, bool)):
+            elif not is_scalar(p.base_value):
                 return False
 
         # Calculate maximum delay that is supported using ring-buffer
@@ -405,8 +402,7 @@ class Projection(common.Projection, ContextMixin):
             return False
 
         # If delay is a constant larger than the maximum, return false
-        if (isinstance(delay, (int, long, np.integer, float, bool))
-            and delay > max_delay):
+        if is_scalar(delay) and delay > max_delay:
             return False
 
         # All checks passed
@@ -416,17 +412,17 @@ class Projection(common.Projection, ContextMixin):
     def _native_rngs(self):
         # If connector has an RNG
         # **YUCK** this more by convention than anything else
-        rngs = []
+        rngs = set()
         if hasattr(self._connector, "rng"):
             # Assert that it uses our native RNG
             assert isinstance(self._connector.rng, NativeRNG)
 
-            # Add RNG to list
-            rngs.append(self._connector.rng)
+            # Add RNG to set
+            rngs.add(self._connector.rng)
 
         # Add any RNGs required to generate delay and weight parameters
-        rngs.extend(self._get_native_rngs("delay"))
-        rngs.extend(self._get_native_rngs("weight"))
+        rngs.update(self._get_native_rngs("delay"))
+        rngs.update(self._get_native_rngs("weight"))
 
-        # Return uniquified list of required RNGs
-        return list(set(rngs))
+        # Return list of unique RNGs required
+        return list(rngs)

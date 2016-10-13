@@ -358,8 +358,8 @@ class State(common.control.BaseState):
         # Place-and-route
         # **NOTE** don't create application map at this stage
         logger.info("Placing and routing")
-        placements, allocations, _, routing_tables =\
-            place_and_route_wrapper(vertex_resources, {},
+        placements, allocations, run_app_map, routing_tables =\
+            place_and_route_wrapper(vertex_resources, vertex_run_applications,
                                     nets, net_keys, self.system_info, constraints)
 
         # Convert placement values to a set to get unique list of chips
@@ -421,10 +421,6 @@ class State(common.control.BaseState):
                                     AppState.init, AppState.exit,
                                     len(vertex_load_applications),
                                     60.0)
-
-        # Build map of vertex run applications to load
-        run_app_map = build_application_map(vertex_run_applications,
-                                            placements, allocations, Cores)
 
         logger.info("Loading applications")
         self.machine_controller.load_application(run_app_map)

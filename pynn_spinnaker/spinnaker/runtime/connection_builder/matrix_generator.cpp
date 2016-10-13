@@ -226,8 +226,11 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
       }
 
       // Write weight to first two synapse bytes
-      uint16_t *weightAddress = reinterpret_cast<uint16_t*>(synapseAddress += 2);
+      uint16_t *weightAddress = reinterpret_cast<uint16_t*>(synapseAddress);
       *weightAddress = (uint16_t)weights[j];
+
+      // Go onto next synapse
+      synapseAddress += 2;
 
       // Write synapse trace bytes
       for(unsigned int s = 0; s < m_SynapseTraceBytes; s++)

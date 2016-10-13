@@ -15,6 +15,7 @@ from collections import defaultdict
 from utils import Args, InputVertex
 
 # Import functions
+from pkg_resources import resource_filename
 from six import iteritems, iterkeys
 from utils import (get_model_executable_filename, load_regions, split_slice)
 
@@ -194,7 +195,7 @@ class SynapseCluster(object):
                 logger.debug("\t\t\t\tProjection:%s", proj.label)
 
                 # If this projection can be generated on chip, set flag
-                if proj._generatable_on_chip:
+                if proj._can_generate_on_chip:
                     generate_matrix_on_chip = True
 
                 # Loop through the vertices which the pre-synaptic
@@ -265,11 +266,10 @@ class SynapseCluster(object):
 
         # If any matrices should be generated on chip, show message
         if generate_matrix_on_chip:
-            # **YUCK** find connection builder executable
-            spinnaker_path = path.dirname(inspect.getfile(self.__class__))
-            connection_builder_app = path.join(spinnaker_path,
-                                            "../standardmodels/binaries",
-                                            "connection_builder.aplx")
+            # Find path to connection builder aplx
+            connection_builder_app = resource_filename(
+                "pynn_spinnaker",
+                "standardmodels/binaries/connection_builder.aplx")
             logger.debug("\t\t\tConnection builder application:%s",
                          connection_builder_app)
 
@@ -341,16 +341,16 @@ class SynapseCluster(object):
                 # are generatable on chip and there aren't multiple
                 # projections that need merging
                 incoming_from_pre = incoming_projections[pre_pop]
-                if (all(i._generatable_on_chip for i in incoming_from_pre) and
+                if (all(i._can_generate_on_chip for i in incoming_from_pre) and
                     len(incoming_from_pre) == 1):
 
                     # Mark list of projections for generating on chip
                     pre_pop_on_chip_proj[pre_pop] = incoming_from_pre
 
                     # Loop through projections to generate on chip and update
-                    # weight range based on estimated maximum weight
+                    # weight range based on maximum weight estimates
                     for proj in incoming_from_pre:
-                        weight_range.update(proj._estimate_max_weight())
+                        weight_range.update(proj._max_weight_estimate)
                 # Otherwise
                 else:
                     # Create list of lists to contain matrix rows
