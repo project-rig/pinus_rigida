@@ -34,8 +34,10 @@ void ConnectionBuilder::ParamGenerator::Constant::Generate(unsigned int number,
 ConnectionBuilder::ParamGenerator::Uniform::Uniform(uint32_t *&region)
 {
   m_Low = *reinterpret_cast<int32_t*>(region++);
-  m_Range = *reinterpret_cast<int32_t*>(region++);
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tUniform parameter: low:%d, range:%d",
+  const int32_t high = *reinterpret_cast<int32_t*>(region++);
+  m_Range = high - m_Low;
+  
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tUniform parameter: low:%d, high:%d, range:%d",
             m_Low, m_Range);
 }
 //-----------------------------------------------------------------------------
