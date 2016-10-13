@@ -8,13 +8,13 @@
 using namespace Common::FixedPointNumber;
 
 //-----------------------------------------------------------------------------
-// NeuronProcessor::NeuronInputModels::Curr
+// NeuronProcessor::NeuronInputModels::Cond
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
 namespace NeuronInputModels
 {
-class Curr
+class Cond
 {
 public:
   //-----------------------------------------------------------------------------
@@ -22,6 +22,8 @@ public:
   //-----------------------------------------------------------------------------
   enum RecordingChannel
   {
+    RecordingChannelGSynExc,
+    RecordingChannelGSynInh,
     RecordingChannelMax,
   };
 
@@ -37,24 +39,40 @@ public:
   //-----------------------------------------------------------------------------
   struct ImmutableState
   {
+    // Excitatory reversal voltage [mV]
+    S1615 m_V_RevExc;
+
+    // Inhibitory reversal voltage [mV]
+    S1615 m_V_RevInh;
   };
 
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline S1615 GetInputCurrent(MutableState &, const ImmutableState &,
+  static inline S1615 GetInputCurrent(MutableState &, const ImmutableState &immutableState,
                                       S1615 excInput, S1615 inhInput,
-                                      S1615)
+                                      S1615 membraneVoltage)
   {
-    return (excInput - inhInput);
+    return MulS1615(excInput, immutableState.m_V_RevExc - membraneVoltage) +
+        MulS1615(inhInput, immutableState.m_V_RevInh - membraneVoltage);
   }
 
   static S1615 GetRecordable(RecordingChannel c,
                              const MutableState &, const ImmutableState &,
-                             S1615, S1615)
+                             S1615 excInput, S1615 inhInput)
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant input recording channel %u", c);
-    return 0;
+    switch(c)
+    {
+      case RecordingChannelGSynExc:
+        return excInput;
+
+      case RecordingChannelGSynInh:
+        return inhInput;
+
+      default:
+        LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant input recording channel %u", c);
+        return 0;
+    }
   }
 
   static void Print(char *stream, const MutableState &, const ImmutableState &);

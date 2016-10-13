@@ -338,9 +338,7 @@ void UpdateNeurons()
     {
       // Record the value from each one
       g_AnalogueRecording[r].RecordValue(n,
-        Neuron::GetRecordable((Neuron::RecordingChannel)r,
-                              neuronMutable, neuronImmutable,
-                              excInput, inhInput, extCurrent)
+        Neuron::GetRecordable(r, neuronMutable, neuronImmutable, excInput, inhInput)
       );
     }
 

@@ -71,14 +71,13 @@ public:
   // Static methods
   //-----------------------------------------------------------------------------
   static inline S1615 Update(MutableState &mutableState, const ImmutableState &immutableState,
-                            S1615 excInput, S1615 inhInput, S1615 extCurrent)
+                            S1615 inputCurrent)
   {
     // If outside of the refractory period
     if (mutableState.m_RefractoryTimer <= 0)
     {
       // Get the input in nA
-      S1615 inputThisTimestep = excInput - inhInput
-        + extCurrent + immutableState.m_I_Offset;
+      S1615 inputThisTimestep = inputCurrent + immutableState.m_I_Offset;
 
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tInput this timestep:%.4knA", inputThisTimestep);
 
@@ -112,9 +111,13 @@ public:
     mutableState.m_RefractoryTimer = immutableState.m_T_Refractory;
   }
 
+  static S1615 GetMembraneVoltage(const MutableState &mutableState, const ImmutableState &)
+  {
+    return mutableState.m_V_Membrane;
+  }
+
   static S1615 GetRecordable(RecordingChannel c,
-                             const MutableState &mutableState, const ImmutableState &,
-                             S1615, S1615, S1615)
+                             const MutableState &mutableState, const ImmutableState &)
   {
     switch(c)
     {
@@ -122,7 +125,7 @@ public:
         return mutableState.m_V_Membrane;
 
       default:
-        LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant recording channel %u", c);
+        LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant dynamics recording channel %u", c);
         return 0;
     }
   }

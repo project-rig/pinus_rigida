@@ -8,13 +8,13 @@
 using namespace Common::FixedPointNumber;
 
 //-----------------------------------------------------------------------------
-// NeuronProcessor::NeuronInputModels::Curr
+// NeuronProcessor::NeuronThresholdModels::Constant
 //-----------------------------------------------------------------------------
 namespace NeuronProcessor
 {
-namespace NeuronInputModels
+namespace NeuronThresholdModels
 {
-class Curr
+class Constant
 {
 public:
   //-----------------------------------------------------------------------------
@@ -37,27 +37,27 @@ public:
   //-----------------------------------------------------------------------------
   struct ImmutableState
   {
+    // Membrane voltage threshold at which neuron spikes [mV]
+    S1615 m_V_Threshold;
   };
 
   //-----------------------------------------------------------------------------
   // Static methods
   //-----------------------------------------------------------------------------
-  static inline S1615 GetInputCurrent(MutableState &, const ImmutableState &,
-                                      S1615 excInput, S1615 inhInput,
-                                      S1615)
+  static inline bool HasCrossed(const MutableState &, const ImmutableState &immutableState,
+                                S1615 membraneVoltage)
   {
-    return (excInput - inhInput);
+    return (membraneVoltage >= immutableState.m_V_Threshold);
   }
 
   static S1615 GetRecordable(RecordingChannel c,
-                             const MutableState &, const ImmutableState &,
-                             S1615, S1615)
+                             const MutableState &, const ImmutableState &)
   {
-    LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant input recording channel %u", c);
+    LOG_PRINT(LOG_LEVEL_WARN, "Attempting to get data from non-existant threshold recording channel %u", c);
     return 0;
   }
 
-  static void Print(char *stream, const MutableState &, const ImmutableState &);
+  static void Print(char *stream, const MutableState &, const ImmutableState &immutableState);
 };
-};  // namespace NeuronInputModels
+};  // namespace NeuronModels
 };  // namespace NeuronProcessor

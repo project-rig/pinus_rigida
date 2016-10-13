@@ -5,7 +5,9 @@ SOURCES = ../../../common/config.cpp \
 	../../../common/bit_field.cpp \
 	../../../common/profiler.cpp \
 	../../neuron_processor.cpp \
-	../../neuron_models/if_curr.cpp \
+	../../neuron_dynamics_models/if.cpp \
+	../../neuron_input_models/curr.cpp \
+	../../neuron_threshold_models/constant.cpp \
 	../../synapse_models/exp.cpp
 
 CFLAGS += -I $(CURDIR)

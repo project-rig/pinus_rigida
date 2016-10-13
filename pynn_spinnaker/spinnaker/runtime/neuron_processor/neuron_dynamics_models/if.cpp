@@ -1,5 +1,6 @@
 #include "if.h"
 
+// Common includes
 #include "../../common/spinnaker.h"
 
 //-----------------------------------------------------------------------------
@@ -11,6 +12,7 @@ namespace NeuronDynamicsModels
 {
 void IF::Print(char *stream, const MutableState &mutableState, const ImmutableState &immutableState)
 {
+  io_printf(stream, "Integrate-and-fire dynamics\n");
   io_printf(stream, "\tMutable state:\n");
   io_printf(stream, "\t\tV_Membrane       = %11.4k [mV]\n", mutableState.m_V_Membrane);
   io_printf(stream, "\t\tRefractoryTimer  = %10d [timesteps]\n", mutableState.m_RefractoryTimer);
