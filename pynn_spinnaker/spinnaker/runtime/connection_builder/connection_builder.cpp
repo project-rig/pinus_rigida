@@ -212,6 +212,8 @@ extern "C" void c_main()
   LOG_PRINT(LOG_LEVEL_INFO, "Parameter generators");
   REGISTER_FACTORY_CLASS("constant", ParamGenerator, Constant);
   REGISTER_FACTORY_CLASS("uniform", ParamGenerator, Uniform);
+  REGISTER_FACTORY_CLASS("normal", ParamGenerator, Normal);
+  REGISTER_FACTORY_CLASS("exponential", ParamGenerator, Exponential);
 
   // Allocate buffers for placement new from factories
   // **NOTE** we need to be able to simultaneously allocate a delay and
