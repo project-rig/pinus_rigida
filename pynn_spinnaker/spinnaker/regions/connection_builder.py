@@ -205,7 +205,7 @@ class ConnectionBuilder(Region):
                 _get_param_type_name(weight))
 
             # Write header
-            fp.write(struct.pack("IIIIII", prop.key, proj[1],
+            fp.write(struct.pack("6I", prop.key, proj[1],
                                  _crc_u32(synaptic_matrix.__name__),
                                  _crc_u32(connector.__class__.__name__),
                                  _crc_u32(_get_param_type_name(delay)),
