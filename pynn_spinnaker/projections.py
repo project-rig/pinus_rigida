@@ -347,7 +347,7 @@ class Projection(common.Projection, ContextMixin):
             assert False
 
     @property
-    def _generatable_on_chip(self):
+    def _can_generate_on_chip(self):
         # If generation of connections on chip is disabled, return false
         if not self._simulator.state.generate_connections_on_chip:
             return False

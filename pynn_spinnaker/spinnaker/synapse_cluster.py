@@ -194,7 +194,7 @@ class SynapseCluster(object):
                 logger.debug("\t\t\t\tProjection:%s", proj.label)
 
                 # If this projection can be generated on chip, set flag
-                if proj._generatable_on_chip:
+                if proj._can_generate_on_chip:
                     generate_matrix_on_chip = True
 
                 # Loop through the vertices which the pre-synaptic
@@ -341,7 +341,7 @@ class SynapseCluster(object):
                 # are generatable on chip and there aren't multiple
                 # projections that need merging
                 incoming_from_pre = incoming_projections[pre_pop]
-                if (all(i._generatable_on_chip for i in incoming_from_pre) and
+                if (all(i._can_generate_on_chip for i in incoming_from_pre) and
                     len(incoming_from_pre) == 1):
 
                     # Mark list of projections for generating on chip
