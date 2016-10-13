@@ -45,7 +45,7 @@ public:
   // Static methods
   //-----------------------------------------------------------------------------
   static bool HasCrossed(const MutableState &, const ImmutableState &immutableState,
-                                S1615 membraneVoltage)
+                         S1615 membraneVoltage)
   {
     return (membraneVoltage >= immutableState.m_V_Threshold);
   }

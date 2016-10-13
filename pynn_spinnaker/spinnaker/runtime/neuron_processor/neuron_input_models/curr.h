@@ -43,8 +43,8 @@ public:
   // Static methods
   //-----------------------------------------------------------------------------
   static S1615 GetInputCurrent(MutableState &, const ImmutableState &,
-                                      S1615 excInput, S1615 inhInput,
-                                      S1615)
+                               S1615 excInput, S1615 inhInput,
+                               S1615)
   {
     return (excInput - inhInput);
   }

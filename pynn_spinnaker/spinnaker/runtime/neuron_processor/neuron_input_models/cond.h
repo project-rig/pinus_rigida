@@ -50,8 +50,8 @@ public:
   // Static methods
   //-----------------------------------------------------------------------------
   static S1615 GetInputCurrent(MutableState &, const ImmutableState &immutableState,
-                                      S1615 excInput, S1615 inhInput,
-                                      S1615 membraneVoltage)
+                               S1615 excInput, S1615 inhInput,
+                               S1615 membraneVoltage)
   {
     return MulS1615(excInput, immutableState.m_V_RevExc - membraneVoltage) +
         MulS1615(inhInput, immutableState.m_V_RevInh - membraneVoltage);
