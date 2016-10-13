@@ -129,6 +129,7 @@ public:
     Dynamics::Print(stream, mutableState, immutableState);
     Input::Print(stream, mutableState, immutableState);
     Threshold::Print(stream, mutableState, immutableState);
+    ExtraInput::Print(stream, mutableState, immutableState);
   }
 };
 } // NeuronProcessor
