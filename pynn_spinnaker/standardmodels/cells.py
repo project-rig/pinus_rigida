@@ -71,13 +71,14 @@ exp_synapse_translations = build_translations(
 # ----------------------------------------------------------------------------
 # Build maps of where and how parameters need to be written into neuron regions
 if_curr_neuron_immutable_param_map = [
-    ("v_thresh",    "i4", lazy_param_map.s1615),
     ("v_reset",     "i4", lazy_param_map.s1615),
     ("v_rest",      "i4", lazy_param_map.s1615),
     ("i_offset",    "i4", lazy_param_map.s1615),
     ("r_membrane",  "i4", lazy_param_map.s1615),
     ("tau_m",       "i4", lazy_param_map.s1615_exp_decay),
     ("tau_refrac",  "u4", lazy_param_map.integer_time_divide),
+    
+    ("v_thresh",    "i4", lazy_param_map.s1615),
 ]
 
 if_curr_neuron_mutable_param_map = [
@@ -86,15 +87,17 @@ if_curr_neuron_mutable_param_map = [
 ]
 
 if_cond_neuron_immutable_param_map = [
-    ("v_thresh",    "i4", lazy_param_map.s1615),
     ("v_reset",     "i4", lazy_param_map.s1615),
     ("v_rest",      "i4", lazy_param_map.s1615),
-    ("e_rev_e",     "i4", lazy_param_map.s1615),
-    ("e_rev_i",     "i4", lazy_param_map.s1615),
     ("i_offset",    "i4", lazy_param_map.s1615),
     ("r_membrane",  "i4", lazy_param_map.s1615),
     ("tau_m",       "i4", lazy_param_map.s1615_exp_decay),
     ("tau_refrac",  "u4", lazy_param_map.integer_time_divide),
+
+    ("e_rev_e",     "i4", lazy_param_map.s1615),
+    ("e_rev_i",     "i4", lazy_param_map.s1615),
+
+    ("v_thresh",    "i4", lazy_param_map.s1615),
 ]
 
 if_cond_neuron_mutable_param_map = [
