@@ -11,6 +11,7 @@ from pyNN.random import RandomDistribution
 from region import Region
 
 # Import functions
+from rig.type_casts import float_to_fp
 from zlib import crc32
 from ..utils import is_scalar
 
@@ -66,10 +67,11 @@ def _write_param(fp, param, fixed_point):
 
         # Return distribution size
         rng._write_dist(fp, distribution, parameters, fixed_point)
-    # Otherwise if it's a scalar, apply fixed point scaling, round and write
+    # Otherwise if it's a scalar, convert to fixed point and write
     elif is_scalar(param.base_value):
-        scaled_value = round(param.base_value * (2.0 ** fixed_point))
-        fp.write(struct.pack("i", scaled_value))
+        convert = float_to_fp(signed=True, n_bits=32, n_frac=fixed_point)
+        fixed_point = convert(param.base_value)
+        fp.write(struct.pack("i", fixed_point))
     # Otherwise assert
     else:
         assert False
