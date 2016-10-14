@@ -1,7 +1,7 @@
 # Import modules
 import lazyarray as la
 from spinnaker import lazy_param_map
-from scipy.stats import norm
+from scipy.stats import norm, expon
 
 # Import classes
 from pyNN.random import NativeRNG
@@ -24,24 +24,30 @@ class NativeRNG(NativeRNG):
         "normal":       [("mu",     "i4", lazy_param_map.s32_fixed_point),
                          ("sigma",  "i4", lazy_param_map.s32_fixed_point)],
         "exponential":  [("beta",   "i4", lazy_param_map.s32_fixed_point)],
+        "normal_clipped": [("mu",    "i4", lazy_param_map.s32_fixed_point),
+                           ("sigma", "i4", lazy_param_map.s32_fixed_point),
+                           ("low",   "i4", lazy_param_map.s32_fixed_point),
+                           ("high",  "i4", lazy_param_map.s32_fixed_point)],
         "normal_clipped_to_boundary": [("mu",    "i4", lazy_param_map.s32_fixed_point),
                                        ("sigma", "i4", lazy_param_map.s32_fixed_point),
                                        ("low",   "i4", lazy_param_map.s32_fixed_point),
                                        ("high",  "i4", lazy_param_map.s32_fixed_point)]
+
     }
 
     # Functions to estimate the maximum value a distribution will result in
     # **THINK** should this be moved out of NativeRNG
     # for more general estimation of max delays etc
 
-    # Value to plug in to the inverse CDF function to estimate max
-    ppf_value = 1-1e-6
-    
     _dist_estimate_max_value = {
         "uniform":      lambda parameters: parameters["high"],
         "uniform_int":  lambda parameters: parameters["high"],
         "normal":       lambda parameters: parameters["mu"] + parameters["sigma"] *  \
                                            norm.ppf(1-1e-6),
+        "normal_clipped": lambda parameters: min(parameters["mu"] + parameters["sigma"] * \
+                                                 norm.ppf(1-1e-6), parameters["high"]),
+        "normal_clipped_to_boundary": lambda parameters: min(parameters["mu"] + parameters["sigma"] * \
+                                                 norm.ppf(1-1e-6), parameters["high"]),
         "exponential":  lambda parameters: parameters["beta"] * expon.ppf(1-1e-6)
     }
 

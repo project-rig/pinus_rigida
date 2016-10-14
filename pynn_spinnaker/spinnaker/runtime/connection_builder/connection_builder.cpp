@@ -36,7 +36,7 @@ uint32_t *g_SynapticMatrixBaseAddress = NULL;
 // Factories to create matrix, connector and parameter generators by ID
 GeneratorFactory<MatrixGenerator::Base, 3> g_MatrixGeneratorFactory;
 GeneratorFactory<ConnectorGenerator::Base, 5> g_ConnectorGeneratorFactory;
-GeneratorFactory<ParamGenerator::Base, 5> g_ParamGeneratorFactory;
+GeneratorFactory<ParamGenerator::Base, 10> g_ParamGeneratorFactory;
 
 // Memory buffers to placement new generators into
 void *g_MatrixGeneratorBuffer = NULL;
@@ -213,6 +213,8 @@ extern "C" void c_main()
   REGISTER_FACTORY_CLASS("constant", ParamGenerator, Constant);
   REGISTER_FACTORY_CLASS("uniform", ParamGenerator, Uniform);
   REGISTER_FACTORY_CLASS("normal", ParamGenerator, Normal);
+  REGISTER_FACTORY_CLASS("normal_clipped", ParamGenerator, NormalClipped);
+  REGISTER_FACTORY_CLASS("normal_clipped_to_boundary", ParamGenerator, NormalClippedToBoundary);
   REGISTER_FACTORY_CLASS("exponential", ParamGenerator, Exponential);
 
   // Allocate buffers for placement new from factories
