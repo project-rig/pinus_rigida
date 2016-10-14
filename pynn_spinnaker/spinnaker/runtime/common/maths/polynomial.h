@@ -80,7 +80,7 @@ namespace Maths
 //! we must treat the fract value of -1.0 as if it were only -0.5.
 //! \param[in] n The number of coeficients in the polynomial.
 //! \return The result as a signed 32-bit quantity.
-int HornerIntB(const int *a, int x, int n)
+inline int HornerIntB(const int *a, int x, int n)
 {
     register int r = *a++;
 
@@ -107,7 +107,7 @@ int HornerIntB(const int *a, int x, int n)
 //! we must treat the fract value of -1.0 as if it were only -0.5.
 //! \param[in] n The number of coeficients in the polynomial.
 //! \return The result as a signed 32-bit quantity.
-int HornerIntT (const int *a, int x, int n)
+inline int HornerIntT (const int *a, int x, int n)
 {
   register int r = *a++;
 
