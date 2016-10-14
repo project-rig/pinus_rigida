@@ -30,7 +30,7 @@ namespace Maths
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
 
-uint8_t Round(uint8_t x, int n)
+inline uint8_t Round(uint8_t x, int n)
 {
     register uint8_t r, c;
 
@@ -46,7 +46,7 @@ uint8_t Round(uint8_t x, int n)
 //! \param[in] f An 16-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-uint16_t Round(uint16_t x, int n)
+inline uint16_t Round(uint16_t x, int n)
 {
     register uint16_t r, c;
 
@@ -62,7 +62,7 @@ uint16_t Round(uint16_t x, int n)
 //! \param[in] f An 32-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-uint32_t Round(uint32_t x, int n)
+inline uint32_t Round(uint32_t x, int n)
 {
     register uint32_t r, c;
 
@@ -78,7 +78,7 @@ uint32_t Round(uint32_t x, int n)
 //! \param[in] f A 64-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-uint64_t Round(uint64_t x, int n)
+inline uint64_t Round(uint64_t x, int n)
 {
   register uint64_t r, c;
 
@@ -94,7 +94,7 @@ uint64_t Round(uint64_t x, int n)
 //! \param[in] f An 8-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-int8_t Round(int8_t x, int n)
+inline int8_t Round(int8_t x, int n)
 {
   register int8_t r, c;
 
@@ -110,7 +110,7 @@ int8_t Round(int8_t x, int n)
 //! \param[in] f An 16-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-int16_t Round(int16_t x, int n)
+inline int16_t Round(int16_t x, int n)
 {
   register int16_t r, c;
 
@@ -126,7 +126,7 @@ int16_t Round(int16_t x, int n)
 //! \param[in] f An 32-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-int32_t Round(int32_t x, int n)
+inline int32_t Round(int32_t x, int n)
 {
   register int32_t r, c;
 
@@ -142,7 +142,7 @@ int32_t Round(int32_t x, int n)
 //! \param[in] f A 64-bit number to be rounded.
 //! \param[in] n An int.
 //! \return The f rounded to the nearest n bits.
-int64_t Round(int64_t x, int n)
+inline int64_t Round(int64_t x, int n)
 {
   register int64_t r, c;
 
