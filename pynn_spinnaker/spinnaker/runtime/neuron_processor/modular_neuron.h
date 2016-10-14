@@ -19,10 +19,12 @@ public:
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
-  static const unsigned int RecordingChannelMax = Dynamics::RecordingChannelMax +\
-                                                  Input::RecordingChannelMax +\
-                                                  Threshold::RecordingChannelMax +\
-                                                  ExtraInput::RecordingChannelMax;
+  enum RecordingChannel
+  {
+    RecordingChannelInputMax = (Dynamics::RecordingChannelMax + Input::RecordingChannelMax),
+    RecordingChannelThresholdMax = (RecordingChannelInputMax + Threshold::RecordingChannelMax),
+    RecordingChannelMax = (RecordingChannelThresholdMax + ExtraInput::RecordingChannelMax),
+  };
 
   //-----------------------------------------------------------------------------
   // MutableState
@@ -66,7 +68,7 @@ public:
 
     // Has this new membrane voltage crossed the threshold?
     const bool spike = Threshold::HasCrossed(mutableState, immutableState,
-                                                    newMembraneVoltage);
+                                             newMembraneVoltage);
 
     // If a spike occurs, notify dynamics and extra input
     if(spike)
@@ -89,30 +91,23 @@ public:
       return Dynamics::GetRecordable((typename Dynamics::RecordingChannel)c,
                                      mutableState, immutableState);
     }
-
-
     // Otherwise, if recording channel comes from neuron input
-    c -= Dynamics::RecordingChannelMax;
-    if(c < Input::RecordingChannelMax)
+    else if(c < RecordingChannelInputMax)
     {
-      return Input::GetRecordable((typename Input::RecordingChannel)c,
+      return Input::GetRecordable((typename Input::RecordingChannel)(c - Dynamics::RecordingChannelMax),
                                   mutableState, immutableState,
                                   excInput, inhInput);
     }
-
     // Otherwise, if recording channel comes from spiking threshold
-    c -= Input::RecordingChannelMax;
-    if(c < Threshold::RecordingChannelMax)
+    else if(c < RecordingChannelThresholdMax)
     {
-      return Threshold::GetRecordable((typename Threshold::RecordingChannel)c,
+      return Threshold::GetRecordable((typename Threshold::RecordingChannel)(c - RecordingChannelInputMax),
                                       mutableState, immutableState);
     }
-
     // Otherwise, if recording channel comes from extra input
-    c -= ExtraInput::RecordingChannelMax;
-    if(c < ExtraInput::RecordingChannelMax)
+    else if(c < RecordingChannelMax)
     {
-      return ExtraInput::GetRecordable((typename ExtraInput::RecordingChannel)c,
+      return ExtraInput::GetRecordable((typename ExtraInput::RecordingChannel)(c - RecordingChannelThresholdMax),
                                        mutableState, immutableState);
     }
     // Otherwise
