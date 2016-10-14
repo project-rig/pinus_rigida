@@ -481,6 +481,7 @@ extern "C" void c_main()
   if(!ReadSDRAMData(baseAddress, 0))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
+    rt_error(RTE_ABORT);
     return;
   }
   
