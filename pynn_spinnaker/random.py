@@ -5,6 +5,7 @@ from scipy.stats import norm, expon
 
 # Import classes
 from pyNN.random import NativeRNG
+from pyNN.errors import InvalidParameterValueError
 
 # Import functions
 from six import iteritems
@@ -51,6 +52,25 @@ class NativeRNG(NativeRNG):
         "exponential":  lambda parameters: parameters["beta"] * expon.ppf(1-1e-6)
     }
 
+    # Functions to check that the distribution parameters are valid.
+    # For normal_clipped we also check that the probability of sampling
+    # within the specified region is greater than 1e-4
+
+    _dist_check_parameters = {
+        "uniform":        lambda parameters: (True, ""),
+        "uniform_int":    lambda parameters: (True, ""),
+        "normal":         lambda parameters: (parameters["sigma"] > 0, "Expected positive sigma"),
+        "normal_clipped": lambda parameters: (parameters["sigma"] > 0 \
+                   and norm.cdf((parameters["high"] - parameters["mu"])/parameters["sigma"]) \
+                   - norm.cdf((parameters["low"] - parameters["mu"])/parameters["sigma"]) > 1e-4,
+                                              "Expected positive sigma and greater than"
+                                              " 1e-4 probability of sampling between low and high"),
+        "normal_clipped_to_boundary": lambda parameters: (parameters["sigma"] > 0 \
+                                      and parameters["high"] > parameters["low"],
+                                              "Expected positive sigma and low <= high"),
+        "exponential":    lambda parameters: (True, "")
+    }
+
     def __init__(self, host_rng, seed=None):
         # Superclass
         super(NativeRNG, self).__init__(seed)
@@ -80,6 +100,13 @@ class NativeRNG(NativeRNG):
         else:
             return self._dist_estimate_max_value[distribution](parameters)
 
+    def _check_dist_parameters(self, distribution, parameters):
+        if not self._supports_dist(distribution):
+            raise NotImplementedError("SpiNNaker native RNG does not support"
+                                      "%s distributions" % distribution)
+        else:
+            return self._dist_check_parameters[distribution](parameters)
+
     def _get_dist_param_map(self, distribution):
         # Check translation and parameter map exists for this distribution
         if not self._supports_dist(distribution):
@@ -98,6 +125,11 @@ class NativeRNG(NativeRNG):
                                        1)
 
     def _write_dist(self, fp, distribution, parameters, fixed_point):
+
+        parameters_as_expected, err_msg = self._check_dist_parameters(distribution, parameters)
+        if not parameters_as_expected:
+            raise InvalidParameterValueError(err_msg)
+
         # Wrap parameters in lazy arrays
         parameters = {name: la.larray(value)
                       for name, value in iteritems(parameters)}
@@ -106,6 +138,7 @@ class NativeRNG(NativeRNG):
         data = lazy_param_map.apply(
             parameters, self._get_dist_param_map(distribution),
             1, fixed_point=fixed_point)
+
         fp.write(data.tostring())
 
     # ------------------------------------------------------------------------
