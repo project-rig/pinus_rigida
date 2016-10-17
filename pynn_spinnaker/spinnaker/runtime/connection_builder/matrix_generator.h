@@ -42,6 +42,8 @@ namespace MatrixGenerator
 class Base
 {
 public:
+  Base(uint32_t *&region);
+
   //-----------------------------------------------------------------------------
   // Declared virtuals
   //-----------------------------------------------------------------------------
@@ -67,6 +69,23 @@ protected:
     uint32_t (&indices)[1024], int32_t (&delay)[1024], int32_t (&weight)[1024],
     MarsKiss64 &rng) const;
 
+  int32_t ClampWeight(int32_t weight) const
+  {
+    // If weights aren't signed and weight is negative, zero
+    // **NOTE** negative weights caused by inhibitory
+    // weights should have been already flipped in host
+    return (!m_SignedWeight && weight < 0) ? 0 : weight;
+  }
+
+  int32_t ClampDelay(int32_t delay) const
+  {
+    // If delay is lower than minimum (1 timestep), clamp
+    return (delay < 1) ? 1 : delay;
+  }
+
+  bool IsSignedWeight() const{ return m_SignedWeight; }
+
+
   //-----------------------------------------------------------------------------
   // Constants
   //-----------------------------------------------------------------------------
@@ -74,6 +93,12 @@ protected:
   static const uint32_t IndexBits = 10;
   static const uint32_t DelayMask = ((1 << DelayBits) - 1);
   static const uint32_t IndexMask = ((1 << IndexBits) - 1);
+
+private:
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
+  uint32_t m_SignedWeight;
 };
 
 //-----------------------------------------------------------------------------
@@ -96,11 +121,6 @@ public:
 
 private:
   Static(uint32_t *&region);
-
-  //-----------------------------------------------------------------------------
-  // Members
-  //-----------------------------------------------------------------------------
-  uint32_t m_SignedWeight;
 };
 
 //-----------------------------------------------------------------------------
@@ -127,7 +147,6 @@ private:
   //-----------------------------------------------------------------------------
   // Members
   //-----------------------------------------------------------------------------
-  uint32_t m_SignedWeight;
   uint32_t m_PreStateWords;
   uint32_t m_SynapseTraceBytes;
 };

@@ -8,7 +8,12 @@
 #include "param_generator.h"
 
 //-----------------------------------------------------------------------------
-// ConnectionBuilder::MatrixGenerator::Static
+// ConnectionBuilder::MatrixGenerator::Base
+//-----------------------------------------------------------------------------
+ConnectionBuilder::MatrixGenerator::Base::Base(uint32_t *&region)
+{
+  m_SignedWeight = *region++;
+}
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Base::TraceUInt(uint32_t (&values)[1024],
                                                          unsigned int number) const
@@ -65,11 +70,10 @@ unsigned int ConnectionBuilder::MatrixGenerator::Base::GenerateRow(unsigned int 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::MatrixGenerator::Static
 //-----------------------------------------------------------------------------
-ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region)
+ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region) : Base(region)
 {
-  m_SignedWeight = *region++;
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix: %u signed weights",
-    m_SignedWeight);
+    IsSignedWeight());
 }
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
@@ -108,11 +112,9 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     // Loop through synapses
     for(unsigned int j = 0; j < numIndices; j++)
     {
-      // If weights aren't signed and weight is negative, flip sign
-      if(!m_SignedWeight && weights[j] < 0)
-      {
-        weights[j] = -weights[j];
-      }
+      // Clamp delays and weights
+      delays[j] = ClampDelay(delays[j]);
+      weights[j] = ClampWeight(weights[j]);
 
       // Build synaptic word
       const uint32_t word = (indices[j] & IndexMask) |
@@ -140,11 +142,8 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::MatrixGenerator::Plastic
 //-----------------------------------------------------------------------------
-ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region)
+ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region) : Base(region)
 {
-  // Read signedness of weights
-  m_SignedWeight = *region++;
-
   // Read number of presynaptic state words from region
   const uint32_t preStateBytes = *region++;
   m_SynapseTraceBytes = *region++;
@@ -154,7 +153,7 @@ ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region)
       + (((preStateBytes & 3) != 0) ? 1 : 0);
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tPlastic synaptic matrix: %u signed weights, %u bytes presynaptic state (%u words), %u bytes synapse trace",
-            m_SignedWeight, preStateBytes, m_PreStateWords, m_SynapseTraceBytes);
+            IsSignedWeight(), preStateBytes, m_PreStateWords, m_SynapseTraceBytes);
 }
 //-----------------------------------------------------------------------------
 void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddress,
@@ -219,11 +218,9 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
     // Loop through synapses
     for(unsigned int j = 0; j < numIndices; j++)
     {
-      // If weights aren't signed and weight is negative, flip sign
-      if(!m_SignedWeight && weights[j] < 0)
-      {
-        weights[j] = -weights[j];
-      }
+      // Clamp delays and weights
+      delays[j] = ClampDelay(delays[j]);
+      weights[j] = ClampWeight(weights[j]);
 
       // Write weight to first two synapse bytes
       uint16_t *weightAddress = reinterpret_cast<uint16_t*>(synapseAddress);
