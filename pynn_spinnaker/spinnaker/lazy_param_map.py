@@ -124,6 +124,19 @@ def s32_fixed_point(values, fixed_point, **kwargs):
         True, 32, fixed_point, False)
     return float_to_weight_no_copy(deepcopy(values))
 
+def s32_fixed_point_scale_abs(values, fixed_point, scale, absolute, **kwargs):
+    # Copy values and apply scale
+    scaled_values = deepcopy(values)
+    scaled_values *= scale
+
+    # If absolute flag is set, take absolute
+    if absolute:
+        scaled_values = la.abs(scaled_values)
+
+    float_to_weight_no_copy = LazyArrayFloatToFixConverter(
+        True, 32, fixed_point, False)
+    return float_to_weight_no_copy(scaled_values)
+
 def time_multiply(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and divide by timestep
     scaled_vals = deepcopy(values)

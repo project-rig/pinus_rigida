@@ -54,7 +54,7 @@ def _get_param_size(param):
     else:
         assert False
 
-def _write_param(fp, param, fixed_point):
+def _write_param(fp, param, fixed_point, scale, absolute):
     # If parameter is randomly distributed
     if isinstance(param.base_value, RandomDistribution):
         # Get RNG and distribution
@@ -66,11 +66,20 @@ def _write_param(fp, param, fixed_point):
         assert isinstance(rng, NativeRNG)
 
         # Return distribution size
-        rng._write_dist(fp, distribution, parameters, fixed_point)
+        rng._write_dist(fp, distribution, parameters,
+                        fixed_point, scale, absolute)
     # Otherwise if it's a scalar, convert to fixed point and write
     elif is_scalar(param.base_value):
+        # Scale value and take absolute if required
+        scaled_value = param.base_value * scale
+        if absolute:
+            scaled_value = abs(scaled_value)
+
+        # Convert scaled value to fixed-point
         convert = float_to_fp(signed=True, n_bits=32, n_frac=fixed_point)
-        fixed_point = convert(param.base_value)
+        fixed_point = convert(scaled_value)
+
+        # Write to fp
         fp.write(struct.pack("i", fixed_point))
     # Otherwise assert
     else:
@@ -88,6 +97,9 @@ def _get_native_rngs(chip_sub_matrix_projs):
 # ------------------------------------------------------------------------------
 class ConnectionBuilder(Region):
     SeedWords = 4
+
+    def __init__(self, sim_timestep_ms):
+        self.sim_timestep_ms = sim_timestep_ms
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -220,8 +232,12 @@ class ConnectionBuilder(Region):
             fp.write(lazy_param_map.apply_attributes(
                 connector, connector._on_chip_param_map).tostring())
 
-            # Write delay parameter with fixed point of zero to round to nearest timestep
-            _write_param(fp, delay, 0)
+            # Write delay parameter scaled to convert to timesteps and
+            # with fixed point of zero to round to nearest timestep
+            delay_scale = 1.0 / self.sim_timestep_ms
+            _write_param(fp, delay, 0, delay_scale, True)
 
-            # Write weights using weight fixed point
-            _write_param(fp, weight, weight_fixed_point)
+            # Write weights using weight fixed point and taking
+            # The absolute value if the weight is unsigned
+            _write_param(fp, weight, fixed_point=weight_fixed_point, scale=1.0,
+                         absolute=not synapse_type._signed_weight)

@@ -16,10 +16,10 @@ class NativeRNG(NativeRNG):
     # Maps specifying how each distribution type's
     # parameters will be written to SpiNNaker
     _dist_param_maps = {
-        "uniform":      [("low",    "i4", lazy_param_map.s32_fixed_point),
-                         ("high",   "i4", lazy_param_map.s32_fixed_point)],
-        "uniform_int":  [("low",    "i4", lazy_param_map.s32_fixed_point),
-                         ("high",   "i4", lazy_param_map.s32_fixed_point)],
+        "uniform":      [("low",  "i4", lazy_param_map.s32_fixed_point_scale_abs),
+                         ("high", "i4", lazy_param_map.s32_fixed_point_scale_abs)],
+        "uniform_int":  [("low"   "i4", lazy_param_map.s32_fixed_point_scale_abs),
+                         ("high", "i4", lazy_param_map.s32_fixed_point_scale_abs)],
     }
 
     # Functions to estimate the maximum value a distribution will result in
@@ -76,7 +76,7 @@ class NativeRNG(NativeRNG):
             return lazy_param_map.size(self._get_dist_param_map(distribution),
                                        1)
 
-    def _write_dist(self, fp, distribution, parameters, fixed_point):
+    def _write_dist(self, fp, distribution, parameters, fixed_point, scale, absolute):
         # Wrap parameters in lazy arrays
         parameters = {name: la.larray(value)
                       for name, value in iteritems(parameters)}
@@ -84,7 +84,7 @@ class NativeRNG(NativeRNG):
         # Evaluate parameters and write to file
         data = lazy_param_map.apply(
             parameters, self._get_dist_param_map(distribution),
-            1, fixed_point=fixed_point)
+            1, fixed_point=fixed_point, scale=scale, absolute=absolute)
         fp.write(data.tostring())
 
     # ------------------------------------------------------------------------
