@@ -48,6 +48,7 @@ def _generate_random_matrix(pre_size, post_slice, row_length, multapse):
     PlasticSynapticMatrix(mock.Mock(_max_dtcm_delay_slots=7,
                                     _signed_weight=False,
                                     _pre_state_bytes=10))])
+@pytest.mark.parametrize("sim_timestep_ms", [0.1, 1.0])
 def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
                         synaptic_matrix_region, sim_timestep_ms):
     # Fix the seed so the test is consistent
