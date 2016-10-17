@@ -14,7 +14,8 @@ from ..utils import combine_row_offset_length, extract_row_offset_length
 
 logger = logging.getLogger("pynn_spinnaker")
 
-SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
+SubMatrix = namedtuple("SubMatrix", ["key", "mask", "pre_n_slice",
+                                     "size_words", "max_cols"])
 
 # ------------------------------------------------------------------------------
 # SynapticMatrix
@@ -229,6 +230,7 @@ class SynapticMatrix(Region):
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
+                                  pre_n_vert.neuron_slice,
                                   size_words, max_cols))
                     sub_matrix_rows.append(vert_sub_rows)
 
@@ -273,6 +275,7 @@ class SynapticMatrix(Region):
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
+                                  pre_n_vert.neuron_slice,
                                   size_words, max_cols))
                     sub_matrix_projs.append((proj, num_rows))
 
@@ -409,7 +412,7 @@ class SynapticMatrix(Region):
         return next_row_delay, next_row_offset, next_row_length, synapses
 
     def _write_row(self, row, next_row, next_row_offset,
-                             float_to_weight, destination):
+                   float_to_weight, destination):
         # Write actual length of row (in synapses)
         num_synapses = len(row[1])
         destination[0] = num_synapses
