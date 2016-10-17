@@ -193,6 +193,11 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
 //-----------------------------------------------------------------------------
 // Entry point
 //-----------------------------------------------------------------------------
+extern "C" void __cxa_pure_virtual()
+{
+  LOG_PRINT(LOG_LEVEL_ERROR, "Pure virtual function call");
+}
+//-----------------------------------------------------------------------------
 extern "C" void c_main()
 {
   // Register matrix generators with factories
@@ -228,6 +233,7 @@ extern "C" void c_main()
   if(!ReadSDRAMData(baseAddress, 0))
   {
     LOG_PRINT(LOG_LEVEL_ERROR, "Error reading SDRAM data");
+    rt_error(RTE_ABORT);
     return;
   }
 }

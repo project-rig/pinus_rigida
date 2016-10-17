@@ -143,7 +143,8 @@ class SynapseCluster(object):
             synapse_model._max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
-        self.regions[Regions.connection_builder] = regions.ConnectionBuilder()
+        self.regions[Regions.connection_builder] = regions.ConnectionBuilder(
+            sim_timestep_ms)
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
