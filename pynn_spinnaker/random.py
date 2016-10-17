@@ -10,6 +10,38 @@ from pyNN.errors import InvalidParameterValueError
 # Import functions
 from six import iteritems
 
+
+def _estimate_max_value_normal(parameters):
+    estimated_max = norm.ppf(1-1e-6)
+    return parameters["mu"] + parameters["sigma"] * estimated_max
+
+def _estimate_max_value_normal_clipped(parameters):
+    return min(_estimate_max_value_normal(parameters), parameters["high"])
+
+def _estimate_max_value_exponential(parameters):
+    return parameters["beta"] * expon.ppf(1-1e-6)
+
+def _check_parameters_normal(parameters):
+    msg = "Expected positive sigma"
+    
+    return parameters["sigma"] > 0, msg
+
+def _check_parameters_normal_clipped(parameters):
+    msg = ("Expected positive sigma and greater than "
+          "1e-4 probability of sampling between 'low' and 'high'")
+    
+    low = (parameters["low"] - parameters["mu"]) / parameters["sigma"]
+    high = (parameters["high"] - parameters["mu"]) / parameters["sigma"]
+    return (parameters["sigma"] > 0 and norm.cdf(high)
+            - norm.cdf(low) > 1e-4, msg)
+
+def _check_parameters_normal_clipped_to_boundary(parameters):
+    msg = "Expected positive simga and 'low' <= 'high'"
+    
+    return (parameters["sigma"] > 0
+            and parameters["high"] >= parameters["low"], msg)
+
+
 # ----------------------------------------------------------------------------
 # NativeRNG
 # ----------------------------------------------------------------------------
@@ -33,7 +65,6 @@ class NativeRNG(NativeRNG):
                                        ("sigma", "i4", lazy_param_map.s32_fixed_point),
                                        ("low",   "i4", lazy_param_map.s32_fixed_point),
                                        ("high",  "i4", lazy_param_map.s32_fixed_point)]
-
     }
 
     # Functions to estimate the maximum value a distribution will result in
@@ -41,34 +72,23 @@ class NativeRNG(NativeRNG):
     # for more general estimation of max delays etc
 
     _dist_estimate_max_value = {
-        "uniform":      lambda parameters: parameters["high"],
-        "uniform_int":  lambda parameters: parameters["high"],
-        "normal":       lambda parameters: parameters["mu"] + parameters["sigma"] *  \
-                                           norm.ppf(1-1e-6),
-        "normal_clipped": lambda parameters: min(parameters["mu"] + parameters["sigma"] * \
-                                                 norm.ppf(1-1e-6), parameters["high"]),
-        "normal_clipped_to_boundary": lambda parameters: min(parameters["mu"] + parameters["sigma"] * \
-                                                 norm.ppf(1-1e-6), parameters["high"]),
-        "exponential":  lambda parameters: parameters["beta"] * expon.ppf(1-1e-6)
+        "uniform":        lambda parameters: parameters["high"],
+        "uniform_int":    lambda parameters: parameters["high"],
+        "normal":         _estimate_max_value_normal,
+        "normal_clipped": _estimate_max_value_normal_clipped,
+        "normal_clipped_to_boundary": _estimate_max_value_normal_clipped,
+        "exponential":    _estimate_max_value_exponential
     }
 
     # Functions to check that the distribution parameters are valid.
     # For normal_clipped we also check that the probability of sampling
-    # within the specified region is greater than 1e-4
+    # within the specified region is greater than 1e-4. Distributions
+    # not in this dictionary are assumed to have valid parameters.
 
     _dist_check_parameters = {
-        "uniform":        lambda parameters: (True, ""),
-        "uniform_int":    lambda parameters: (True, ""),
-        "normal":         lambda parameters: (parameters["sigma"] > 0, "Expected positive sigma"),
-        "normal_clipped": lambda parameters: (parameters["sigma"] > 0 \
-                   and norm.cdf((parameters["high"] - parameters["mu"])/parameters["sigma"]) \
-                   - norm.cdf((parameters["low"] - parameters["mu"])/parameters["sigma"]) > 1e-4,
-                                              "Expected positive sigma and greater than"
-                                              " 1e-4 probability of sampling between low and high"),
-        "normal_clipped_to_boundary": lambda parameters: (parameters["sigma"] > 0 \
-                                      and parameters["high"] > parameters["low"],
-                                              "Expected positive sigma and low <= high"),
-        "exponential":    lambda parameters: (True, "")
+        "normal": _check_parameters_normal,
+        "normal_clipped": _check_parameters_normal_clipped,
+        "normal_clipped_to_boundary": _check_parameters_normal_clipped_to_boundary
     }
 
     def __init__(self, host_rng, seed=None):
@@ -105,7 +125,10 @@ class NativeRNG(NativeRNG):
             raise NotImplementedError("SpiNNaker native RNG does not support"
                                       "%s distributions" % distribution)
         else:
-            return self._dist_check_parameters[distribution](parameters)
+            valid_parameters = (True, "")
+            if distribution in self._dist_check_parameters.keys():
+                valid_parameters = self._dist_check_parameters[distribution](parameters)
+            return valid_parameters
 
     def _get_dist_param_map(self, distribution):
         # Check translation and parameter map exists for this distribution
@@ -126,8 +149,8 @@ class NativeRNG(NativeRNG):
 
     def _write_dist(self, fp, distribution, parameters, fixed_point):
 
-        parameters_as_expected, err_msg = self._check_dist_parameters(distribution, parameters)
-        if not parameters_as_expected:
+        valid_parameters, err_msg = self._check_dist_parameters(distribution, parameters)
+        if not valid_parameters:
             raise InvalidParameterValueError(err_msg)
 
         # Wrap parameters in lazy arrays
