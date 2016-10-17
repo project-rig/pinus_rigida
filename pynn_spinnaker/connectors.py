@@ -8,6 +8,7 @@ Connection method classes for PyNN SpiNNaker
 # Import modules
 import numpy as np
 import scipy
+from spinnaker import lazy_param_map
 
 # Import classes
 from pyNN.connectors import (AllToAllConnector,
@@ -34,6 +35,9 @@ class AllToAllConnector(AllToAllConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    # If this connector can be generated on chip, parameter map to use
+    _on_chip_param_map = []
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -53,6 +57,9 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    # If this connector can be generated on chip, parameter map to use
+    _on_chip_param_map = [("p_connect", "u4", lazy_param_map.u032)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods

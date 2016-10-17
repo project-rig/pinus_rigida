@@ -1,6 +1,7 @@
 # Import modules
 import logging
 import numpy as np
+from .. import lazy_param_map
 
 # Import classes
 from synaptic_matrix import SynapticMatrix
@@ -19,6 +20,9 @@ class StaticSynapticMatrix(SynapticMatrix):
     # How many bits should fixed point weights be converted into
     # **NOTE** weights are only 16-bit, but final words need to be 32-bit
     FixedPointWeightBits = 32
+
+    # Parameters required from synapse type for on-chip generation
+    OnChipParamMap = [("_signed_weight", "u4", lazy_param_map.integer)]
 
     # --------------------------------------------------------------------------
     # Private methods

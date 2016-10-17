@@ -52,6 +52,12 @@ use_assembly = False
 benchmark = "CUBA"
 use_csa = False
 
+neurons_per_core = 1024
+rate_estimate = 4.1
+
+rngseed  = 98765
+rng = NumpyRNG(seed=rngseed)
+
 if spinnaker:
     import pynn_spinnaker as sim
 
@@ -60,6 +66,11 @@ if spinnaker:
     logger.addHandler(logging.StreamHandler())
 
     setup_kwargs = {"spinnaker_hostname": "192.168.1.1"}
+
+    rng = sim.NativeRNG(host_rng=rng)
+
+    #setup_kwargs["generate_connections_on_chip"] =  False
+    #setup_kwargs["stop_on_spinnaker"] = False
 else:
     import pyNN.nest as sim
 
@@ -69,7 +80,6 @@ timer = Timer()
 
 # === Define parameters ========================================================
 
-rngseed  = 98765
 
 n        = 4000  # number of cells
 r_ei     = 4.0   # number of excitatory cells:number of inhibitory cells
@@ -150,7 +160,8 @@ if use_views:
     all_cells = sim.Population(n_exc + n_inh, celltype(**cell_params), label="All Cells")
 
     if spinnaker:
-        all_cells.spinnaker_config.mean_firing_rate = 2.0
+        all_cells.spinnaker_config.mean_firing_rate = rate_estimate
+        all_cells.spinnaker_config.max_neurons_per_core = neurons_per_core
 
         if profile:
             all_cells.spinnaker_config.num_profile_samples = 1E5
@@ -165,8 +176,11 @@ else:
     inh_cells = sim.Population(n_inh, celltype(**cell_params), label="Inhibitory_Cells")
 
     if spinnaker:
-        exc_cells.spinnaker_config.mean_firing_rate = 2.0
-        inh_cells.spinnaker_config.mean_firing_rate = 2.0
+        exc_cells.spinnaker_config.mean_firing_rate = rate_estimate
+        inh_cells.spinnaker_config.mean_firing_rate = rate_estimate
+
+        exc_cells.spinnaker_config.max_neurons_per_core = neurons_per_core
+        inh_cells.spinnaker_config.max_neurons_per_core = neurons_per_core
 
         if profile:
             exc_cells.spinnaker_config.num_profile_samples = 1E5
@@ -183,7 +197,7 @@ if benchmark == "COBA":
     ext_syn = sim.StaticSynapse(weight=0.1)
 
 print("%s Initialising membrane potential to random values..." % node_id)
-rng = NumpyRNG(seed=rngseed)
+
 uniformDistr = RandomDistribution('uniform', low=v_reset, high=v_thresh, rng=rng)
 if use_views:
     all_cells.initialize(v=uniformDistr)

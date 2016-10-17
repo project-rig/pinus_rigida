@@ -1,6 +1,6 @@
 #pragma once
 
-namespace SynapseProcessor
+namespace ConnectionBuilder
 {
 //-----------------------------------------------------------------------------
 // Enumerations
@@ -29,25 +29,5 @@ enum AppWord
   AppWordMax,
 };
 
-enum ProfilerTag
-{
-  ProfilerTagTimerTick,
-  ProfilerTagMCPacketReceived,
-  ProfilerTagSetupNextDMARowRead,
-  ProfilerTagProcessRow,
-  ProfilerTagProcessBackPropagation,
 
-};
-
-// Indices of statistic words
-enum StatWord
-{
-  StatRowRequested,
-  StatDelayRowRequested,
-  StatWordDelayBuffersNotProcessed,
-  StatWordInputBufferOverflows,
-  StatWordKeyLookupFail,
-  StatWordMax,
-};
-
-} // SynapseProcessor
+} // ConnectionBuilder

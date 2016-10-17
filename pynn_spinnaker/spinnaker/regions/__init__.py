@@ -1,4 +1,5 @@
 from analogue_recording import AnalogueRecording
+from connection_builder import ConnectionBuilder
 from delay_buffer import DelayBuffer
 from extended_plastic_synaptic_matrix import ExtendedPlasticSynapticMatrix
 from flush import Flush

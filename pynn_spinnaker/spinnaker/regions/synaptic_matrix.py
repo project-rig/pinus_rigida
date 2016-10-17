@@ -16,7 +16,6 @@ logger = logging.getLogger("pynn_spinnaker")
 
 SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
 
-
 # ------------------------------------------------------------------------------
 # SynapticMatrix
 # ------------------------------------------------------------------------------
@@ -41,7 +40,7 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
-    def sizeof(self, sub_matrix_props, sub_matrix_rows, matrix_placements,
+    def sizeof(self, sub_matrix_props, host_sub_matrix_rows, matrix_placements,
                weight_fixed_point):
         """Get the size requirements of the region in bytes.
 
@@ -50,8 +49,8 @@ class SynapticMatrix(Region):
         sub_matrix_props : list of :py:class:`._SubMatrix`
             Properties of the sub matrices to be written
             to synaptic matrix region
-        sub_matrix_rows : list of list of numpy arrays
-            Partitioned matrix rows to be written to SpiNNaker
+        host_sub_matrix_rows : list of list of numpy arrays
+            Partitioned matrix rows generated on host to be written to SpiNNaker
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
@@ -69,7 +68,7 @@ class SynapticMatrix(Region):
         else:
             return 4 * (matrix_placements[-1] + sub_matrix_props[-1].size_words)
 
-    def write_subregion_to_file(self, fp, sub_matrix_props, sub_matrix_rows,
+    def write_subregion_to_file(self, fp, sub_matrix_props, host_sub_matrix_rows,
                                 matrix_placements, weight_fixed_point):
         """Write a portion of the region to a file applying the formatter.
 
@@ -78,8 +77,8 @@ class SynapticMatrix(Region):
         sub_matrix_props : list of :py:class:`._SubMatrix`
             Properties of the sub matrices to be written
             to synaptic matrix region
-        sub_matrix_rows : list of list of numpy arrays
-            Partitioned matrix rows to be written to SpiNNaker
+        host_sub_matrix_rows : list of list of numpy arrays
+            Partitioned matrix rows generated on hostto be written to SpiNNaker
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
@@ -90,8 +89,11 @@ class SynapticMatrix(Region):
             self.signed_weight, self.FixedPointWeightBits, weight_fixed_point)
 
         # Loop through sub matrices
+        # **NOTE** because only the matrices generated
+        # on host are included, in sub_matrix_rows, this
+        # loop will not loop over the matrices to generate on chip
         for matrix, matrix_rows, placement in zip(sub_matrix_props,
-                                                  sub_matrix_rows,
+                                                  host_sub_matrix_rows,
                                                   matrix_placements):
             # Seek to the absolute offset for this matrix
             # **NOTE** placement is in WORDS
@@ -151,6 +153,11 @@ class SynapticMatrix(Region):
 
         # Loop through presynaptic population
         for pre_pop, pre_n_verts in iteritems(incoming_connections):
+            # If no rows have been generated on the
+            # host for this connection, skip
+            if not pre_pop in pre_pop_sub_rows:
+                continue
+
             # Get the list of sub-rows associated
             # with this presynaptic population
             sub_rows = pre_pop_sub_rows[pre_pop]
@@ -226,6 +233,50 @@ class SynapticMatrix(Region):
                     sub_matrix_rows.append(vert_sub_rows)
 
         return sub_matrix_props, sub_matrix_rows
+
+    def partition_on_chip_matrix(self, post_vertex_slice,
+                                 pre_pop_on_chip_projection,
+                                 incoming_connections):
+        # Loop through all incoming connections
+        sub_matrix_props = []
+        sub_matrix_projs = []
+
+        for pre_pop, pre_n_verts in iteritems(incoming_connections):
+            # If connections from this populations
+            # should be generated on host, skip
+            if not pre_pop in pre_pop_on_chip_projection:
+                continue
+
+            # Get list of projections coming from
+            # pre_pop which should be expanded on chip
+            assert len(pre_pop_on_chip_projection[pre_pop]) == 1
+            proj = pre_pop_on_chip_projection[pre_pop][0]
+
+            # Loop through presynaptic vertices
+            for pre_n_vert in pre_n_verts:
+                # Estimate maximum row length
+                max_cols = proj._estimate_max_row_synapses(
+                    pre_n_vert.neuron_slice, post_vertex_slice)
+
+                # If matrix has any columns
+                if max_cols > 0:
+                    # **TODO** this takes no account of extension rows
+
+                    # Count rows
+                    num_rows = len(pre_n_vert.neuron_slice)
+
+                    # Calculate matrix size in words -
+                    # size of square matrix
+                    size_words = num_rows * self._get_num_row_words(max_cols)
+
+                    # Add sub matrix to list
+                    sub_matrix_props.append(
+                        SubMatrix(pre_n_vert.routing_key,
+                                  pre_n_vert.routing_mask,
+                                  size_words, max_cols))
+                    sub_matrix_projs.append((proj, num_rows))
+
+        return sub_matrix_props, sub_matrix_projs
 
     def read_sub_matrix(self, pre_n_vert, post_s_vert, names,
                         region_mem, sim_timestep_ms):

@@ -3,6 +3,7 @@ try:
 except ImportError:
     izip = zip  # Python 3 zip returns an iterator already
 from pyNN import common
+from pyNN.random import RandomDistribution
 from pyNN.space import Space
 from pyNN.standardmodels import StandardCellType
 from . import simulator
@@ -17,9 +18,10 @@ from collections import namedtuple
 from rig.utils.contexts import ContextMixin
 from spinnaker.current_input_cluster import CurrentInputCluster
 from .standardmodels.synapses import StaticSynapse
+from .random import NativeRNG
 
 # Import functions
-from spinnaker.utils import get_model_comparable
+from spinnaker.utils import get_model_comparable, is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -169,7 +171,8 @@ class Projection(common.Projection, ContextMixin):
             self._connector.connect(self)
 
     def _create_current_input_cluster(self, timer_period_us, simulation_ticks,
-                                      vertex_applications, vertex_resources):
+                                      vertex_load_applications, vertex_run_applications,
+                                      vertex_resources):
         # If this projection is directory connectable
         if self._directly_connectable:
             logger.debug("\t\tProjection:%s", self.label)
@@ -183,8 +186,8 @@ class Projection(common.Projection, ContextMixin):
                 self.pre.celltype, self.pre._parameters, self.pre.initial_values,
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
                 self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
-                receptor_index, vertex_applications, vertex_resources,
-                self.current_input_j_constraint, self.pre.size)
+                receptor_index, vertex_load_applications, vertex_run_applications,
+                vertex_resources, self.current_input_j_constraint, self.pre.size)
         # Otherwise, null current input cluster
         else:
             self._current_input_cluster = None
@@ -284,6 +287,21 @@ class Projection(common.Projection, ContextMixin):
         self._current_input_cluster.load(placements, allocations,
                                          machine_controller, direct_weights)
 
+    def _get_native_rngs(self, synapse_param_name):
+        # Get named parameter
+        param = self.synapse_type.native_parameters[synapse_param_name]
+
+        # If parameter is randomly distributed
+        if isinstance(param.base_value, RandomDistribution):
+            # Assert that it uses our native RNG
+            assert isinstance(param.base_value.rng, NativeRNG)
+
+            # Return list containing RNG used to generate parameter
+            return (param.base_value.rng,)
+        # Otherwise return empty list
+        else:
+            return ()
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
@@ -303,3 +321,108 @@ class Projection(common.Projection, ContextMixin):
         return (self.pre.celltype._directly_connectable and
                 self._connector._directly_connectable and
                 type(self.synapse_type) is self._static_synapse_class)
+
+    @property
+    def _max_weight_estimate(self):
+        # Extract weight parameters
+        weights = self.synapse_type.native_parameters["weight"]
+
+        # If weights are randomly distributed
+        if isinstance(weights.base_value, RandomDistribution):
+            # Get RNG and distribution
+            rng = weights.base_value.rng
+            distribution = weights.base_value.name
+            parameters = weights.base_value.parameters
+
+            # Assert that it uses our native RNG
+            assert isinstance(rng, NativeRNG)
+
+            # Return estimated maximum value of distribution
+            return rng._estimate_dist_max_value(distribution, parameters)
+        # Otherwise, if it's a scalar, return it
+        elif is_scalar(weights.base_value):
+            return weights.base_value
+        # Otherwise assert
+        else:
+            assert False
+
+    @property
+    def _can_generate_on_chip(self):
+        # If generation of connections on chip is disabled, return false
+        if not self._simulator.state.generate_connections_on_chip:
+            return False
+
+        # If connector doesn't have a parameter map
+        # for generating on-chip data, return false
+        if not hasattr(self._connector, "_on_chip_param_map"):
+            return False
+
+        # If connector has an RNG and it is not a native RNG, return false
+        # **YUCK** this more by convention than anything else
+        if (hasattr(self._connector, "rng") and
+            not isinstance(self._connector.rng, NativeRNG)):
+            return False
+
+        # If synaptic matrix type doesn't have a parameters
+        # map for generating on chip data, return false
+        if not hasattr(self.synapse_type._synaptic_matrix_region_class,
+                       "OnChipParamMap"):
+            return False
+
+        # Get synapse native parameters
+        s_params = self.synapse_type.native_parameters._parameters
+        for p in s_params.values():
+            # If parameter is specified using a random distribution
+            if isinstance(p.base_value, RandomDistribution):
+                # If it doesn't use the native RNG, return false
+                if not isinstance(p.base_value.rng, NativeRNG):
+                    return False
+
+                # If the distribution isn't supported, return false
+                if not p.base_value.rng._supports_dist(p.base_value.name):
+                    return False
+            # Otherwise, if parameter isn't a scalar, return false
+            # **NOTE** Intuition is that parameters specified using arrays are
+            # a)Not well-defined by PyNN
+            # b)Probably wasteful to transfer to board
+            elif not is_scalar(p.base_value):
+                return False
+
+        # Calculate maximum delay that is supported using ring-buffer
+        # **TODO** support on-chip generation of rowlets
+        max_delay_slots = self.synapse_type._max_dtcm_delay_slots
+        max_delay = float(max_delay_slots) * self._simulator.state.dt
+
+        # If delay is random and its maximum value is
+        # larger than the maximum, return false
+        delay = s_params["delay"].base_value
+        if (isinstance(delay, RandomDistribution)
+            and delay.rng._estimate_dist_max_value(delay.name,
+                                                   delay.parameters) > max_delay):
+            return False
+
+        # If delay is a constant larger than the maximum, return false
+        if is_scalar(delay) and delay > max_delay:
+            return False
+
+        # All checks passed
+        return True
+
+    @property
+    def _native_rngs(self):
+        # If connector has an RNG
+        # **YUCK** this more by convention than anything else
+        rngs = set()
+        if hasattr(self._connector, "rng"):
+            # Assert that it uses our native RNG
+            assert isinstance(self._connector.rng, NativeRNG)
+
+            # Add RNG to set
+            rngs.add(self._connector.rng)
+
+        # Add any RNGs required to generate delay and weight parameters
+        rngs.update(self._get_native_rngs("delay"))
+        rngs.update(self._get_native_rngs("weight"))
+
+        # Return list of unique RNGs required
+        return list(rngs)

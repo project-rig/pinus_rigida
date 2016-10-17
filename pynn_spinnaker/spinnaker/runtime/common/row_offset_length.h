@@ -1,9 +1,9 @@
 #pragma once
 
 //----------------------------------------------------------------------------
-// SynapseProcessor::RowOffsetLength
+// Common::RowOffsetLength
 //----------------------------------------------------------------------------
-namespace SynapseProcessor
+namespace Common
 {
 template<unsigned int S>
 class RowOffsetLength
@@ -36,4 +36,4 @@ private:
   //--------------------------------------------------------------------------
   uint32_t m_WordOffset;
 };
-}
+} // Common

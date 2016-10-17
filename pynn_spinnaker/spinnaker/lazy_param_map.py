@@ -25,15 +25,26 @@ float_to_s411_no_copy = LazyArrayFloatToFixConverter(True, 16, 11, False)
 # Functions
 # -----------------------------------------------------------------------------
 def _build_dtype(param_map):
+    assert len(param_map) > 0
+
     # Build numpy record datatype for neuron region
     # **TODO** this probably doesn't need to be a string:
     # could use np.uint8 style things throughout
     return np.dtype(",".join(zip(*param_map)[1]))
 
 def size(param_map, size):
-    return _build_dtype(param_map).itemsize * size
+    # If there are no parameters in map, return 0
+    if len(param_map) == 0:
+        return 0
+    # Otherwise, build data type from map and calculate size
+    else:
+        return _build_dtype(param_map).itemsize * size
 
 def apply(lazy_params, param_map, size, **kwargs):
+    # If parameter map is empty, return a zero-size numpy array
+    if len(param_map) == 0:
+        return np.empty(0)
+
     # Build a numpy record array large enough for all neurons
     params = np.empty(size, dtype=_build_dtype(param_map))
 
@@ -71,6 +82,14 @@ def apply(lazy_params, param_map, size, **kwargs):
 
     return params
 
+def apply_attributes(obj, param_map):
+    # Build dictionary of non-constant
+    # parameters values from object attributes
+    params = {p[0]: la.larray(getattr(obj, p[0]))
+              for p in param_map if len(p) > 2}
+
+    # Apply parameter map to dictionary
+    return apply(params, param_map, 1)
 
 def integer(values, **kwargs):
     vals = deepcopy(values)
@@ -92,15 +111,31 @@ def s1615(values, **kwargs):
 def s2011(values, **kwargs):
     return float_to_s2011_no_copy(deepcopy(values))
 
-def u32_weight_fixed_point(values, weight_fixed_point, **kwargs):
+def u032(values, **kwargs):
+    return float_to_u032_no_copy(deepcopy(values))
+
+def u32_fixed_point(values, fixed_point, **kwargs):
     float_to_weight_no_copy = LazyArrayFloatToFixConverter(
-        False, 32, weight_fixed_point, False)
+        False, 32, fixed_point, False)
     return float_to_weight_no_copy(deepcopy(values))
 
-def s32_weight_fixed_point(values, weight_fixed_point, **kwargs):
+def s32_fixed_point(values, fixed_point, **kwargs):
     float_to_weight_no_copy = LazyArrayFloatToFixConverter(
-        True, 32, weight_fixed_point, False)
+        True, 32, fixed_point, False)
     return float_to_weight_no_copy(deepcopy(values))
+
+def s32_fixed_point_scale_abs(values, fixed_point, scale, absolute, **kwargs):
+    # Copy values and apply scale
+    scaled_values = deepcopy(values)
+    scaled_values *= scale
+
+    # If absolute flag is set, take absolute
+    if absolute:
+        scaled_values = la.abs(scaled_values)
+
+    float_to_weight_no_copy = LazyArrayFloatToFixConverter(
+        True, 32, fixed_point, False)
+    return float_to_weight_no_copy(scaled_values)
 
 def time_multiply(values, sim_timestep_ms, float_to_fixed, **kwargs):
     # Copy values and divide by timestep

@@ -144,8 +144,9 @@ class NeuralCluster(object):
     def __init__(self, pop_id, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  record_sample_interval, indices_to_record, config,
-                 vertex_applications, vertex_resources, keyspace,
-                 post_synaptic_width, requires_back_prop, pop_size):
+                 vertex_load_applications, vertex_run_applications,
+                 vertex_resources, keyspace, post_synaptic_width,
+                 requires_back_prop, pop_size):
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = regions.System(
@@ -217,7 +218,7 @@ class NeuralCluster(object):
         # Loop through neuron vertices and their corresponding resources
         for v in self.verts:
             # Add application to dictionary
-            vertex_applications[v] = neuron_app
+            vertex_run_applications[v] = neuron_app
 
             # Estimate SDRAM usage
             sdram = self._estimate_sdram(v.neuron_slice)
