@@ -125,10 +125,12 @@ class NativeRNG(NativeRNG):
             raise NotImplementedError("SpiNNaker native RNG does not support"
                                       "%s distributions" % distribution)
         else:
-            valid_parameters = (True, "")
-            if distribution in self._dist_check_parameters.keys():
-                valid_parameters = self._dist_check_parameters[distribution](parameters)
-            return valid_parameters
+            if distribution in self._dist_check_parameters:
+                valid_parameters, msg = \
+                        self._dist_check_parameters[distribution](parameters)
+
+                if not valid_parameters:
+                    raise InvalidParameterValueError(msg)
 
     def _get_dist_param_map(self, distribution):
         # Check translation and parameter map exists for this distribution
@@ -149,9 +151,7 @@ class NativeRNG(NativeRNG):
 
     def _write_dist(self, fp, distribution, parameters, fixed_point):
 
-        valid_parameters, err_msg = self._check_dist_parameters(distribution, parameters)
-        if not valid_parameters:
-            raise InvalidParameterValueError(err_msg)
+        self._check_dist_parameters(distribution, parameters)
 
         # Wrap parameters in lazy arrays
         parameters = {name: la.larray(value)
