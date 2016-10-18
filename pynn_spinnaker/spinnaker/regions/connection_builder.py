@@ -137,7 +137,7 @@ class ConnectionBuilder(Region):
 
         # Get list of RNGs
         native_rngs = _get_native_rngs(chip_sub_matrix_projs)
-        assert len(num_rngs) <= 1
+        assert len(native_rngs) <= 1
 
         # Fixed size consists of seed for each RNG and connection count
         size = 4
