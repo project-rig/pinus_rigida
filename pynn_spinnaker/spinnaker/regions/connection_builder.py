@@ -211,7 +211,7 @@ class ConnectionBuilder(Region):
                           + num_projections * post_slice_index\
                           + num_projections * self.num_post_slices * pre_slice_index
 
-            seed = rngs[0]._base_seed + seed_offset
+            seed = (rngs[0]._base_seed + seed_offset) % 0x7FFFFFFF
             fp.write(seed.tostring())
 
             # Extract required properties from projections
