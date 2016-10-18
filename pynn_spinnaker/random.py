@@ -31,6 +31,8 @@ class NativeRNG(NativeRNG):
         "uniform_int":  lambda parameters: parameters["high"]
     }
 
+    _SeedWords = 4
+
     def __init__(self, host_rng, seed=None):
         # Superclass
         super(NativeRNG, self).__init__(seed)
@@ -40,9 +42,8 @@ class NativeRNG(NativeRNG):
         self._host_rng = host_rng
 
         # Generate four word base seed for SpiNNaker RNGs
-        self.SeedWords = 4
-        self.base_seed = np.random.RandomState(seed=seed).randint(0x7FFFFFFF,
-                                          size=self.SeedWords).astype(np.uint32)
+        self._base_seed = np.random.RandomState(seed=seed).randint(
+            0x7FFFFFFF, size=self._SeedWords).astype(np.uint32)
 
     # ------------------------------------------------------------------------
     # AbstractRNG methods

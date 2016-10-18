@@ -139,7 +139,7 @@ class ConnectionBuilder(Region):
         native_rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(native_rngs) <= 1
 
-        # Fixed size consists of seed for each RNG and connection count
+        # Fixed size consists of connection count
         size = 4
 
         # Loop through projections
@@ -150,7 +150,7 @@ class ConnectionBuilder(Region):
             connector = proj[0]._connector
 
             # Add words for seed
-            size += native_rngs[0].SeedWords * 4
+            size += native_rngs[0]._SeedWords * 4
 
             # Add words for key and type hashes to size
             size += (6 * 4)
@@ -211,7 +211,7 @@ class ConnectionBuilder(Region):
                           + num_projections * post_slice_index\
                           + num_projections * self.num_post_slices * pre_slice_index
 
-            seed = rngs[0].base_seed + seed_offset
+            seed = rngs[0]._base_seed + seed_offset
             fp.write(seed.tostring())
 
             # Extract required properties from projections
