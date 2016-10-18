@@ -14,7 +14,7 @@ from ..utils import combine_row_offset_length, extract_row_offset_length
 
 logger = logging.getLogger("pynn_spinnaker")
 
-SubMatrix = namedtuple("SubMatrix", ["key", "mask", "pre_n_slice",
+SubMatrix = namedtuple("SubMatrix", ["key", "mask", "pre_n_slice", "pre_slice_index",
                                      "size_words", "max_cols"])
 
 # ------------------------------------------------------------------------------
@@ -231,6 +231,7 @@ class SynapticMatrix(Region):
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
                                   pre_n_vert.neuron_slice,
+                                  pre_n_vert.vert_index,
                                   size_words, max_cols))
                     sub_matrix_rows.append(vert_sub_rows)
 
@@ -276,6 +277,7 @@ class SynapticMatrix(Region):
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
                                   pre_n_vert.neuron_slice,
+                                  pre_n_vert.vert_index,
                                   size_words, max_cols))
                     sub_matrix_projs.append((proj, num_rows))
 

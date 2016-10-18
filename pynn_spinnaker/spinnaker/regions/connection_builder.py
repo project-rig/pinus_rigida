@@ -98,14 +98,16 @@ def _get_native_rngs(chip_sub_matrix_projs):
 class ConnectionBuilder(Region):
     SeedWords = 4
 
-    def __init__(self, sim_timestep_ms):
+    def __init__(self, sim_timestep_ms, num_post_slices):
         self.sim_timestep_ms = sim_timestep_ms
+        self.num_post_slices = num_post_slices
 
     # --------------------------------------------------------------------------
     # Region methods
     # --------------------------------------------------------------------------
     def sizeof(self, post_vertex_slice, sub_matrix_props,
-               chip_sub_matrix_projs, weight_fixed_point):
+               chip_sub_matrix_projs, weight_fixed_point,
+               post_slice_index):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -139,7 +141,7 @@ class ConnectionBuilder(Region):
         assert num_rngs <= 1
 
         # Fixed size consists of seed for each RNG and connection count
-        size = 4 + (self.SeedWords * 4)
+        size = 4
 
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
@@ -147,6 +149,9 @@ class ConnectionBuilder(Region):
             synapse_type = proj[0].synapse_type
             synaptic_matrix = synapse_type._synaptic_matrix_region_class
             connector = proj[0]._connector
+
+            # Add words for seed
+            size += self.SeedWords * 4
 
             # Add words for key and type hashes to size
             size += (6 * 4)
@@ -165,7 +170,8 @@ class ConnectionBuilder(Region):
         return size
 
     def write_subregion_to_file(self, fp, post_vertex_slice, sub_matrix_props,
-                                chip_sub_matrix_projs, weight_fixed_point):
+                                chip_sub_matrix_projs, weight_fixed_point,
+                                post_slice_index):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -191,16 +197,31 @@ class ConnectionBuilder(Region):
         rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(rngs) <= 1
 
-        # Write seed
-        seed = np.random.randint(0x7FFFFFFF,
-                                 size=self.SeedWords).astype(np.uint32)
-        fp.write(seed.tostring())
+        # Use the NativeRNG seed to produce base seed of size SeedWords
+        native_seed = None
+        if len(rngs):
+            native_seed = rngs[0].seed
+        base_seed = np.random.RandomState(seed=native_seed).randint(0x7FFFFFFF,
+                                                                  size=self.SeedWords).astype(np.uint32)
 
         # Write number of matrices
         fp.write(struct.pack("I", num_chip_matrices))
 
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
+
+            # **todo** add id as attribute of projection
+            projection_id = proj[0]._simulator.state.projections.index(proj[0])
+            num_projections = len(proj[0]._simulator.state.projections)
+            pre_slice_index = prop.pre_slice_index
+
+            seed_offset = projection_id \
+                          + num_projections * post_slice_index\
+                          + num_projections * self.num_post_slices * pre_slice_index
+
+            seed = base_seed + seed_offset
+            fp.write(seed.tostring())
+
             # Extract required properties from projections
             synapse_type = proj[0].synapse_type
             synaptic_matrix = synapse_type._synaptic_matrix_region_class

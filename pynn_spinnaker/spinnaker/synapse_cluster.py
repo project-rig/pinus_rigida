@@ -143,8 +143,12 @@ class SynapseCluster(object):
             synapse_model._max_synaptic_event_rate,
             sim_timestep_ms, max_delay_ms)
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
+
+        # Split population slice
+        self.post_slices = split_slice(post_pop_size, post_synaptic_width)
+
         self.regions[Regions.connection_builder] = regions.ConnectionBuilder(
-            sim_timestep_ms)
+            sim_timestep_ms, len(self.post_slices))
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
@@ -164,9 +168,6 @@ class SynapseCluster(object):
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
                 regions.Profiler(config.num_profile_samples)
-
-        # Split population slice
-        self.post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
                      synapse_model.__class__.__name__, receptor_index)
@@ -320,7 +321,7 @@ class SynapseCluster(object):
              incoming_projections, flush_mask):
 
         # Loop through all the postsynaptic slices in this synapse cluster
-        for post_slice in self.post_slices:
+        for post_slice_index, post_slice in enumerate(self.post_slices):
             logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
             # Get 'column' of vertices in this postsynaptic slice
@@ -450,7 +451,7 @@ class SynapseCluster(object):
                         v.post_neuron_slice, sub_matrix_props,
                         host_sub_matrix_rows, chip_sub_matrix_projs,
                         matrix_placements, weight_fixed_point, v.out_buffers,
-                        back_prop_in_buffers, flush_mask)
+                        back_prop_in_buffers, flush_mask, post_slice_index)
 
                     # Load regions
                     v.region_memory = load_regions(
@@ -518,7 +519,8 @@ class SynapseCluster(object):
                               host_sub_matrix_rows, chip_sub_matrix_projs,
                               matrix_placements,
                               weight_fixed_point, out_buffers,
-                              back_prop_in_buffers, flush_mask):
+                              back_prop_in_buffers, flush_mask,
+                              post_slice_index):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
@@ -559,5 +561,7 @@ class SynapseCluster(object):
             post_vertex_slice
         region_arguments[Regions.connection_builder].kwargs["weight_fixed_point"] =\
             weight_fixed_point
+        region_arguments[Regions.connection_builder].kwargs["post_slice_index"] =\
+            post_slice_index
 
         return region_arguments
