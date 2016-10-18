@@ -96,7 +96,6 @@ def _get_native_rngs(chip_sub_matrix_projs):
 # ConnectionBuilder
 # ------------------------------------------------------------------------------
 class ConnectionBuilder(Region):
-    SeedWords = 4
 
     def __init__(self, sim_timestep_ms, num_post_slices):
         self.sim_timestep_ms = sim_timestep_ms
@@ -136,9 +135,9 @@ class ConnectionBuilder(Region):
         # Slice sub matrices to generate on chip out from end of sub matrix properties
         chip_sub_matrix_props = sub_matrix_props[-len(chip_sub_matrix_projs):]
 
-        # Count number of RNGs
-        num_rngs = len(_get_native_rngs(chip_sub_matrix_projs))
-        assert num_rngs <= 1
+        # Get list of RNGs
+        native_rngs = _get_native_rngs(chip_sub_matrix_projs)
+        assert len(num_rngs) <= 1
 
         # Fixed size consists of seed for each RNG and connection count
         size = 4
@@ -151,7 +150,7 @@ class ConnectionBuilder(Region):
             connector = proj[0]._connector
 
             # Add words for seed
-            size += self.SeedWords * 4
+            size += native_rngs[0].SeedWords * 4
 
             # Add words for key and type hashes to size
             size += (6 * 4)
@@ -197,13 +196,6 @@ class ConnectionBuilder(Region):
         rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(rngs) <= 1
 
-        # Use the NativeRNG seed to produce base seed of size SeedWords
-        native_seed = None
-        if len(rngs):
-            native_seed = rngs[0].seed
-        base_seed = np.random.RandomState(seed=native_seed).randint(0x7FFFFFFF,
-                                                                  size=self.SeedWords).astype(np.uint32)
-
         # Write number of matrices
         fp.write(struct.pack("I", num_chip_matrices))
 
@@ -219,7 +211,7 @@ class ConnectionBuilder(Region):
                           + num_projections * post_slice_index\
                           + num_projections * self.num_post_slices * pre_slice_index
 
-            seed = base_seed + seed_offset
+            seed = rngs[0].base_seed + seed_offset
             fp.write(seed.tostring())
 
             # Extract required properties from projections
