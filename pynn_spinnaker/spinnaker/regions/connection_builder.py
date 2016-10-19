@@ -97,9 +97,8 @@ def _get_native_rngs(chip_sub_matrix_projs):
 # ------------------------------------------------------------------------------
 class ConnectionBuilder(Region):
 
-    def __init__(self, sim_timestep_ms, num_post_slices):
+    def __init__(self, sim_timestep_ms):
         self.sim_timestep_ms = sim_timestep_ms
-        self.num_post_slices = num_post_slices
 
     # --------------------------------------------------------------------------
     # Region methods
@@ -204,14 +203,12 @@ class ConnectionBuilder(Region):
 
             # **todo** add id as attribute of projection
             projection_id = proj[0]._simulator.state.projections.index(proj[0])
-            num_projections = len(proj[0]._simulator.state.projections)
-            pre_slice_index = prop.pre_slice_index
 
-            seed_offset = projection_id \
-                          + num_projections * post_slice_index\
-                          + num_projections * self.num_post_slices * pre_slice_index
+            seed = np.copy(rngs[0]._base_seed)
+            seed[0] = (seed[0] + projection_id) % 2**32
+            seed[1] = (seed[1] + post_slice_index) % 2**32
+            seed[2] = (seed[2] + prop.pre_slice_index) % 2**32
 
-            seed = (rngs[0]._base_seed + seed_offset) % 0x7FFFFFFF
             fp.write(seed.tostring())
 
             # Extract required properties from projections

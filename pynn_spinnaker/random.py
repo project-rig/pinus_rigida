@@ -43,7 +43,7 @@ class NativeRNG(NativeRNG):
 
         # Generate four word base seed for SpiNNaker RNGs
         self._base_seed = np.random.RandomState(seed=seed).randint(
-            0x7FFFFFFF, size=self._SeedWords).astype(np.uint32)
+            2**32, dtype=np.uint32, size=self._SeedWords)
 
     # ------------------------------------------------------------------------
     # AbstractRNG methods

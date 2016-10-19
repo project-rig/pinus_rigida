@@ -148,7 +148,7 @@ class SynapseCluster(object):
         self.post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         self.regions[Regions.connection_builder] = regions.ConnectionBuilder(
-            sim_timestep_ms, len(self.post_slices))
+            sim_timestep_ms)
         self.regions[Regions.statistics] = regions.Statistics(
             len(self.statistic_names))
 
