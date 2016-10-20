@@ -41,6 +41,15 @@ def round_j_constraint(j_constraint, min_j_constraint):
 class Assembly(common.Assembly):
     _simulator = simulator
 
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker properties
+    # --------------------------------------------------------------------------
+    @property
+    def _underlying_populations(self):
+        pops = set()
+        for p in self.populations:
+            pops.update(p._underlying_populations)
+        return pops
 
 # --------------------------------------------------------------------------
 # PopulationView
@@ -80,6 +89,14 @@ class PopulationView(common.PopulationView):
     def _get_view(self, selector, label=None):
         return PopulationView(self, selector, label)
 
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    @property
+    def _underlying_populations(self):
+        # Follow views down to grandparent and then
+        # return its underlying populations
+        return self.grandparent._underlying_populations
 
 # --------------------------------------------------------------------------
 # Population
@@ -102,11 +119,11 @@ class Population(common.Population):
         # Dictionary mapping pre-synaptic populations to
         # incoming projections, subdivided by synapse type
         # {synapse_cluster_type: {pynn_population: [pynn_projection]}}
-        self.incoming_projections = defaultdict(lambda: defaultdict(list))
+        self._incoming_projections = defaultdict(lambda: defaultdict(list))
 
         # List of outgoing projections from this population
         # [pynn_projection]
-        self.outgoing_projections = list()
+        self._outgoing_projections = list()
 
         # Add population to simulator
         self._simulator.state.populations.append(self)
@@ -145,7 +162,7 @@ class Population(common.Population):
         # Read profile from each current input cluster
         c_clusters = self._simulator.state.proj_current_input_clusters
         return {p: c_clusters[p].read_profile()
-                for p in self.outgoing_projections
+                for p in self._outgoing_projections
                 if p._directly_connectable}
 
     def get_synapse_statistics(self):
@@ -237,7 +254,7 @@ class Population(common.Population):
         # Otherwise, if we're recording spikes
         elif "spikes" in vars_to_read:
             # Loop through outgoing connections
-            for o in self.outgoing_projections:
+            for o in self._outgoing_projections:
                 # If this connection isn't directly connectable skip
                 if not o._directly_connectable:
                     continue
@@ -279,7 +296,7 @@ class Population(common.Population):
         # Loop through synapse types
         self.synapse_j_constraints = {}
         current_input_j_constraints = {}
-        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projections in iteritems(self._incoming_projections):
             # Get list of incoming directly connectable projections
             projections = list(itertools.chain.from_iterable(
                 itervalues(pre_pop_projections)))
@@ -343,7 +360,7 @@ class Population(common.Population):
 
         # Loop again through incoming synapse types to estimate i_constraints
         synapse_num_i_cores = {}
-        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projections in iteritems(self._incoming_projections):
             # Get list of synaptic connections
             projections = itertools.chain.from_iterable(
                 itervalues(pre_pop_projections))
@@ -428,7 +445,7 @@ class Population(common.Population):
             # to this population require back-propagation
             requires_back_prop = any(
                 s_type.model._requires_back_propagation
-                for s_type in iterkeys(self.incoming_projections))
+                for s_type in iterkeys(self._incoming_projections))
 
             self._neural_cluster = NeuralCluster(
                 pop_id, self.celltype, self._parameters, self.initial_values,
@@ -446,7 +463,7 @@ class Population(common.Population):
                                  vertex_resources):
         # Loop through newly partioned incoming projections
         self._synapse_clusters = {}
-        for s_type, pre_pop_projs in iteritems(self.incoming_projections):
+        for s_type, pre_pop_projs in iteritems(self._incoming_projections):
             # Chain together incoming projections from all populations
             projs = list(itertools.chain.from_iterable(
                 itervalues(pre_pop_projs)))
@@ -481,7 +498,7 @@ class Population(common.Population):
         # with post-synaptic population
         post_s_verts = list(itertools.chain.from_iterable(
             [o.post._synapse_clusters[o._synapse_cluster_type].verts
-            for o in self.outgoing_projections]))
+            for o in self._outgoing_projections]))
 
         logger.debug("\t\t%u post-synaptic vertices",
                         len(post_s_verts))
@@ -567,7 +584,7 @@ class Population(common.Population):
 
             # Load vertices that make up cluster
             s_cluster.load(placements, allocations, machine_controller,
-                           self.incoming_projections[s_type],
+                           self._incoming_projections[s_type],
                            flush_mask)
 
         # If population has a neuron cluster, load it
@@ -590,4 +607,8 @@ class Population(common.Population):
 
         # If none of the outgoing projections aren't directly connectable!
         return not any([not o._connector._directly_connectable
-                        for o in self.outgoing_projections])
+                        for o in self._outgoing_projections])
+
+    @property
+    def _underlying_populations(self):
+        return set((self,))

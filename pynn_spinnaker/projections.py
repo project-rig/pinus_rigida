@@ -75,11 +75,11 @@ class Projection(common.Projection, ContextMixin):
             # Add this projection to each pre-population in
             # assembly's list of outgoing connections
             for p in self.pre.populations:
-                p.outgoing_projections.append(self)
+                p._outgoing_projections.append(self)
         # Otherwise add it to the pre-synaptic population's list
         # **THINK** what about population-views? add to their parent?
         else:
-            self.pre.outgoing_projections.append(self)
+            self.pre._outgoing_projections.append(self)
 
         # If post-synaptic population in an assembly
         if isinstance(self.post, common.Assembly):
@@ -89,11 +89,11 @@ class Projection(common.Projection, ContextMixin):
             # Add this projection to each post-population in
             # assembly's list of incoming connections
             for p in self.post.populations:
-                p.incoming_projections[self._synapse_cluster_type][self.pre].append(self)
+                p._incoming_projections[self._synapse_cluster_type][self.pre].append(self)
         # Otherwise add it to the post-synaptic population's list
         # **THINK** what about population-views? add to their parent?
         else:
-            self.post.incoming_projections[self._synapse_cluster_type][self.pre].append(self)
+            self.post._incoming_projections[self._synapse_cluster_type][self.pre].append(self)
 
     def __len__(self):
         raise NotImplementedError

@@ -1,0 +1,50 @@
+# Import modules
+import numpy as np
+import pytest
+import pynn_spinnaker as sim
+
+# Import classes
+from pyNN.parameters import LazyArray
+from pyNN.random import NumpyRNG, RandomDistribution
+
+# ----------------------------------------------------------------------------
+# Tests
+# ----------------------------------------------------------------------------
+def test_underlying_populations():
+    # Setup simulator
+    sim.setup(timestep=1.0, min_delay=1.0, max_delay=8.0)
+
+    # Create some populations
+    pop_a = sim.Population(10, sim.IF_curr_exp())
+    pop_b = sim.Population(10, sim.IF_curr_exp())
+    pop_c = sim.Population(10, sim.IF_curr_exp())
+
+    # Test populations
+    assert pop_a._underlying_populations == set((pop_a,))
+
+    # Test view
+    view_a = sim.PopulationView(pop_a, slice(0, 5))
+    assert view_a._underlying_populations == set((pop_a,))
+
+    # Test assembly
+    assembly_a_b = sim.Assembly(pop_a, pop_b)
+    assert assembly_a_b._underlying_populations == set((pop_a, pop_b))
+
+    # Test view of views
+    view_view_a = sim.PopulationView(view_a, slice(0, 2))
+    assert view_view_a._underlying_populations == set((pop_a,))
+
+    # **NOTE** not supported by PyNN
+    # Test assembly of assemblies
+    #assembly_c_assembly_a_b = sim.Assembly(assembly_a_b, pop_c)
+    #assert assembly_c_assembly_a_b._underlying_populations == set((pop_a, pop_b, pop_c))
+
+    # Test assembly of views
+    view_b = sim.PopulationView(pop_b, slice(0, 5))
+    assembly_view_a_view_b = sim.Assembly(view_a, view_b)
+    assert assembly_view_a_view_b._underlying_populations == set((pop_a, pop_b))
+
+    # **NOTE** seems to be a PyNN bug in creating these
+    # Test view of assemblies
+    #view_assembly_a_b = sim.PopulationView(assembly_a_b, slice(0, 10))
+    #assert view_assembly_a_b._underlying_populations == set((pop_a, pop_b))
