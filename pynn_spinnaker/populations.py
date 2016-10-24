@@ -58,16 +58,6 @@ class Assembly(common.Assembly):
             pops.update(p._underlying_populations)
         return pops
 
-    @property
-    def _mean_firing_rate(self):
-        firing_rate = 0.0
-        num_neurons = 0
-        for p in self.populations:
-            num_neurons += p.size
-            firing_rate += (p.size * p._mean_firing_rate)
-
-        return firing_rate / float(num_neurons)
-
 # --------------------------------------------------------------------------
 # PopulationView
 # --------------------------------------------------------------------------
@@ -118,10 +108,6 @@ class PopulationView(common.PopulationView):
         # Follow views down to grandparent and then
         # return its underlying populations
         return self.grandparent._underlying_populations
-
-    @property
-    def _mean_firing_rate(self):
-        return self.grandparent._mean_firing_rate
 
 # --------------------------------------------------------------------------
 # Population
@@ -386,43 +372,38 @@ class Population(common.Population):
         # Loop again through incoming synapse types to estimate i_constraints
         synapse_num_i_cores = {}
         for s_type, pre_pop_projections in iteritems(self._incoming_projections):
-            # Get list of synaptic connections
-            projections = itertools.chain.from_iterable(
-                itervalues(pre_pop_projections))
-            synaptic_projections = [p for p in projections
-                                    if not p._directly_connectable]
+            for pre_pop, projections in iteritems(pre_pop_projections):
+                # Filter projection
+                synaptic_projections = [p for p in projections
+                                        if not p._directly_connectable]
 
-            # If there are any
-            if len(synaptic_projections) > 0:
-                 # Build suitable post-slice for
-                post_slice = UnitStrideSlice(
-                    0, self.synapse_j_constraints[s_type])
+                # If there are any
+                if len(synaptic_projections) > 0:
+                    # Build suitable post-slice for
+                    post_slice = UnitStrideSlice(
+                        0, self.synapse_j_constraints[s_type])
 
-                # Loop through list of projections
-                total_synaptic_event_rate = 0.0
-                for proj in synaptic_projections:
-                    # If projection is directly connectable, skip
-                    if proj._directly_connectable:
-                        continue
+                    # Loop through list of projections
+                    total_synaptic_event_rate = 0.0
+                    for proj in synaptic_projections:
+                        # Estimate number of synapses the connection between
+                        # The pre and the post-slice of neurons will contain
+                        total_synapses = proj._estimate_num_synapses(
+                            UnitStrideSlice(0, proj.pre.size), post_slice)
 
-                    # Estimate number of synapses the connection between
-                    # The pre and the post-slice of neurons will contain
-                    total_synapses = proj._estimate_num_synapses(
-                        UnitStrideSlice(0, proj.pre.size), post_slice)
+                        # Use this to calculate event rate
+                        pre_rate = pre_pop.spinnaker_config.mean_firing_rate
+                        total_synaptic_event_rate += total_synapses * pre_rate
 
-                    # Use this to calculate event rate
-                    pre_mean_rate = proj.pre._mean_firing_rate
-                    total_synaptic_event_rate += total_synapses * pre_mean_rate
+                    num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model._max_synaptic_event_rate)))
+                    logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
+                                s_type.model.__class__.__name__, s_type.receptor,
+                                total_synaptic_event_rate, num_i_cores)
 
-                num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model._max_synaptic_event_rate)))
-                logger.debug("\t\tSynapse type:%s, receptor:%s - Total synaptic event rate:%f, num cores:%u",
-                            s_type.model.__class__.__name__, s_type.receptor,
-                            total_synaptic_event_rate, num_i_cores)
+                    # Add number of i cores to dictionary
+                    synapse_num_i_cores[s_type] = num_i_cores
 
-                # Add number of i cores to dictionary
-                synapse_num_i_cores[s_type] = num_i_cores
-
-        # Now determin the maximum constraint i.e. the 'width'
+        # Now determine the maximum constraint i.e. the 'width'
         # that will be constrained together
         max_j_constraint = self.neuron_j_constraint
         if len(self.synapse_j_constraints) > 0 or len(current_input_j_constraints) > 0:
@@ -550,8 +531,8 @@ class Population(common.Population):
                 net_keys[net] = net_key
 
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
-                            matrix_rows, weight_range,
-                            **connection_parameters):
+                            underlying_pre_indices, underlying_post_indices,
+                            matrix_rows, weight_range,  **connection_parameters):
         # Convert delay into timesteps and round
         delay_timesteps = np.around(
             connection_parameters["delay"] / float(self._simulator.state.dt))
@@ -576,11 +557,11 @@ class Population(common.Population):
             # Make weight iterable using repeat
             weight = itertools.repeat(weight)
 
-        print presynaptic_indices
-        assert False
         # Add synapse to each row
-        for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
-            matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
+        for i, w, d in zip(underlying_pre_indices[presynaptic_indices], weight,
+                           delay_timesteps):
+            matrix_rows[i].append(
+                Synapse(w, d, underlying_post_indices[postsynaptic_index]))
 
     def _allocate_out_buffers(self, placements, allocations, machine_controller):
         logger.info("\tPopulation label:%s", self.label)
@@ -625,10 +606,6 @@ class Population(common.Population):
     @property
     def _underlying_indices(self):
         return np.arange(self.size)
-
-    @property
-    def _mean_firing_rate(self):
-        return self.spinnaker_config.mean_firing_rate
 
     @property
     def _entirely_directly_connectable(self):

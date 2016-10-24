@@ -201,15 +201,20 @@ class Projection(common.Projection, ContextMixin):
 
     @ContextMixin.use_contextual_arguments()
     def _synaptic_convergent_connect(self, presynaptic_indices,
-                                     postsynaptic_index, matrix_rows,
+                                     postsynaptic_index,
+                                     underlying_pre_indices,
+                                     underlying_post_indices, matrix_rows,
                                      weight_range, **connection_parameters):
         self.post._convergent_connect(presynaptic_indices, postsynaptic_index,
+                                      underlying_pre_indices,
+                                      underlying_post_indices,
                                       matrix_rows, weight_range,
                                       **connection_parameters)
 
     @ContextMixin.use_contextual_arguments()
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
-                            directly_connect, **connection_parameters):
+                            directly_connect, underlying_pre_indices,
+                            underlying_post_indices, **connection_parameters):
         # If post-synaptic population in an assembly
         if isinstance(self.post, common.Assembly):
             assert False
@@ -224,6 +229,8 @@ class Projection(common.Projection, ContextMixin):
             else:
                 self._synaptic_convergent_connect(presynaptic_indices,
                                                   postsynaptic_index,
+                                                  underlying_pre_indices,
+                                                  underlying_post_indices,
                                                   **connection_parameters)
 
     def _build_direct_connection(self):
