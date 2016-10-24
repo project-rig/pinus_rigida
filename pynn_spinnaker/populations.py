@@ -45,6 +45,13 @@ class Assembly(common.Assembly):
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
     @property
+    def _underlying_indices(self):
+        indices = self.populations[0]._underlying_indices
+        for p in self.populations[1:]:
+            indices = np.concatenate((indices, p._underlying_indices))
+        return indices
+
+    @property
     def _underlying_populations(self):
         pops = set()
         for p in self.populations:
@@ -100,8 +107,12 @@ class PopulationView(common.PopulationView):
         return PopulationView(self, selector, label)
 
     # --------------------------------------------------------------------------
-    # Internal SpiNNaker methods
+    # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
+    @property
+    def _underlying_indices(self):
+        return self.grandparent._underlying_indices[self.mask]
+
     @property
     def _underlying_populations(self):
         # Follow views down to grandparent and then
@@ -611,6 +622,10 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
+    @property
+    def _underlying_indices(self):
+        return np.arange(self.size)
+
     @property
     def _mean_firing_rate(self):
         return self.spinnaker_config.mean_firing_rate
