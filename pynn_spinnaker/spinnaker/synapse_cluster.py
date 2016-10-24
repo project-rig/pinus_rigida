@@ -201,7 +201,10 @@ class SynapseCluster(object):
 
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
-                for pre_vertex in proj.pre._neural_cluster.verts:
+                pre_n_verts = itertools.chain.from_iterable(
+                    p._neural_cluster.verts
+                    for p in proj.pre._underlying_populations)
+                for pre_vertex in pre_n_verts:
                     logger.debug("\t\t\t\t\tPre slice:%s",
                                  str(pre_vertex.neuron_slice))
 
@@ -217,7 +220,7 @@ class SynapseCluster(object):
                         continue
 
                     # Use this to calculate event rate
-                    pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
+                    pre_mean_rate = proj.pre._mean_firing_rate
                     pre_rate = total_synapses * pre_mean_rate
 
                     # Estimate MAXIMUM number of synapses that may be in a row

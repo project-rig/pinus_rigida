@@ -51,6 +51,16 @@ class Assembly(common.Assembly):
             pops.update(p._underlying_populations)
         return pops
 
+    @property
+    def _mean_firing_rate(self):
+        firing_rate = 0.0
+        num_neurons = 0
+        for p in self.populations:
+            num_neurons += p.size
+            firing_rate += (p.size * p._mean_firing_rate)
+
+        return firing_rate / float(num_neurons)
+
 # --------------------------------------------------------------------------
 # PopulationView
 # --------------------------------------------------------------------------
@@ -97,6 +107,10 @@ class PopulationView(common.PopulationView):
         # Follow views down to grandparent and then
         # return its underlying populations
         return self.grandparent._underlying_populations
+
+    @property
+    def _mean_firing_rate(self):
+        return self.grandparent._mean_firing_rate
 
 # --------------------------------------------------------------------------
 # Population
@@ -386,7 +400,7 @@ class Population(common.Population):
                         UnitStrideSlice(0, proj.pre.size), post_slice)
 
                     # Use this to calculate event rate
-                    pre_mean_rate = proj.pre.spinnaker_config.mean_firing_rate
+                    pre_mean_rate = proj.pre._mean_firing_rate
                     total_synaptic_event_rate += total_synapses * pre_mean_rate
 
                 num_i_cores = int(math.ceil(total_synaptic_event_rate / float(s_type.model._max_synaptic_event_rate)))
@@ -551,6 +565,8 @@ class Population(common.Population):
             # Make weight iterable using repeat
             weight = itertools.repeat(weight)
 
+        print presynaptic_indices
+        assert False
         # Add synapse to each row
         for i, w, d in zip(presynaptic_indices, weight, delay_timesteps):
             matrix_rows[i].append(Synapse(w, d, postsynaptic_index))
@@ -595,6 +611,10 @@ class Population(common.Population):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
+    @property
+    def _mean_firing_rate(self):
+        return self.spinnaker_config.mean_firing_rate
+
     @property
     def _entirely_directly_connectable(self):
         # If conversion of direct connections is disabled, return false
