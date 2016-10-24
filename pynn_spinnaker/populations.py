@@ -7,7 +7,7 @@ from rig import machine
 from pyNN import common
 
 # Import classes
-from collections import defaultdict, Iterable, namedtuple
+from collections import defaultdict
 from operator import itemgetter
 from pyNN.standardmodels import StandardCellType
 from pyNN.parameters import ParameterSpace
@@ -25,8 +25,6 @@ from pyNN.parameters import simplify
 from six import iteritems, iterkeys, itervalues
 
 logger = logging.getLogger("pynn_spinnaker")
-
-Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
 # Round a j constraint to the lowest power-of-two
 # multiple of the minium j constraint
@@ -501,10 +499,11 @@ class Population(common.Population):
         logger.debug("\tPopulation label:%s", self.label)
 
         # Get synapse vertices associated
-        # with post-synaptic population
+        # with underlying post-synaptic populations
         post_s_verts = list(itertools.chain.from_iterable(
-            [o.post._synapse_clusters[o._synapse_cluster_type].verts
-            for o in self._outgoing_projections]))
+            p._synapse_clusters[o._synapse_cluster_type].verts
+            for o in self._outgoing_projections
+            for p in o.post._underlying_populations))
 
         logger.debug("\t\t%u post-synaptic vertices",
                         len(post_s_verts))
@@ -529,39 +528,6 @@ class Population(common.Population):
                 # Add net to list and associate with key
                 nets.append(net)
                 net_keys[net] = net_key
-
-    def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
-                            underlying_pre_indices, underlying_post_indices,
-                            matrix_rows, weight_range,  **connection_parameters):
-        # Convert delay into timesteps and round
-        delay_timesteps = np.around(
-            connection_parameters["delay"] / float(self._simulator.state.dt))
-        delay_timesteps = delay_timesteps.astype(int)
-
-        # Check that delays are greater than zero after converting to timesteps
-        assert np.all(delay_timesteps > 0)
-
-        # If delay is not iterable, make it so using repeat
-        if not isinstance(delay_timesteps, Iterable):
-            delay_timesteps = itertools.repeat(delay_timesteps)
-
-        # If weight is an iterable, update weight range
-        weight = connection_parameters["weight"]
-        if isinstance(weight, Iterable):
-            weight_range.update_iter(weight)
-        # Otherwise
-        else:
-            # Update weight range
-            weight_range.update(weight)
-
-            # Make weight iterable using repeat
-            weight = itertools.repeat(weight)
-
-        # Add synapse to each row
-        for i, w, d in zip(underlying_pre_indices[presynaptic_indices], weight,
-                           delay_timesteps):
-            matrix_rows[i].append(
-                Synapse(w, d, underlying_post_indices[postsynaptic_index]))
 
     def _allocate_out_buffers(self, placements, allocations, machine_controller):
         logger.info("\tPopulation label:%s", self.label)

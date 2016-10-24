@@ -371,9 +371,10 @@ class SynapseCluster(object):
 
                         # Create new local mask to select only the columns
                         # corresponding to neurons in postsynaptic vertex
-                        proj.post._mask_local = np.zeros((proj.post.size,),
-                                                         dtype=bool)
-                        proj.post._mask_local[post_slice.python_slice] = True
+                        underlying_post_idxs = proj.post._underlying_indices
+                        proj.post._mask_local = (
+                            (underlying_post_idxs >= post_slice.start) &
+                            (underlying_post_idxs < post_slice.stop))
 
                         # Cache original connector callback
                         old_connector_callback = proj._connector.callback
@@ -391,7 +392,6 @@ class SynapseCluster(object):
                         proj._connector.callback = old_connector_callback
 
                     # Convert rows to numpy and add to dictionary
-                    assert pre_pop.__class__.__name__ == "Population"
                     pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
                                                 for r in sub_rows]
 

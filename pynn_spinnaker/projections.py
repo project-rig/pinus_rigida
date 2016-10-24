@@ -14,7 +14,7 @@ import scipy
 from rig import machine
 
 # Import classes
-from collections import namedtuple
+from collections import namedtuple, Iterable
 from rig.utils.contexts import ContextMixin
 from spinnaker.current_input_cluster import CurrentInputCluster
 from .standardmodels.synapses import StaticSynapse
@@ -24,6 +24,8 @@ from .random import NativeRNG
 from spinnaker.utils import get_model_comparable, is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
+
+Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
 # --------------------------------------------------------------------------
 # SynapseClusterType
@@ -205,11 +207,35 @@ class Projection(common.Projection, ContextMixin):
                                      underlying_pre_indices,
                                      underlying_post_indices, matrix_rows,
                                      weight_range, **connection_parameters):
-        self.post._convergent_connect(presynaptic_indices, postsynaptic_index,
-                                      underlying_pre_indices,
-                                      underlying_post_indices,
-                                      matrix_rows, weight_range,
-                                      **connection_parameters)
+        # Convert delay into timesteps and round
+        delay_timesteps = np.around(
+            connection_parameters["delay"] / float(self._simulator.state.dt))
+        delay_timesteps = delay_timesteps.astype(int)
+
+        # Check that delays are greater than zero after converting to timesteps
+        assert np.all(delay_timesteps > 0)
+
+        # If delay is not iterable, make it so using repeat
+        if not isinstance(delay_timesteps, Iterable):
+            delay_timesteps = itertools.repeat(delay_timesteps)
+
+        # If weight is an iterable, update weight range
+        weight = connection_parameters["weight"]
+        if isinstance(weight, Iterable):
+            weight_range.update_iter(weight)
+        # Otherwise
+        else:
+            # Update weight range
+            weight_range.update(weight)
+
+            # Make weight iterable using repeat
+            weight = itertools.repeat(weight)
+
+        # Add synapse to each row
+        for i, w, d in zip(underlying_pre_indices[presynaptic_indices], weight,
+                           delay_timesteps):
+            matrix_rows[i].append(
+                Synapse(w, d, underlying_post_indices[postsynaptic_index]))
 
     @ContextMixin.use_contextual_arguments()
     def _convergent_connect(self, presynaptic_indices, postsynaptic_index,
