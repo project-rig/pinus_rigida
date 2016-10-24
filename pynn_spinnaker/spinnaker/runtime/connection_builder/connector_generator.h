@@ -35,7 +35,8 @@ public:
   // Declared virtuals
   //-----------------------------------------------------------------------------
   virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons, MarsKiss64 &rng,
+                                unsigned int numPostNeurons,
+				unsigned int vertexPostSlice, MarsKiss64 &rng,
                                 uint32_t (&indices)[1024]) const = 0;
 
 };
@@ -52,11 +53,32 @@ public:
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons, MarsKiss64 &rng,
+                                unsigned int numPostNeurons,
+				unsigned int vertexPostSlice, MarsKiss64 &rng,
                                 uint32_t (&indices)[1024]) const;
 
 private:
   AllToAll(uint32_t *&);
+};
+
+//-----------------------------------------------------------------------------
+// OneToOne
+//-----------------------------------------------------------------------------
+class OneToOne : public Base
+{
+public:
+  ADD_FACTORY_CREATOR(OneToOne);
+
+  //-----------------------------------------------------------------------------
+  // Base virtuals
+  //-----------------------------------------------------------------------------
+  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
+                                unsigned int numPostNeurons,
+				unsigned int vertexPostSlice, MarsKiss64 &rng,
+                                uint32_t (&indices)[1024]) const;
+
+private:
+  OneToOne(uint32_t *&);
 };
 
 //-----------------------------------------------------------------------------
@@ -71,7 +93,8 @@ public:
   // Base virtuals
   //-----------------------------------------------------------------------------
   virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons, MarsKiss64 &rng,
+                                unsigned int numPostNeurons,
+				unsigned int vertexPostSlice, MarsKiss64 &rng,
                                 uint32_t (&indices)[1024]) const;
 
 private:

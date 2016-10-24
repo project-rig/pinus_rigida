@@ -79,6 +79,7 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
 
   // Loop through matrices to generate
   const uint32_t numMatricesToGenerate = *region++;
+  const uint32_t postVertexSlice = *region++;
   for(unsigned int i = 0; i < numMatricesToGenerate; i++)
   {
     // Read basic matrix properties
@@ -126,7 +127,7 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
                 matrixAddress, matrixRowSynapses);
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
                                 g_AppWords[AppWordWeightFixedPoint],
-                                g_AppWords[AppWordNumPostNeurons], numRows,
+                                g_AppWords[AppWordNumPostNeurons], numRows, postVertexSlice,
                                 connectorGenerator, delayGenerator, weightGenerator,
                                 rng);
 
@@ -211,6 +212,7 @@ extern "C" void c_main()
   // Register connector generators with factories
   LOG_PRINT(LOG_LEVEL_INFO, "Connector generators");
   REGISTER_FACTORY_CLASS("AllToAllConnector", ConnectorGenerator, AllToAll);
+  REGISTER_FACTORY_CLASS("OneToOneConnector", ConnectorGenerator, OneToOne);
   REGISTER_FACTORY_CLASS("FixedProbabilityConnector", ConnectorGenerator, FixedProbability);
 
   // Register parameter generators with factories

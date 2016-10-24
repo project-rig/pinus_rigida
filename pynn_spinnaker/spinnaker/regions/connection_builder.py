@@ -197,7 +197,7 @@ class ConnectionBuilder(Region):
         fp.write(seed.tostring())
 
         # Write number of matrices
-        fp.write(struct.pack("I", num_chip_matrices))
+        fp.write(struct.pack("II", num_chip_matrices, post_vertex_slice.start))
 
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):

@@ -14,6 +14,7 @@ ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&)
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  unsigned int vertexPostSlice,
   MarsKiss64 &, uint32_t (&indices)[1024]) const
 {
   if(numPostNeurons != maxRowSynapses)
@@ -33,6 +34,30 @@ unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
 }
 
 //-----------------------------------------------------------------------------
+// ConnectionBuilder::ConnectorGenerator::OneToOne
+//-----------------------------------------------------------------------------
+ConnectionBuilder::ConnectorGenerator::OneToOne::OneToOne(uint32_t *&)
+{
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tOne-to-one connector");
+}
+//-----------------------------------------------------------------------------
+unsigned int ConnectionBuilder::ConnectorGenerator::OneToOne::Generate(
+  unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  unsigned int vertexPostSlice,
+  MarsKiss64 &, uint32_t (&indices)[1024]) const
+{
+  // The column index relative to the start of this post slice that
+  // corresponds to this row
+  unsigned int offsetColumn = row - vertexPostSlice;
+  unsigned int k = 0;
+  // If that index is within this slice, add index to row
+  if (offsetColumn >= 0 || offsetColumn < numPostNeurons)
+    indices[k++] = offsetColumn;
+
+  return k;
+}
+
+//-----------------------------------------------------------------------------
 // ConnectionBuilder::ConnectorGenerator::FixedProbability
 //-----------------------------------------------------------------------------
 ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32_t *&region)
@@ -46,6 +71,7 @@ ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  unsigned int vertexPostSlice,
   MarsKiss64 &rng, uint32_t (&indices)[1024]) const
 {
   // Write indices
