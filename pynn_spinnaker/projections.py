@@ -70,30 +70,17 @@ class Projection(common.Projection, ContextMixin):
         # Add projection to simulator
         self._simulator.state.projections.append(self)
 
-        # If pre-synaptic population in an assembly
-        if isinstance(self.pre, common.Assembly):
-            # Add this projection to each pre-population in
-            # assembly's list of outgoing connections
-            for p in self.pre.populations:
-                p._outgoing_projections.append(self)
-        # Otherwise add it to the pre-synaptic population's list
-        # **THINK** what about population-views? add to their parent?
-        else:
-            self.pre._outgoing_projections.append(self)
+        # Add projection to the list of outgoing projections
+        # associated with the populations underlying pre
+        for p in self.pre._underlying_populations:
+            p._outgoing_projections.append(self)
 
-        # If post-synaptic population in an assembly
-        if isinstance(self.post, common.Assembly):
-            assert self.post._homogeneous_synapses, (
-                "Inhomogeneous assemblies not yet supported")
-
-            # Add this projection to each post-population in
-            # assembly's list of incoming connections
-            for p in self.post.populations:
-                p._incoming_projections[self._synapse_cluster_type][self.pre].append(self)
-        # Otherwise add it to the post-synaptic population's list
-        # **THINK** what about population-views? add to their parent?
-        else:
-            self.post._incoming_projections[self._synapse_cluster_type][self.pre].append(self)
+        # Loop through all pairs of underlying pre and post synaptic
+        # populations and add to incoming projections structure
+        s_type = self._synapse_cluster_type
+        for pre, post in itertools.product(self.pre._underlying_populations,
+                                           self.post._underlying_populations):
+            post._incoming_projections[s_type][pre].append(self)
 
     def __len__(self):
         raise NotImplementedError
