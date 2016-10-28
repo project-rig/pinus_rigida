@@ -1,7 +1,6 @@
 # Import modules
 import lazyarray as la
 from spinnaker import lazy_param_map
-import numpy as np
 
 # Import classes
 from pyNN.random import NativeRNG
@@ -31,8 +30,6 @@ class NativeRNG(NativeRNG):
         "uniform_int":  lambda parameters: parameters["high"]
     }
 
-    _SeedWords = 4
-
     def __init__(self, host_rng, seed=None):
         # Superclass
         super(NativeRNG, self).__init__(seed)
@@ -40,10 +37,6 @@ class NativeRNG(NativeRNG):
         # Cache RNG to use on the host
         assert host_rng is not None
         self._host_rng = host_rng
-
-        # Generate four word base seed for SpiNNaker RNGs
-        self._base_seed = np.random.RandomState(seed=seed).randint(
-            2**32, dtype=np.uint32, size=self._SeedWords)
 
     # ------------------------------------------------------------------------
     # AbstractRNG methods

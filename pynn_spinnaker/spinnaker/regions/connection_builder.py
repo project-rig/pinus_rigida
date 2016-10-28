@@ -96,6 +96,7 @@ def _get_native_rngs(chip_sub_matrix_projs):
 # ConnectionBuilder
 # ------------------------------------------------------------------------------
 class ConnectionBuilder(Region):
+    SeedWords = 4
 
     def __init__(self, sim_timestep_ms):
         self.sim_timestep_ms = sim_timestep_ms
@@ -149,7 +150,7 @@ class ConnectionBuilder(Region):
             connector = proj[0]._connector
 
             # Add words for seed
-            size += native_rngs[0]._SeedWords * 4
+            size += self.SeedWords * 4
 
             # Add words for key and type hashes to size
             size += (6 * 4)
@@ -198,16 +199,18 @@ class ConnectionBuilder(Region):
         # Write number of matrices
         fp.write(struct.pack("I", num_chip_matrices))
 
+        # RNG for generating SpiNNaker KISS RNG seeds
+        seed_generator = np.random.RandomState(seed=rngs[0].seed)
+
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
 
-            # **todo** add id as attribute of projection
-            projection_id = proj[0]._simulator.state.projections.index(proj[0])
-
-            seed = np.copy(rngs[0]._base_seed)
-            seed[0] = (seed[0] + projection_id) % 2**32
-            seed[1] = (seed[1] + post_slice_index) % 2**32
-            seed[2] = (seed[2] + prop.pre_slice_index) % 2**32
+            # Generate four word base seed for SpiNNaker KISS RNG
+            # Note, if we instantiate more than 54,000 KISS RNGs
+            # with random seeds, it is probable that two will share
+            # the same state for one of their sub-RNGs.
+            seed = seed_generator.randint(
+                2**32, dtype=np.uint32, self.SeedWords)
 
             fp.write(seed.tostring())
 
