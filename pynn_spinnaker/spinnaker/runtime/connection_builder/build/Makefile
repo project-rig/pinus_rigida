@@ -5,7 +5,8 @@ SOURCES = ../connection_builder.cpp \
 	../connector_generator.cpp \
 	../matrix_generator.cpp \
 	../param_generator.cpp \
-	../../common/config.cpp
+	../../common/config.cpp \
+	../../common/maths/normal.cpp
 
 CFLAGS += -I $(CURDIR)
 
