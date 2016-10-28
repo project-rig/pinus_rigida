@@ -199,17 +199,34 @@ class SynapseCluster(object):
                 if proj._can_generate_on_chip:
                     generate_matrix_on_chip = True
 
+                # If all postsynaptic neurons targeted by this
+                # projection are outside post_slice, skip
+                underlying_post_idxs = proj.post._underlying_indices
+                if np.all((underlying_post_idxs < post_slice.start) |
+                          (underlying_post_idxs >= post_slice.stop)):
+                    logger.debug("\t\t\t\t\tPost slice outside view")
+                    continue
+
                 # Loop through the vertices which the pre-synaptic
                 # population has been partitioned into
+                underlying_pre_idxs = proj.pre._underlying_indices
                 for pre_pop in proj.pre._underlying_populations:
                     for pre_vertex in pre_pop._neural_cluster.verts:
+                        pre_slice = pre_vertex.neuron_slice
                         logger.debug("\t\t\t\t\tPre slice:%s",
-                                    str(pre_vertex.neuron_slice))
+                                    str(pre_slice))
+
+                        # If all presynaptic neurons targeted by this
+                        # projection are outside pre_slice, skip
+                        if np.all((underlying_pre_idxs < pre_slice.start) |
+                                  (underlying_pre_idxs >= pre_slice.stop)):
+                            logger.debug("\t\t\t\t\t\tPre slice outside view")
+                            continue
 
                         # Estimate number of synapses the connection between
                         # The pre and the post-slice of neurons will contain
                         total_synapses = proj._estimate_num_synapses(
-                            pre_vertex.neuron_slice, post_slice)
+                            pre_slice, post_slice)
 
                         # If this projection doesn't result in any
                         # synapses don't add connection
@@ -224,12 +241,12 @@ class SynapseCluster(object):
                         # Estimate MAXIMUM number of
                         # synapses that may be in a row
                         max_row_synapses = proj._estimate_max_row_synapses(
-                            pre_vertex.neuron_slice, post_slice)
+                            pre_slice, post_slice)
 
                         # Based on this, estimate size of matrix
                         synaptic_matrix = self.regions[Regions.synaptic_matrix]
                         sdram_bytes = synaptic_matrix.estimate_matrix_bytes(
-                            pre_vertex.neuron_slice, max_row_synapses)
+                            pre_slice, max_row_synapses)
 
                         logger.debug("\t\t\t\t\t\tTotal synapses:%d, synaptic"
                                     " event rate:%f Hz, SDRAM:%u bytes",
