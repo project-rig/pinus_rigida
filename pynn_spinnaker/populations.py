@@ -364,7 +364,7 @@ class Population(common.Population):
                         continue
 
                     # Estimate CPU cycles required to process sub-matrix
-                    cpu_cycles = proj._estimate_row_processing_cpu_cycles(
+                    cpu_cycles = proj._estimate_spike_processing_cpu_cycles(
                         UnitStrideSlice(0, proj.pre.size), post_slice,
                         pre_rate=proj.pre.spinnaker_config.mean_firing_rate,
                         post_rate=proj.post.spinnaker_config.mean_firing_rate)

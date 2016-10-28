@@ -216,7 +216,7 @@ class SynapseCluster(object):
                         continue
 
                     # Estimate CPU cycles required to process sub-matrix
-                    cpu_cycles = proj._estimate_row_processing_cpu_cycles(
+                    cpu_cycles = proj._estimate_spike_processing_cpu_cycles(
                         pre_vertex.neuron_slice, post_slice,
                         pre_rate=proj.pre.spinnaker_config.mean_firing_rate,
                         post_rate=proj.post.spinnaker_config.mean_firing_rate)
@@ -229,18 +229,11 @@ class SynapseCluster(object):
                     logger.debug("\t\t\t\t\t\tCPU cycles:%u, SDRAM:%u bytes",
                                  cpu_cycles, sdram_bytes)
 
-                    # Add this connection to the synapse vertex
-                    vert.add_connection(proj.pre, pre_vertex)
-
-                    # Add cycles and SDRAM to totals
-                    # for current synapse processor
-                    vert_cpu_cycles += cpu_cycles
-                    vert_sdram_bytes += sdram_bytes
-
-                    # If the event rate is more than this type of synapse
-                    # processor can handle or the matrix requires more
-                    # than the 16mb the key lookup data structure can address
-                    if (vert_cpu_cycles >= 200E6 or vert_sdram_bytes > (16 * 1024 * 1024)):
+                    # If adding this projection would overtax a processor
+                    # can handle or the matrix requires more than the
+                    # 16mb the key lookup data structure can address
+                    if ((vert_cpu_cycles + cpu_cycles) >= 200E6
+                        or (vert_sdram_bytes + sdram_bytes) > (16 * 1024 * 1024)):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
                         vert_sdram.append(vert_sdram_bytes)
@@ -251,6 +244,14 @@ class SynapseCluster(object):
                         vert = Vertex(post_slice, receptor_index)
                         vert_cpu_cycles = synapse_model._constant_cpu_overhead
                         vert_sdram_bytes = 0
+
+                    # Add this connection to the synapse vertex
+                    vert.add_connection(proj.pre, pre_vertex)
+
+                    # Add cycles and SDRAM to totals
+                    # for current synapse processor
+                    vert_cpu_cycles += cpu_cycles
+                    vert_sdram_bytes += sdram_bytes
 
             # If the last synapse vertex created had any incoming connections
             if len(vert.incoming_connections) > 0:
