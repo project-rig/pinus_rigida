@@ -2,6 +2,7 @@
 import enum
 import itertools
 import logging
+import numpy as np
 import regions
 from rig import machine
 
@@ -37,6 +38,7 @@ class Regions(enum.IntEnum):
     analogue_recording_start = analogue_recording_0
     analogue_recording_end = analogue_recording_3 + 1
     profiler = analogue_recording_end
+    statistics = analogue_recording_end + 1
 
 
 # ----------------------------------------------------------------------------
@@ -141,6 +143,12 @@ class NeuralCluster(object):
         2:  "Apply buffer",
     }
 
+    # Names of statistics
+    statistic_names = (
+        "task_queue_full",
+        "timer_event_overflows",
+    )
+
     def __init__(self, pop_id, cell_type, parameters, initial_values,
                  sim_timestep_ms, timer_period_us, sim_ticks,
                  record_sample_interval, indices_to_record, config,
@@ -157,9 +165,10 @@ class NeuralCluster(object):
             requires_back_prop)
         self.regions[Regions.flush] = regions.Flush(config.flush_time,
                                                     sim_timestep_ms)
-
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
+        self.regions[Regions.statistics] = regions.Statistics(
+            len(self.statistic_names))
 
         # If cell type has any receptors i.e. any need for synaptic input
         if len(cell_type.receptor_types) > 0:
@@ -323,6 +332,21 @@ class NeuralCluster(object):
                  region.read_profile(v.region_memory[Regions.profiler],
                                      self.profiler_tag_names))
                 for v in self.verts]
+
+    def read_statistics(self):
+        # Get the statistics recording region
+        region = self.regions[Regions.statistics]
+
+        # Convert stats to numpy array
+        # **TODO** this slightly gnarly numpy stuff could move into utils
+        np_stats = np.asarray([region.read_stats(v.region_memory[Regions.statistics])
+                            for v in self.verts])
+        # Convert stats into record array
+        stat_names = ",".join(self.statistic_names)
+        stat_format = ",".join(
+            itertools.repeat("u4", len(self.statistic_names)))
+        return np.core.records.fromarrays(np_stats.T, names=stat_names,
+                                          formats=stat_format)
 
     # --------------------------------------------------------------------------
     # Private methods
