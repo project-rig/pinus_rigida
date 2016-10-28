@@ -166,8 +166,8 @@ class AdditiveWeightDependence(synapses.AdditiveWeightDependence):
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
     _plasticity_param_map = [
-        ("w_min", "i4", lazy_param_map.s32_weight_fixed_point),
-        ("w_max", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("w_min", "i4", lazy_param_map.s32_fixed_point),
+        ("w_max", "i4", lazy_param_map.s32_fixed_point),
     ]
 
     _comparable_param_names =  ("w_max", "w_min")
@@ -191,8 +191,8 @@ class MultiplicativeWeightDependence(synapses.MultiplicativeWeightDependence):
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
     _plasticity_param_map = [
-        ("w_min", "i4", lazy_param_map.s32_weight_fixed_point),
-        ("w_max", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("w_min", "i4", lazy_param_map.s32_fixed_point),
+        ("w_max", "i4", lazy_param_map.s32_fixed_point),
     ]
 
     _comparable_param_names =  ("w_max", "w_min")
@@ -225,8 +225,8 @@ class SpikePairRule(synapses.SpikePairRule):
                                       num_entries=256, time_shift=0)),
         ("tau_minus", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                        num_entries=256, time_shift=0)),
-        ("a_plus", "i4", lazy_param_map.s32_weight_fixed_point),
-        ("a_minus", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("a_plus", "i4", lazy_param_map.s32_fixed_point),
+        ("a_minus", "i4", lazy_param_map.s32_fixed_point),
     ]
 
     _comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
@@ -253,8 +253,8 @@ class Vogels2011Rule(synapses.Vogels2011Rule):
         ("rho", "i4", lazy_param_map.s2011),
         ("tau", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                  num_entries=256, time_shift=0)),
-        ("eta", "i4", lazy_param_map.s32_weight_fixed_point),
-        ("eta", "i4", lazy_param_map.s32_weight_fixed_point),
+        ("eta", "i4", lazy_param_map.s32_fixed_point),
+        ("eta", "i4", lazy_param_map.s32_fixed_point),
     ]
 
     _comparable_param_names = ("tau", "eta", "rho")

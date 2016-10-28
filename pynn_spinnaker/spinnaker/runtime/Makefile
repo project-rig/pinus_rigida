@@ -5,7 +5,7 @@
 # ----------------------------------------------------------------------------
 # Code derived from Andrew Mundy and Andrew Rowley, University of Manchester
 
-APPS = neuron_processor synapse_processor spike_source current_input
+APPS = neuron_processor synapse_processor spike_source current_input connection_builder
 
 all :
 	for a in $(APPS); do ( cd $$a; "$(MAKE)" ) || exit $$?; done

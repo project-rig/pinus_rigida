@@ -23,6 +23,7 @@ import simulator
 from .standardmodels.cells import *
 from .standardmodels.synapses import *
 from .connectors import *
+from .random import NativeRNG
 from .populations import Population, PopulationView, Assembly
 from .projections import Projection
 
@@ -55,18 +56,18 @@ def setup(timestep=DEFAULT_TIMESTEP, min_delay=DEFAULT_MIN_DELAY,
     simulator.state.min_delay = min_delay
     simulator.state.max_delay = max_delay
     simulator.state.spinnaker_hostname = extra_params.get("spinnaker_hostname")
-    simulator.state.spalloc_num_boards = extra_params.get("spalloc_num_boards")
     simulator.state.realtime_proportion =\
         extra_params.get("realtime_proportion", 1.0)
     simulator.state.convert_direct_connections =\
         extra_params.get("convert_direct_connections", True)
+    simulator.state.generate_connections_on_chip =\
+        extra_params.get("generate_connections_on_chip", True)
     simulator.state.stop_on_spinnaker =\
         extra_params.get("stop_on_spinnaker", True)
     simulator.state.disable_software_watchdog =\
         extra_params.get("disable_software_watchdog", False)
-
-    assert simulator.state.spinnaker_hostname is not None or\
-        simulator.state.spalloc_num_boards is not None
+    simulator.state.allocation_fudge_factor =\
+        extra_params.get("allocation_fudge_factor", 1.6)
 
     return rank()
 

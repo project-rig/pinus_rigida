@@ -33,9 +33,6 @@ cell_params = {
 # (Number of inhibitory neurons is proportional to this)
 NUM_EXCITATORY = 2000
 
-# SpiNNaker setup
-setup_kwargs =  {"spalloc_num_boards": 1}
-
 # Function to build the basic network - dynamics should be a PyNN synapse dynamics object
 def build_network(ie_synapse, e_mean_firing_rate):
     # Create excitatory and inhibitory populations of neurons
@@ -43,7 +40,7 @@ def build_network(ie_synapse, e_mean_firing_rate):
     in_pop = sim.Population(NUM_EXCITATORY / 4, model(**cell_params), label="I")
     
     # Randomize initial membrane voltages
-    rng = NumpyRNG()
+    rng = sim.NativeRNG(host_rng=NumpyRNG())
     uniformDistr = RandomDistribution('uniform', low=-60.0,
                                       high=-50.0, rng=rng)
     ex_pop.initialize(v=uniformDistr)
@@ -57,24 +54,25 @@ def build_network(ie_synapse, e_mean_firing_rate):
     
     # Make excitatory->inhibitory projections
     static_synapse = sim.StaticSynapse(weight=0.03)
-    sim.Projection(ex_pop, in_pop, sim.FixedProbabilityConnector(0.02),
-                   static_synapse, receptor_type='excitatory')
-    sim.Projection(ex_pop, ex_pop, sim.FixedProbabilityConnector(0.02),
-                   static_synapse, receptor_type='excitatory')
+    connector = sim.FixedProbabilityConnector(0.02, rng=rng)
+    sim.Projection(ex_pop, in_pop, connector, static_synapse,
+                   receptor_type='excitatory')
+    sim.Projection(ex_pop, ex_pop, connector, static_synapse,
+                   receptor_type='excitatory')
 
     # Make inhibitory->inhibitory projections
-    sim.Projection(in_pop, in_pop, sim.FixedProbabilityConnector(0.02),
-                   static_synapse, receptor_type='inhibitory')
+    sim.Projection(in_pop, in_pop, connector, static_synapse,
+                   receptor_type='inhibitory')
     
     # Make inhibitory->excitatory projections
-    ie_projection = sim.Projection(in_pop, ex_pop, sim.FixedProbabilityConnector(0.02),
-                                   ie_synapse, receptor_type='inhibitory')
+    ie_projection = sim.Projection(in_pop, ex_pop, connector, ie_synapse,
+                                   receptor_type='inhibitory')
 
     return ex_pop, ie_projection
 
 
 # Build static network
-sim.setup(timestep=1.0, **setup_kwargs)
+sim.setup(timestep=1.0)
 static_ex_pop,_ = build_network(sim.StaticSynapse(weight=0.0, delay=1.0), 300.0)
 
 # Run for 1s
@@ -84,7 +82,7 @@ sim.run(1000)
 static_data = static_ex_pop.get_data()
 
 # Clear simulation state
-sim.setup(min_delay=1.0, max_delay=7.0, timestep=1.0, **setup_kwargs)
+sim.setup(min_delay=1.0, max_delay=7.0, timestep=1.0)
 
 # Build inhibitory plasticity  model
 stdp_model = sim.STDPMechanism(

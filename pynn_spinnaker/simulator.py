@@ -12,10 +12,12 @@ from pyNN import common
 from rig.bitfield import BitField
 from rig.machine_control.consts import AppState, signal_types, AppSignal, MessageType
 from rig.machine_control.machine_controller import MachineController
+from rig.place_and_route.machine import Cores
 from rig.place_and_route.constraints import SameChipConstraint
 
 # Import functions
 from rig.place_and_route import place_and_route_wrapper
+from rig.place_and_route.utils import build_application_map
 from six import iteritems, itervalues
 
 logger = logging.getLogger("pynn_spinnaker")
@@ -110,7 +112,7 @@ class State(common.control.BaseState):
 
     def _wait_for_transition(self, placements, allocations,
                              from_state, to_state,
-                             num_verts):
+                             num_verts, timeout=5.0):
         while True:
             # If no cores are still in from_state, stop
             if self.machine_controller.count_cores_in_state(from_state) == 0:
@@ -122,7 +124,7 @@ class State(common.control.BaseState):
         # Wait for all cores to reach to_state
         cores_in_to_state =\
             self.machine_controller.wait_for_cores_to_reach_state(
-                to_state, num_verts, timeout=5.0)
+                to_state, num_verts, timeout=timeout)
         if cores_in_to_state != num_verts:
             # Loop through all placed vertices
             for vertex, (x, y) in iteritems(placements):
@@ -253,7 +255,8 @@ class State(common.control.BaseState):
 
         # Create empty dictionaries to contain Rig mappings
         # of vertices to  applications and resources
-        vertex_applications = {}
+        vertex_load_applications = {}
+        vertex_run_applications = {}
         vertex_resources = {}
 
         # Allocate clusters
@@ -263,20 +266,23 @@ class State(common.control.BaseState):
         for pop_id, pop in enumerate(self.populations):
             logger.debug("\tPopulation:%s", pop.label)
             pop._create_neural_cluster(pop_id, hardware_timestep_us, duration_timesteps,
-                                       vertex_applications, vertex_resources, keyspace)
+                                       vertex_load_applications, vertex_run_applications,
+                                       vertex_resources, keyspace)
 
         logger.info("Allocating synapse clusters")
         for pop in self.populations:
             logger.debug("\tPopulation:%s", pop.label)
             pop._create_synapse_clusters(hardware_timestep_us, duration_timesteps,
-                                       vertex_applications, vertex_resources)
+                                       vertex_load_applications, vertex_run_applications,
+                                       vertex_resources)
 
         logger.info("Allocating current input clusters")
         for proj in self.projections:
             # Create cluster
             c = proj._create_current_input_cluster(
                 hardware_timestep_us, duration_timesteps,
-                vertex_applications, vertex_resources)
+                vertex_load_applications, vertex_run_applications,
+                vertex_resources)
 
             # Add cluster to data structures
             if c is not None:
@@ -304,12 +310,21 @@ class State(common.control.BaseState):
         if self.machine_controller is None:
             logger.info("Connecting to SpiNNaker")
 
-            # If we should use spalloc
-            if self.spalloc_num_boards is not None:
+            # If no host is specified attempt to use spalloc
+            if self.spinnaker_hostname is None:
                 from spalloc import Job
 
+                # Fudge number of cores from number of vertices
+                num_cores = len(vertex_run_applications) *\
+                    self.allocation_fudge_factor
+
+                # Divide down to get boards
+                num_boards = int(np.ceil((num_cores / 16.0) / 48.0))
+                logger.info("Estimate %u cores and %u boards required",
+                            num_cores, num_boards)
+
                 # Request the job
-                self.spalloc_job = Job(self.spalloc_num_boards)
+                self.spalloc_job = Job(num_boards)
                 logger.info("Allocated spalloc job ID %u",
                             self.spalloc_job.id)
 
@@ -341,14 +356,14 @@ class State(common.control.BaseState):
             logger.debug("Found %u chip machine", len(self.system_info))
 
         # Place-and-route
+        # **NOTE** don't create application map at this stage
         logger.info("Placing and routing")
-        placements, allocations, application_map, routing_tables =\
-            place_and_route_wrapper(vertex_resources, vertex_applications,
+        placements, allocations, run_app_map, routing_tables =\
+            place_and_route_wrapper(vertex_resources, vertex_run_applications,
                                     nets, net_keys, self.system_info, constraints)
 
         # Convert placement values to a set to get unique list of chips
         unique_chips = set(itervalues(placements))
-
         logger.info("Placed on %u cores (%u chips)",
                     len(placements), len(unique_chips))
         logger.debug(list(itervalues(placements)))
@@ -390,8 +405,25 @@ class State(common.control.BaseState):
         # Load routing tables and applications
         logger.info("Loading routing tables")
         self.machine_controller.load_routing_tables(routing_tables)
+
+        # If an on-chip generation phase is required
+        if len(vertex_load_applications) > 0:
+            # Build map of vertex load applications to load
+            load_app_map = build_application_map(vertex_load_applications,
+                                                 placements, allocations,
+                                                 Cores)
+            logger.info("Loading loader applications")
+            self.machine_controller.load_application(load_app_map)
+
+            # Wait for all cores to exit
+            logger.info("Waiting for loader exit")
+            self._wait_for_transition(placements, allocations,
+                                    AppState.init, AppState.exit,
+                                    len(vertex_load_applications),
+                                    60.0)
+
         logger.info("Loading applications")
-        self.machine_controller.load_application(application_map)
+        self.machine_controller.load_application(run_app_map)
 
         # Wait for all cores to hit SYNC0
         logger.info("Waiting for synch")

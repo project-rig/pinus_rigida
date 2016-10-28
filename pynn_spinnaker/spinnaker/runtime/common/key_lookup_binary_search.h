@@ -4,21 +4,19 @@
 #include <cstdint>
 
 // Common includes
-#include "../common/arm_intrinsics.h"
-#include "../common/log.h"
-#include "../common/utils.h"
-
-// Synapse processor includes
+#include "arm_intrinsics.h"
+#include "log.h"
 #include "row_offset_length.h"
+#include "utils.h"
 
 // Namespaces
 using namespace Common::ARMIntrinsics;
 using namespace Common::Utils;
 
 //-----------------------------------------------------------------------------
-// SynapseProcessor::KeyLookupBinarySearch
+// Common::KeyLookupBinarySearch
 //-----------------------------------------------------------------------------
-namespace SynapseProcessor
+namespace Common
 {
 template<unsigned int S>
 class KeyLookupBinarySearch
@@ -31,9 +29,8 @@ public:
   //-----------------------------------------------------------------------------
   // Public API
   //-----------------------------------------------------------------------------
-  template<typename G>
-  bool LookupRow(uint32_t key, uint32_t *baseAddress, G getRowWordsFunction,
-                 unsigned int &rowWords, uint32_t *&rowAddress) const
+  bool LookupMatrix(uint32_t key, unsigned int &rowSynapses,
+                    unsigned int &wordOffset, uint32_t &mask) const
   {
     // Binary search lookup table
     unsigned int iMin = 0;
@@ -45,21 +42,10 @@ public:
       if ((key & lookupEntry.m_Mask) == lookupEntry.m_Key)
       {
         // Extract number of synapses and word offset from lookup entry
-        const unsigned int rowSynapses = lookupEntry.m_WordOffsetRowSynapses.GetNumSynapses();
-        const unsigned int wordOffset = lookupEntry.m_WordOffsetRowSynapses.GetWordOffset();
-        
-        // Extract neuron ID from key
-        // **NOTE** assumed to be at bottom of mask
-        const unsigned int neuronID = key &  ~lookupEntry.m_Mask;
-        
-        // Convert number of synapses to number of words 
-        rowWords = getRowWordsFunction(rowSynapses);
-        
-        // Add word offset to base address to get row address
-        // **NOTE** neuronID < 1024 and row words < 1024 - __smalbb!
-        rowAddress = baseAddress + (uint32_t)__smlabb(
-          (int32_t)neuronID, (int32_t)rowWords, (int32_t)wordOffset);
-        
+        rowSynapses = lookupEntry.m_WordOffsetRowSynapses.GetNumSynapses();
+        wordOffset = lookupEntry.m_WordOffsetRowSynapses.GetWordOffset();
+        mask = lookupEntry.m_Mask;
+
         return true;
       }
       // Otherwise, entry must be in upper part of the table
@@ -75,6 +61,35 @@ public:
     }
 
     return false;
+  }
+
+  template<typename G>
+  bool LookupRow(uint32_t key, uint32_t *baseAddress, G getRowWordsFunction,
+                 unsigned int &rowWords, uint32_t *&rowAddress) const
+  {
+    unsigned int rowSynapses;
+    unsigned int wordOffset;
+    uint32_t mask;
+    if(LookupMatrix(key, rowSynapses, wordOffset, mask))
+    {
+      // Extract neuron ID from key
+      // **NOTE** assumed to be at bottom of mask
+      const unsigned int neuronID = key &  ~mask;
+
+      // Convert number of synapses to number of words
+      rowWords = getRowWordsFunction(rowSynapses);
+
+      // Add word offset to base address to get row address
+      // **NOTE** neuronID < 1024 and row words < 1024 - __smalbb!
+      rowAddress = baseAddress + (uint32_t)__smlabb(
+        (int32_t)neuronID, (int32_t)rowWords, (int32_t)wordOffset);
+
+      return true;
+    }
+    else
+    {
+      return false;
+    }
   }
 
   bool ReadSDRAMData(uint32_t *region, uint32_t)

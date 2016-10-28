@@ -9,7 +9,8 @@ import tempfile
 from collections import defaultdict
 from pynn_spinnaker.spinnaker.regions import (ExtendedPlasticSynapticMatrix,
                                               KeyLookupBinarySearch,
-                                              PlasticSynapticMatrix)
+                                              PlasticSynapticMatrix,
+                                              StaticSynapticMatrix)
 from rig.bitfield import BitField
 
 # Import globals
@@ -41,6 +42,8 @@ def _generate_random_matrix(pre_size, post_slice, row_length, multapse):
                          [(1000, utils.UnitStrideSlice(0, 1000), 100)])
 @pytest.mark.parametrize("pre_vert_size", [500, 1000])
 @pytest.mark.parametrize("synaptic_matrix_region", [
+    StaticSynapticMatrix(mock.Mock(_max_dtcm_delay_slots=7,
+                                   _signed_weight=False)),
     ExtendedPlasticSynapticMatrix(mock.Mock(_max_dtcm_delay_slots=7,
                                             _signed_weight=False,
                                             _pre_state_bytes=10,
@@ -48,8 +51,9 @@ def _generate_random_matrix(pre_size, post_slice, row_length, multapse):
     PlasticSynapticMatrix(mock.Mock(_max_dtcm_delay_slots=7,
                                     _signed_weight=False,
                                     _pre_state_bytes=10))])
+@pytest.mark.parametrize("sim_timestep_ms", [0.1, 1.0])
 def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
-                        synaptic_matrix_region):
+                        synaptic_matrix_region, sim_timestep_ms):
     # Fix the seed so the test is consistent
     np.random.seed(123456)
 
@@ -99,7 +103,7 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
     post_s_vert.post_neuron_slice = post_slice
 
     # PyNN properties to read from weight matrix
-    names = ["presynaptic_index", "postsynaptic_index", "weight"]
+    names = ["presynaptic_index", "postsynaptic_index", "weight", "delay"]
 
     # Write the items to file
     with tempfile.TemporaryFile() as fp:
@@ -114,7 +118,7 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
         for pre_n_vert in incoming_connections[pre_pop]:
             # Read sub-matrix back
             synapses = np.hstack(synaptic_matrix_region.read_sub_matrix(
-                pre_n_vert, post_s_vert, names, fp))
+                pre_n_vert, post_s_vert, names, fp, sim_timestep_ms))
 
             # Loop through original rows we wrote
             orig_rows =\
@@ -136,7 +140,11 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
                 row_order = np.argsort(row["postsynaptic_index"])
 
                 # Check rows match
+                scaled_delay = np.multiply(orig_row[orig_row_order]["delay"],
+                                           sim_timestep_ms, dtype=float)
                 assert np.array_equal(orig_row[orig_row_order]["index"],
                                       row[row_order]["postsynaptic_index"])
                 assert np.allclose(orig_row[orig_row_order]["weight"],
                                       row[row_order]["weight"], atol=0.0001)
+                assert np.allclose(scaled_delay,
+                                   row[row_order]["delay"], atol=0.0001)

@@ -131,6 +131,9 @@ class IF_curr_exp(cells.IF_curr_exp):
     translations = deepcopy(if_curr_neuron_translations)
     translations.update(exp_synapse_translations)
 
+    # SpiNNaker additionally supports recording synaptic input currents
+    recordable = cells.IF_curr_exp.recordable + ["isyn_exc", "isyn_inh"]
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------

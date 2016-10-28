@@ -220,6 +220,9 @@ def extract_row_offset_length(offset_length, num_length_bits):
 
     return offset, length
 
+def is_scalar(value):
+    return isinstance(value, (int, long, np.integer, float, bool))
+
 def get_model_executable_filename(prefix, model, profiled):
     # Find directory in which model class is located
     model_directory = path.dirname(inspect.getfile(model.__class__))
