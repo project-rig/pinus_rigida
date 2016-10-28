@@ -156,6 +156,13 @@ class Population(common.Population):
         return {t: c.read_statistics()
                 for t, c in iteritems(self._synapse_clusters)}
 
+    def get_neural_statistics(self):
+        logger.info("\tDownloading neural statistics for population %s",
+                    self.label)
+
+        # Read statistics from neuron cluster
+        return self._neural_cluster.read_statistics()
+
     # --------------------------------------------------------------------------
     # Internal PyNN methods
     # --------------------------------------------------------------------------
