@@ -195,11 +195,6 @@ class ConnectionBuilder(Region):
         # Get list of RNGs
         rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(rngs) <= 1
-        if len(rngs):
-            # RNG for generating SpiNNaker KISS RNG seeds
-            seed_generator = np.random.RandomState(seed=rngs[0].seed)
-        else:
-            seed_generator = [0] * 4
 
         # Write number of matrices
         fp.write(struct.pack("I", num_chip_matrices))
@@ -211,8 +206,11 @@ class ConnectionBuilder(Region):
             # Note, if we instantiate more than 54,000 KISS RNGs
             # with random seeds, it is probable that two will share
             # the same state for one of their sub-RNGs.
-            seed = seed_generator.randint(
+            if len(rngs):
+                seed = rngs[0]._seed_generator.randint(
                 2**32, dtype=np.uint32, size=self.SeedWords)
+            else:
+                seed = [0] * 4
 
             fp.write(seed.tostring())
 
