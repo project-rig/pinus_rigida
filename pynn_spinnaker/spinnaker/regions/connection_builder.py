@@ -138,8 +138,9 @@ class ConnectionBuilder(Region):
         num_rngs = len(_get_native_rngs(chip_sub_matrix_projs))
         assert num_rngs <= 1
 
-        # Fixed size consists of seed for each RNG and connection count
-        size = 4 + (self.SeedWords * 4)
+        # Fixed size consists of seed for each RNG, connection count,
+        # post vertex slice
+        size = 8 + (self.SeedWords * 4)
 
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
