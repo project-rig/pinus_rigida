@@ -1,6 +1,7 @@
 # Import modules
 import lazyarray as la
 from spinnaker import lazy_param_map
+import numpy as np
 from scipy.stats import norm, expon
 
 # Import classes
@@ -94,6 +95,8 @@ class NativeRNG(NativeRNG):
     def __init__(self, host_rng, seed=None):
         # Superclass
         super(NativeRNG, self).__init__(seed)
+
+        self._seed_generator = np.random.RandomState(seed=seed)
 
         # Cache RNG to use on the host
         assert host_rng is not None

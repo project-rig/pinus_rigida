@@ -57,6 +57,8 @@ class Vertex(object):
                                               vert_index=vert_index,
                                               flush=1)
 
+        self.vert_index = vert_index
+
         self.input_verts = []
         self.back_prop_out_buffers = None
         self.region_memory = None
