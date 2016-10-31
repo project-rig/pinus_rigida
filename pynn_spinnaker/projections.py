@@ -352,6 +352,11 @@ class Projection(common.Projection, ContextMixin):
         if not self._simulator.state.generate_connections_on_chip:
             return False
 
+        # If the projection can be optimised out
+        # into a direct connection, return false
+        if self._directly_connectable:
+            return False
+
         # If connector doesn't have a parameter map
         # for generating on-chip data, return false
         if not hasattr(self._connector, "_on_chip_param_map"):
