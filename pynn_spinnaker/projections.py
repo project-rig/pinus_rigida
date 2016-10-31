@@ -25,6 +25,12 @@ from spinnaker.utils import get_model_comparable, is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
 
+distribution_cdf = {
+    "normal": lambda x, mu, sigma: scipy.stats.norm.cdf(x, loc=mu, scale=sigma),
+    "normal_clipped":
+        lambda x, mu, sigma, low, high: scipy.stats.truncnorm.cdf(
+            x, loc=mu, scale=sigma, a=(low - mu) / sigma, b=(high - mu) / sigma),
+}
 # --------------------------------------------------------------------------
 # SynapseClusterType
 # --------------------------------------------------------------------------
@@ -252,8 +258,51 @@ class Projection(common.Projection, ContextMixin):
         return direct_weights
 
     def _estimate_max_row_synapses(self, pre_slice, post_slice):
-        return self._connector._estimate_max_row_synapses(
+        # Calculate maximum synapses per row
+        max_row_synapses = self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
+
+        # Calculate maximum row delay
+        max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
+                         self._simulator.state.dt)
+
+        # Get delay parameter from synapse type
+        delay = self.synapse_type.native_parameters["delay"]
+
+        # If parameter is randomly distributed
+        if isinstance(delay.base_value, RandomDistribution):
+            dist = delay.base_value.name
+            params = delay.base_value.parameters
+
+            # If we have a means of calculating a CDF for this distribution
+            if dist in distribution_cdf:
+                # Find the probability that a synapse
+                # will have a delay within the first row
+                p_in_first_sub_row = distribution_cdf[dist](max_row_delay,
+                                                            **params)
+
+                # Draw from the binomial distribution to determine
+                # the maximum number of synapses this correlates to
+                max_first_sub_row_synapses = scipy.stats.binom.ppf(
+                    0.9999, max_row_synapses, p_in_first_sub_row)
+                print max_first_sub_row_synapses
+                assert False
+            else:
+                max_first_sub_row_synapses = max_row_synapses
+        # If parameter is a scalar
+        elif is_scalar(delay.base_value):
+            # If the delay is within the maximum row delay, then all
+            # the synapses in the row can be represented in a single sub-row
+            if self.base_value <= max_row_delay:
+                max_first_sub_row_synapses = max_row_synapses
+            # Otherwise, the first sub-row will contain no synapses,
+            # just a pointer forwards to the delay sub-row
+            else:
+                max_first_sub_row_synapses = 0
+        else:
+            raise NotImplementedError()
+
+        return max_row_synapses, max_first_sub_row_synapses
 
     def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
                                               pre_rate, **kwargs):
