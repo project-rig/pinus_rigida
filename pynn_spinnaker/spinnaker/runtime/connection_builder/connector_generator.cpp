@@ -14,7 +14,7 @@ ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&)
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
-  unsigned int vertexPostSlice,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   MarsKiss64 &, uint32_t (&indices)[1024]) const
 {
   if(numPostNeurons != maxRowSynapses)
@@ -43,16 +43,16 @@ ConnectionBuilder::ConnectorGenerator::OneToOne::OneToOne(uint32_t *&)
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::OneToOne::Generate(
   unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
-  unsigned int vertexPostSlice,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   MarsKiss64 &, uint32_t (&indices)[1024]) const
 {
-  // The column index relative to the start of this post slice that
-  // corresponds to this row
-  unsigned int offsetColumn = row - vertexPostSlice;
+  // The column index to connect to, relative to the start of the post slice
+  unsigned int columnRelativeToPost = row + vertexPreSlice - vertexPostSlice;
+
   unsigned int k = 0;
   // If that index is within this slice, add index to row
-  if (offsetColumn >= 0 || offsetColumn < numPostNeurons)
-    indices[k++] = offsetColumn;
+  if (columnRelativeToPost >= 0 || columnRelativeToPost < numPostNeurons)
+    indices[k++] = columnRelativeToPost;
 
   return k;
 }
@@ -71,7 +71,7 @@ ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
-  unsigned int vertexPostSlice,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   MarsKiss64 &rng, uint32_t (&indices)[1024]) const
 {
   // Write indices

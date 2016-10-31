@@ -49,7 +49,7 @@ public:
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
     unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
-    unsigned int vertexPostSlice,
+    unsigned int vertexPostSlice, unsigned int vertexPreSlice,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
@@ -64,7 +64,7 @@ protected:
 
   unsigned int GenerateRow(unsigned int row,
     unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
-    unsigned int vertexPostSlice,
+    unsigned int vertexPostSlice, unsigned int vertexPreSlice,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
@@ -116,7 +116,7 @@ public:
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
     unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
-    unsigned int vertexPostSlice,
+    unsigned int vertexPostSlice, unsigned int vertexPreSlice,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
@@ -139,7 +139,7 @@ public:
   //-----------------------------------------------------------------------------
   virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
     unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
-    unsigned int vertexPostSlice,
+    unsigned int vertexPostSlice, unsigned int vertexPreSlice,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,

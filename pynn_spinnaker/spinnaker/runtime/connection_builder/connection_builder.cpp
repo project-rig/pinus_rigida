@@ -69,6 +69,9 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
   const uint32_t postVertexSlice = *region++;
   for(unsigned int i = 0; i < numMatricesToGenerate; i++)
   {
+    // Index of pre slice
+    uint32_t preVertexSlice = *region++;
+
     // Read RNG seed for this matrix
     uint32_t seed[MarsKiss64::StateSize];
     LOG_PRINT(LOG_LEVEL_TRACE, "\tSeed:");
@@ -127,8 +130,8 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
       matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
                                 g_AppWords[AppWordWeightFixedPoint],
                                 g_AppWords[AppWordNumPostNeurons], numRows, postVertexSlice,
-                                connectorGenerator, delayGenerator, weightGenerator,
-                                rng);
+				preVertexSlice, connectorGenerator, delayGenerator,
+                                weightGenerator, rng);
 
     }
     else

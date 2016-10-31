@@ -41,7 +41,7 @@ void ConnectionBuilder::MatrixGenerator::Base::TraceInt(int32_t (&values)[1024],
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::MatrixGenerator::Base::GenerateRow(unsigned int row,
   unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
-  unsigned int postVertexSlice,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
@@ -51,7 +51,8 @@ unsigned int ConnectionBuilder::MatrixGenerator::Base::GenerateRow(unsigned int 
   LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating indices");
   const unsigned int numIndices = connectorGenerator->Generate(row, maxRowSynapses,
                                                                numPostNeurons,
-							       postVertexSlice,
+							       vertexPostSlice,
+							       vertexPreSlice,
                                                                rng, indices);
   TraceUInt(indices, numIndices);
   
@@ -81,7 +82,7 @@ ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region) : Base(reg
 void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
   unsigned int maxRowSynapses, unsigned int weightFixedPoint,
   unsigned int numPostNeurons, unsigned int numRows,
-  unsigned int postVertexSlice,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
@@ -98,7 +99,7 @@ void ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
     int32_t delays[1024];
     int32_t weights[1024];
     const unsigned int numIndices = GenerateRow(i,
-      maxRowSynapses, weightFixedPoint, numPostNeurons, postVertexSlice,
+      maxRowSynapses, weightFixedPoint, numPostNeurons, vertexPostSlice, vertexPreSlice,
       connectorGenerator, delayGenerator, weightGenerator, indices, delays, weights,
       rng);
 
@@ -162,7 +163,7 @@ ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region) : Base(r
 void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddress,
   unsigned int maxRowSynapses, unsigned int weightFixedPoint,
   unsigned int numPostNeurons, unsigned int numRows,
-  unsigned int postVertexSlice,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
@@ -190,7 +191,7 @@ void ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddre
     int32_t delays[1024];
     int32_t weights[1024];
     const unsigned int numIndices = GenerateRow(i,
-      maxRowSynapses, weightFixedPoint, numPostNeurons, postVertexSlice,
+      maxRowSynapses, weightFixedPoint, numPostNeurons, vertexPostSlice, vertexPreSlice,
       connectorGenerator, delayGenerator, weightGenerator, indices, delays, weights,
       rng);
 

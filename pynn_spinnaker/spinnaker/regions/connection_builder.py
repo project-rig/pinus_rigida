@@ -139,7 +139,7 @@ class ConnectionBuilder(Region):
         native_rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(native_rngs) <= 1
 
-        # Fixed size consists of connection count, post vertex slice
+        # Fixed size consists of connection count, post slice index
         size = 8
 
         # Loop through projections
@@ -148,6 +148,8 @@ class ConnectionBuilder(Region):
             synapse_type = proj[0].synapse_type
             synaptic_matrix = synapse_type._synaptic_matrix_region_class
             connector = proj[0]._connector
+
+            size += 4 # pre slice index
 
             # Add words for seed
             size += self.SeedWords * 4
@@ -196,11 +198,14 @@ class ConnectionBuilder(Region):
         rngs = _get_native_rngs(chip_sub_matrix_projs)
         assert len(rngs) <= 1
 
-        # Write number of matrices
+        # Write number of matrices, index of start of post_vertex_slice
         fp.write(struct.pack("II", num_chip_matrices, post_vertex_slice.start))
 
         # Loop through projections
         for prop, proj in zip(chip_sub_matrix_props, chip_sub_matrix_projs):
+
+            # Write index of pre_slice
+            fp.write(struct.pack("I", prop.pre_slice_index))
 
             # Generate four word base seed for SpiNNaker KISS RNG
             # Note, if we instantiate more than 54,000 KISS RNGs
