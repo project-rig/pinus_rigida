@@ -9,7 +9,7 @@ from ..spinnaker import regions
 from copy import deepcopy
 from functools import partial
 from pyNN.standardmodels import build_translations
-from ..spinnaker.utils import calculate_timestep_mul
+from ..spinnaker.utils import calc_timestep_mul
 
 logger = logging.getLogger("PyNN")
 
@@ -23,6 +23,20 @@ def _poisson_slow_model(values, sim_timestep_ms, **kwargs):
     # Based on this return mask specifying which spikes sources
     # should be simulated using the slow rather than fast model
     return la.larray(spikes_per_timestep <= 0.25)
+
+def calc_max_neurons_per_core(hardware_timestep_us,
+                               num_input_processors,
+                               neuron_update_cpu_cycles,
+                               synapse_shape_cpu_cycles):
+    # Calculate the number of timesteps we have available
+    total_cycles = 200000 * calc_timestep_mul(hardware_timestep_us)
+
+    # Calculate the number of cycles per neuron
+    cycles_per_neuron = (neuron_update_cpu_cycles + synapse_shape_cpu_cycles
+                         + (num_input_processors * 10))
+
+    # Divide the total by this
+    return min(1024, total_cycles // cycles_per_neuron)
 
 # ----------------------------------------------------------------------------
 # Neuron type translations
@@ -154,14 +168,9 @@ class IF_curr_exp(cells.IF_curr_exp):
     # --------------------------------------------------------------------------
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    def _calculate_max_neurons_per_core(self, hardware_timestep_us,
-                                        num_input_processors,
-                                        mean_firing_rate):
-        # Calculate timestep multiplier
-        timestep_mul = calculate_timestep_mul(hardware_timestep_us)
-
-        # Scale by timestep mul
-        return 1024 * timestep_mul
+    _calc_max_neurons_per_core = partial(calc_max_neurons_per_core,
+                                         neuron_update_cpu_cycles=143,
+                                         synapse_shape_cpu_cycles=28)
 
 class IF_cond_exp(cells.IF_cond_exp):
     __doc__ = cells.IF_cond_exp.__doc__
@@ -187,14 +196,10 @@ class IF_cond_exp(cells.IF_cond_exp):
     # --------------------------------------------------------------------------
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    def _calculate_max_neurons_per_core(self, hardware_timestep_us,
-                                        num_input_processors,
-                                        mean_firing_rate):
-        # Calculate timestep multiplier
-        timestep_mul = calculate_timestep_mul(hardware_timestep_us)
-
-        # Scale by timestep mul
-        return 1024 * timestep_mul
+    # **TODO** correct neuron_update_cpu_cycles for Cond
+    _calc_max_neurons_per_core = partial(calc_max_neurons_per_core,
+                                         neuron_update_cpu_cycles=143,
+                                         synapse_shape_cpu_cycles=28)
 
 '''
 class Izhikevich(cells.Izhikevich):
@@ -217,11 +222,6 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    _max_neurons_per_core = 256
-    _max_current_inputs_per_core = 2048
-
     _directly_connectable = True
     _neuron_region_class = regions.SpikeSourcePoisson
     _current_input_region_class = regions.SpikeSourcePoisson
@@ -241,15 +241,22 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     # --------------------------------------------------------------------------
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    def _calculate_max_neurons_per_core(self, hardware_timestep_us,
-                                        num_input_processors,
-                                        mean_firing_rate):
+    def _calc_max_neurons_per_core(self, hardware_timestep_us,
+                                   num_input_processors):
+        assert num_input_processors == 0
+
         # Calculate timestep multiplier
-        timestep_mul = calculate_timestep_mul(hardware_timestep_us)
+        timestep_mul = calc_timestep_mul(hardware_timestep_us)
 
         # Scale by timestep mul
         return 1024 * timestep_mul
 
+    def _calc_max_current_inputs_per_core(self, hardware_timestep_us):
+        # Calculate timestep multiplier
+        timestep_mul = calc_timestep_mul(hardware_timestep_us)
+
+        # Scale by timestep mul
+        return 2048 * timestep_mul
 
 class SpikeSourceArray(cells.SpikeSourceArray):
     __doc__ = cells.SpikeSourceArray.__doc__
@@ -263,9 +270,30 @@ class SpikeSourceArray(cells.SpikeSourceArray):
     # --------------------------------------------------------------------------
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    _max_neurons_per_core = 256
     _max_current_inputs_per_core = 2048
 
     _directly_connectable = True
     _neuron_region_class = regions.SpikeSourceArray
     _current_input_region_class = regions.SpikeSourceArray
+
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    def _calc_max_neurons_per_core(self, hardware_timestep_us,
+                                   num_input_processors):
+        assert num_input_processors == 0
+
+        # Calculate timestep multiplier
+        timestep_mul = calc_timestep_mul(hardware_timestep_us)
+
+        # Scale by timestep mul
+        return 1024 * timestep_mul
+
+    def _calc_max_current_inputs_per_core(self, hardware_timestep_us):
+        # Calculate timestep multiplier
+        timestep_mul = calc_timestep_mul(hardware_timestep_us)
+
+        # Scale by timestep mul
+        return 2048 * timestep_mul
