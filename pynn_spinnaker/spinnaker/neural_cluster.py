@@ -229,8 +229,11 @@ class NeuralCluster(object):
             # Add application to dictionary
             vertex_run_applications[v] = neuron_app
 
-            # Estimate SDRAM usage
+            # Estimate SDRAM usage and check
+            # it's an integer as otherwise C CSA fails
             sdram = self._estimate_sdram(v.neuron_slice)
+            assert isinstance(sdram, int)
+
             logger.debug("\t\t\tVertex %s: %u bytes SDRAM", v, sdram)
 
             # Add resources to dictionary

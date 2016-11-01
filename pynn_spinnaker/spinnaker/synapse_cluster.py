@@ -280,7 +280,9 @@ class SynapseCluster(object):
             if generate_matrix_on_chip:
                 vertex_load_applications[v] = connection_builder_app
 
-            # Add resources to dictionary
+            # Add resources to dictionary, checking that 
+            # SDRAM is an integer as otherwise C CSA fails
+            assert isinstance(s, int)
             vertex_resources[v] = {machine.Cores: 1, machine.SDRAM: s}
 
     # --------------------------------------------------------------------------
