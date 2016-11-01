@@ -220,6 +220,9 @@ def extract_row_offset_length(offset_length, num_length_bits):
 
     return offset, length
 
+def calculate_timestep_mul(hardware_timestep_us):
+    return min(1.0, float(hardware_timestep_us) / 1000.0)
+
 def is_scalar(value):
     return isinstance(value, (int, long, np.integer, float, bool))
 

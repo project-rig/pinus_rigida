@@ -28,13 +28,6 @@ logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
-# Round a j constraint to the lowest power-of-two
-# multiple of the minium j constraint
-def round_j_constraint(j_constraint, min_j_constraint):
-    return min_j_constraint * int(2 ** math.floor(
-        math.log(j_constraint / min_j_constraint, 2)))
-
-
 # --------------------------------------------------------------------------
 # Assembly
 # --------------------------------------------------------------------------
@@ -257,14 +250,156 @@ class Population(common.Population):
 
         return spike_times, signals
 
-    def _clamp_j_constraint(self, j_constraint):
-        if self.spinnaker_config.max_cluster_width is None:
-            return min(self.size, j_constraint)
-        else:
-            return min(self.spinnaker_config.max_cluster_width,
-                       self.size,
-                       j_constraint)
+    def _estimate_constraints(self, hardware_timestep_us):
+        logger.debug("\t\tFinding maximum synapse J constraints")
 
+        # Determine the fraction of 1ms that the hardware timestep is.
+        # This is used to scale all time-driven estimates
+        timestep_mul = min(1.0, float(hardware_timestep_us) / 1000.0)
+        logger.debug("\t\tTimestep multiplier:%f", timestep_mul)
+
+         # Loop through synapse types
+        self._synapse_j_constraints = {}
+        current_input_j_constraints = {}
+        for s_type, pre_pop_projections in iteritems(self.incoming_projections):
+            # Get list of incoming directly connectable projections
+            projections = list(itertools.chain.from_iterable(
+                itervalues(pre_pop_projections)))
+            directly_connectable_projections = [p for p in projections
+                                                if p._directly_connectable]
+
+            # If there's any non-directly connectable projections of this type
+            if len(projections) != len(directly_connectable_projections):
+                synapse_constraint = s_type.model._max_post_neurons_per_core
+                logger.debug("\t\tSynapse type:%s, receptor:%s - j constraint:%u",
+                             s_type.model.__class__.__name__, s_type.receptor,
+                             synapse_constraint)
+                self._synapse_j_constraints[s_type] = synapse_constraint
+
+            # Loop through directly connectable projections
+            for p in directly_connectable_projections:
+                # Apply timestep multipliers to the
+                # hard maximum specified in celltype
+                current_input_constraint =\
+                    int(p.pre.celltype._max_current_inputs_per_core * timestep_mul)
+                current_input_j_constraints[p] = current_input_constraint
+                logger.debug("\t\tDirectly connectable projection:%s "
+                             "- Current input contraint:%u", p.label,
+                             current_input_constraint)
+
+        # Iterate to find cluster configuration
+        logger.debug("\t\tFinding cluster configuration")
+        while True:
+            max_constraint = max(itervalues(self._synapse_j_constraints))
+            logger.debug("\t\t\tMax synapse j constraint:%u",
+                         max_constraint)
+
+            # Loop again through incoming synapse types to estimate i_constraints
+            num_syn_processors = 0
+            for s_type, pre_pop_projections in iteritems(self.incoming_projections):
+                # Get list of synaptic connections
+                projections = itertools.chain.from_iterable(
+                    itervalues(pre_pop_projections))
+                synaptic_projections = [p for p in projections
+                                        if not p._directly_connectable]
+
+                # If there are any
+                if len(synaptic_projections) > 0:
+                    # Build suitable post-slice to estimate CPU usage over
+                    # **TODO** min constraint with population size so CPU isn't overestimated
+                    post_slice = UnitStrideSlice(
+                        0, self._synapse_j_constraints[s_type])
+
+                    # Loop through list of projections
+                    total_cpu_cycles = 0.0
+                    for proj in synaptic_projections:
+                        # If projection is directly connectable, skip
+                        if proj._directly_connectable:
+                            continue
+
+                        # Estimate CPU cycles required to process sub-matrix
+                        cpu_cycles = proj._estimate_spike_processing_cpu_cycles(
+                            UnitStrideSlice(0, proj.pre.size), post_slice,
+                            pre_rate=proj.pre.spinnaker_config.mean_firing_rate,
+                            post_rate=proj.post.spinnaker_config.mean_firing_rate)
+
+                        total_cpu_cycles += cpu_cycles
+
+                    available_core_cpu_cycles = 200E6 - s_type.model._constant_cpu_overhead
+                    num_i_cores = int(math.ceil(float(total_cpu_cycles) / float(available_core_cpu_cycles)))
+                    num_j_cores = max_constraint // self._synapse_j_constraints[s_type]
+                    num_cores = num_i_cores * num_j_cores
+                    logger.debug("\t\t\t\tSynapse type:%s, receptor:%s - Total CPU cycles:%f, num cores:%u",
+                                s_type.model.__class__.__name__, s_type.receptor,
+                                total_cpu_cycles, num_cores)
+
+                    # Add number of i cores to total
+                    num_syn_processors += num_cores
+
+
+            logger.debug("\t\t\tTotal synapse processors:%u",
+                         num_syn_processors)
+
+            # If there is any chance of this cluster fitting
+            if num_syn_processors < (15 - len(current_input_j_constraints)):
+                # Try to deploy up to 16 synapse processors
+                for s in range(16, 0, -1) # Calculate neuron processor j constraint
+                    # **TODO** move to function taking into account:
+                    # 1) Maximum firing rate
+                    # 2) Timestep
+                    # 3) CPU cost
+                    # 4) Number of synapse processors connected (or input words)
+                    neuron_j_constraint = int(max_neurons_per_core *
+                                              timestep_mul)
+                    logger.debug("\t\tNeuron j constraint:%u",
+                                 neuron_j_constraint)
+
+                    # Calculate number of neuron processors which are required
+                    # to simulate neurons in cluster of this width
+                    num_neuron_processors = int(
+                        math.ceil(float(max_constraint * s) /
+                                float(neuron_j_constraint)))
+
+                    # Calculate total number of current input processors
+                    num_current_input_processors = sum(
+                        int(math.ceil(float(max_constraint * s) / float(c)))
+                        for c in itervalues(current_input_j_constraints))
+
+                    # Calculate total number of processors
+                    num_processors = (num_neuron_processors +
+                                      num_current_input_processors +
+                                      (num_syn_processors * s))
+
+                    # If this cluster is narrow enough to be
+                    # within at least one type of processors
+                    # constraints and can fit on a chip
+                    if (num_processors <= 16 and
+                        (num_neuron_processors == 1 or
+                         num_current_input_processors == 1)):
+                        logger.debug("\t\t\tCluster width:%u: "
+                                     "num synapse processors:%u + "
+                                     "num current input processor:%u + "
+                                     "num neuron processors:%u = %u",
+                                     max_constraint * s,
+                                     num_syn_processors * s,
+                                     num_current_input_processors,
+                                     num_neuron_processors,
+                                     num_processors)
+                        assert False
+                        return
+
+
+            # Divide the contraint on any synapse processors
+            # which currently have maximum constraint by 2
+            new_max_constraint = max_constraint // 2
+            self._synapse_j_constraints =\
+                {s_type : new_max_constraint if c == max_constraint else c
+                    for s_type, c in iteritems(self._synapse_j_constraints)}
+            # **THINK** should we scale neuron and current input constraints too?
+            # **THINK** should there be an exit condition
+
+
+    '''
     def _estimate_constraints(self, hardware_timestep_us):
         # Determine the fraction of 1ms that the hardware timestep is.
         # This is used to scale all time-driven estimates
@@ -425,6 +560,7 @@ class Population(common.Population):
 
             # Also store constraint in projection
             proj.current_input_j_constraint = constraint
+        '''
 
     def _create_neural_cluster(self, pop_id, timer_period_us, simulation_ticks,
                                vertex_load_applications, vertex_run_applications,

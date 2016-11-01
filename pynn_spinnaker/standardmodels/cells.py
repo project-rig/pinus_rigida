@@ -9,6 +9,7 @@ from ..spinnaker import regions
 from copy import deepcopy
 from functools import partial
 from pyNN.standardmodels import build_translations
+from ..spinnaker.utils import calculate_timestep_mul
 
 logger = logging.getLogger("PyNN")
 
@@ -137,10 +138,6 @@ class IF_curr_exp(cells.IF_curr_exp):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    _max_neurons_per_core = 1024
-
     # JK: not necessary
     _neuron_region_class = regions.Neuron
     
@@ -152,6 +149,19 @@ class IF_curr_exp(cells.IF_curr_exp):
     _synapse_immutable_param_map = exp_synapse_immutable_param_map
     _synapse_mutable_param_map = exp_synapse_curr_mutable_param_map
 
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    def _calculate_max_neurons_per_core(self, hardware_timestep_us,
+                                        num_input_processors,
+                                        mean_firing_rate):
+        # Calculate timestep multiplier
+        timestep_mul = calculate_timestep_mul(hardware_timestep_us)
+
+        # Scale by timestep mul
+        return 1024 * timestep_mul
 
 class IF_cond_exp(cells.IF_cond_exp):
     __doc__ = cells.IF_cond_exp.__doc__
@@ -162,10 +172,6 @@ class IF_cond_exp(cells.IF_cond_exp):
     # --------------------------------------------------------------------------
     # Internal SpiNNaker properties
     # --------------------------------------------------------------------------
-    # How many of these neurons per core can
-    # a SpiNNaker neuron processor handle
-    _max_neurons_per_core = 1024
-
     _neuron_region_class = regions.Neuron
 
     _directly_connectable = False
@@ -175,6 +181,20 @@ class IF_cond_exp(cells.IF_cond_exp):
 
     _synapse_immutable_param_map = exp_synapse_immutable_param_map
     _synapse_mutable_param_map = exp_synapse_cond_mutable_param_map
+
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    def _calculate_max_neurons_per_core(self, hardware_timestep_us,
+                                        num_input_processors,
+                                        mean_firing_rate):
+        # Calculate timestep multiplier
+        timestep_mul = calculate_timestep_mul(hardware_timestep_us)
+
+        # Scale by timestep mul
+        return 1024 * timestep_mul
 
 '''
 class Izhikevich(cells.Izhikevich):
@@ -215,6 +235,20 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
                                a_function=lazy_param_map.s1615_rate_isi,
                                b_function=lazy_param_map.u032_rate_exp_minus_lambda)),
     ]
+
+    # --------------------------------------------------------------------------
+    # Internal SpiNNaker methods
+    # --------------------------------------------------------------------------
+    # How many of these neurons per core can
+    # a SpiNNaker neuron processor handle
+    def _calculate_max_neurons_per_core(self, hardware_timestep_us,
+                                        num_input_processors,
+                                        mean_firing_rate):
+        # Calculate timestep multiplier
+        timestep_mul = calculate_timestep_mul(hardware_timestep_us)
+
+        # Scale by timestep mul
+        return 1024 * timestep_mul
 
 
 class SpikeSourceArray(cells.SpikeSourceArray):
