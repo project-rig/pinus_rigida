@@ -31,7 +31,7 @@ class Profiler(Region):
             of the region.
         """
         # 2 word counters and 2 words per sample
-        return 8 + (8 * self.n_samples)
+        return 8 + int(8 * self.n_samples)
 
     def write_subregion_to_file(self, fp):
         """Write a portion of the region to a file applying the formatter.
