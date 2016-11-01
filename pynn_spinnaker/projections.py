@@ -193,7 +193,7 @@ class Projection(common.Projection, ContextMixin):
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
                 self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
                 receptor_index, vertex_load_applications, vertex_run_applications,
-                vertex_resources, self.current_input_j_constraint, self.pre.size)
+                vertex_resources, self._current_input_j_constraint, self.pre.size)
         # Otherwise, null current input cluster
         else:
             self._current_input_cluster = None
@@ -261,7 +261,8 @@ class Projection(common.Projection, ContextMixin):
         # Calculate maximum synapses per row
         max_row_synapses = self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
-
+        return max_row_synapses
+        '''
         # Calculate maximum row delay
         max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
                          self._simulator.state.dt)
@@ -303,7 +304,7 @@ class Projection(common.Projection, ContextMixin):
             raise NotImplementedError()
 
         return max_row_synapses, max_first_sub_row_synapses
-
+        '''
     def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
                                               pre_rate, **kwargs):
         # Use connector to estimate mean number of synapses in each row
