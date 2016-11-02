@@ -28,12 +28,10 @@ logger = logging.getLogger("pynn_spinnaker")
 
 Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 
-# --------------------------------------------------------------------------
-# Assembly
-# --------------------------------------------------------------------------
-class Assembly(common.Assembly):
-    _simulator = simulator
 
+# --------------------------------------------------------------------------
+# Functions
+# --------------------------------------------------------------------------
 def _calc_clusters_per_core(cluster_width, constraint):
     return int(math.ceil(2.0 ** math.floor(math.log(constraint /
                                                     cluster_width, 2))))
@@ -41,6 +39,12 @@ def _calc_clusters_per_core(cluster_width, constraint):
 def _calc_cores_per_cluster(cluster_width, constraint):
     return int(math.ceil(2.0 ** math.ceil(math.log(cluster_width /
                                                    constraint, 2))))
+
+# --------------------------------------------------------------------------
+# Assembly
+# --------------------------------------------------------------------------
+class Assembly(common.Assembly):
+    _simulator = simulator
 
 # --------------------------------------------------------------------------
 # PopulationView
