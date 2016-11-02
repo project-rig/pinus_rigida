@@ -218,6 +218,7 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
         # How large a fraction of the full post populations is this
+        pre_fraction = float(len(pre_slice)) / float(pre_size)
         post_fraction = float(len(post_slice)) / float(post_size)
 
         # Multiply these by the total number of synapses
