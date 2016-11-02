@@ -27,13 +27,14 @@ def _poisson_slow_model(values, sim_timestep_ms, **kwargs):
 def calc_max_neurons_per_core(hardware_timestep_us,
                               num_input_processors,
                               neuron_update_cpu_cycles,
-                              synapse_shape_cpu_cycles):
+                              synapse_shape_cpu_cycles,
+                              apply_input_cpu_cycles=10):
     # Calculate the number of timesteps we have available
     total_cycles = 200000 * calc_timestep_mul(hardware_timestep_us)
 
     # Calculate the number of cycles per neuron
     cycles_per_neuron = (neuron_update_cpu_cycles + synapse_shape_cpu_cycles
-                         + (num_input_processors * 10))
+                         + (num_input_processors * apply_input_cpu_cycles))
 
     # Divide the total by this
     return min(1024, total_cycles // cycles_per_neuron)
@@ -198,7 +199,7 @@ class IF_cond_exp(cells.IF_cond_exp):
     # a SpiNNaker neuron processor handle
     # **TODO** correct neuron_update_cpu_cycles for Cond
     _calc_max_neurons_per_core = partial(calc_max_neurons_per_core,
-                                         neuron_update_cpu_cycles=143,
+                                         neuron_update_cpu_cycles=167,
                                          synapse_shape_cpu_cycles=28)
 
 '''
@@ -241,15 +242,10 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
     # --------------------------------------------------------------------------
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    def _calc_max_neurons_per_core(self, hardware_timestep_us,
-                                   num_input_processors):
-        assert num_input_processors == 0
-
-        # Calculate timestep multiplier
-        timestep_mul = calc_timestep_mul(hardware_timestep_us)
-
-        # Scale by timestep mul
-        return int(1024 * timestep_mul)
+    _calc_max_neurons_per_core = partial(calc_max_neurons_per_core,
+                                         neuron_update_cpu_cycles=58,
+                                         synapse_shape_cpu_cycles=0,
+                                         apply_input_cpu_cycles=0)
 
     def _calc_max_current_inputs_per_core(self, hardware_timestep_us):
         # Calculate timestep multiplier
