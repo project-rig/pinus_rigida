@@ -25,9 +25,9 @@ def _poisson_slow_model(values, sim_timestep_ms, **kwargs):
     return la.larray(spikes_per_timestep <= 0.25)
 
 def calc_max_neurons_per_core(hardware_timestep_us,
-                               num_input_processors,
-                               neuron_update_cpu_cycles,
-                               synapse_shape_cpu_cycles):
+                              num_input_processors,
+                              neuron_update_cpu_cycles,
+                              synapse_shape_cpu_cycles):
     # Calculate the number of timesteps we have available
     total_cycles = 200000 * calc_timestep_mul(hardware_timestep_us)
 
@@ -249,14 +249,14 @@ class SpikeSourcePoisson(cells.SpikeSourcePoisson):
         timestep_mul = calc_timestep_mul(hardware_timestep_us)
 
         # Scale by timestep mul
-        return 1024 * timestep_mul
+        return int(1024 * timestep_mul)
 
     def _calc_max_current_inputs_per_core(self, hardware_timestep_us):
         # Calculate timestep multiplier
         timestep_mul = calc_timestep_mul(hardware_timestep_us)
 
         # Scale by timestep mul
-        return 2048 * timestep_mul
+        return int(2048 * timestep_mul)
 
 class SpikeSourceArray(cells.SpikeSourceArray):
     __doc__ = cells.SpikeSourceArray.__doc__
@@ -289,11 +289,11 @@ class SpikeSourceArray(cells.SpikeSourceArray):
         timestep_mul = calc_timestep_mul(hardware_timestep_us)
 
         # Scale by timestep mul
-        return 1024 * timestep_mul
+        return int(1024 * timestep_mul)
 
     def _calc_max_current_inputs_per_core(self, hardware_timestep_us):
         # Calculate timestep multiplier
         timestep_mul = calc_timestep_mul(hardware_timestep_us)
 
         # Scale by timestep mul
-        return 2048 * timestep_mul
+        return int(2048 * timestep_mul)
