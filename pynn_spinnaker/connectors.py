@@ -36,7 +36,7 @@ class AllToAllConnector(AllToAllConnector):
     _directly_connectable = False
 
     # If this connector can be generated on chip, parameter map to use
-    _on_chip_param_map = []
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -59,7 +59,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     _directly_connectable = False
 
     # If this connector can be generated on chip, parameter map to use
-    _on_chip_param_map = [("p_connect", "u4", lazy_param_map.u032)]
+    _on_chip_param_map = [("p_connect", "u4", lazy_param_map.u032),
+                          ("allow_self_connections", "u4", lazy_param_map.u032)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -148,6 +149,8 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032)]
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -179,6 +182,8 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032)]
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -206,6 +211,8 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods

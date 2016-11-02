@@ -216,6 +216,7 @@ extern "C" void c_main()
   REGISTER_FACTORY_CLASS("AllToAllConnector", ConnectorGenerator, AllToAll);
   REGISTER_FACTORY_CLASS("OneToOneConnector", ConnectorGenerator, OneToOne);
   REGISTER_FACTORY_CLASS("FixedProbabilityConnector", ConnectorGenerator, FixedProbability);
+  REGISTER_FACTORY_CLASS("FixedTotalNumberConnector", ConnectorGenerator, FixedTotalNumber);
 
   // Register parameter generators with factories
   LOG_PRINT(LOG_LEVEL_INFO, "Parameter generators");

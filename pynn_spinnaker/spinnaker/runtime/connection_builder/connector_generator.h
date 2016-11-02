@@ -61,6 +61,11 @@ public:
 
 private:
   AllToAll(uint32_t *&);
+
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
+  uint32_t m_AllowSelfConnections;
 };
 
 //-----------------------------------------------------------------------------
@@ -108,6 +113,33 @@ private:
   // Members
   //-----------------------------------------------------------------------------
   uint32_t m_Probability;
+  uint32_t m_AllowSelfConnections;
+};
+
+//-----------------------------------------------------------------------------
+// FixedTotalNumber
+//-----------------------------------------------------------------------------
+class FixedTotalNumber : public Base
+{
+public:
+  ADD_FACTORY_CREATOR(FixedTotalNumber);
+
+  //-----------------------------------------------------------------------------
+  // Base virtuals
+  //-----------------------------------------------------------------------------
+  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
+                                unsigned int numPostNeurons,
+				unsigned int vertexPostSlice,
+				unsigned int vertexPreSlice, MarsKiss64 &rng,
+                                uint32_t (&indices)[1024]) const;
+
+private:
+  FixedTotalNumber(uint32_t *&region);
+
+  //-----------------------------------------------------------------------------
+  // Members
+  //-----------------------------------------------------------------------------
+  uint32_t m_AllowSelfConnections;
 };
 
 } // ConnectorGenerators
