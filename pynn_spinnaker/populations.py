@@ -292,8 +292,33 @@ class Population(common.Population):
             # Add directly connectable projections to list
             dc_projections.extend(s_type_dc_projections)
 
-        # Iterate to find cluster configuration
         logger.debug("\t\tFinding cluster configuration")
+
+        # If we have no synaptic inputs
+        if len(self._synapse_j_constraints) == 0:
+            logger.debug("\t\t\tNo synapse processors in cluster")
+
+            # Calculate maximum number of neurons each neuron processor
+            # can handle without any synaptic inputs
+            self._neuron_j_constraint =\
+                self.celltype._calc_max_neurons_per_core(
+                    hardware_timestep_us=hardware_timestep_us,
+                    num_input_processors=0)
+            logger.debug("\t\t\t%u neurons per neuron processor",
+                         self._neuron_j_constraint)
+
+            # Calculate maximum number of neurons each
+            # current input processor can handle
+            for p in dc_projections:
+                pre_cell_type = p.pre.celltype
+                p._current_input_j_constraint =\
+                    pre_cell_type._calc_max_current_inputs_per_core(hardware_timestep_us)
+                logger.debug("\t\t\t%s - %u neurons per current input processor",
+                            p.label, p._current_input_j_constraint)
+                assert isinstance(p._current_input_j_constraint, int)
+            return
+
+        # Iterate to find cluster configuration
         while True:
             #max_constraint = min(self.size,
             #                     max(itervalues(self._synapse_j_constraints)))
