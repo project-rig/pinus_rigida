@@ -30,7 +30,7 @@ def calc_max_neurons_per_core(hardware_timestep_us,
                               synapse_shape_cpu_cycles,
                               apply_input_cpu_cycles=10):
     # Calculate the number of timesteps we have available
-    total_cycles = 200000 * calc_timestep_mul(hardware_timestep_us)
+    total_cycles = int(200000 * calc_timestep_mul(hardware_timestep_us))
 
     # Calculate the number of cycles per neuron
     cycles_per_neuron = (neuron_update_cpu_cycles + synapse_shape_cpu_cycles
