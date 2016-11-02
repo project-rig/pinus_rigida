@@ -166,9 +166,11 @@ void TimerTick(uint tick, uint)
       };
 
     // Update spike source
+    Profiler::WriteEntry(Profiler::Enter | ProfilerTagUpdateNeurons);
     g_SpikeSource.Update(tick, emitSpikeLambda, g_SpikeRecording,
       g_AppWords[AppWordNumSpikeSources]
     );
+    Profiler::WriteEntry(Profiler::Exit | ProfilerTagUpdateNeurons);
 
     // Transfer spike recording buffer to SDRAM
     g_SpikeRecording.TransferBuffer(DMATagOutputWrite);

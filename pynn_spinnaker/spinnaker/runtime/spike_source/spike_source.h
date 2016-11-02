@@ -12,7 +12,7 @@ enum Region
   RegionSpikeSource,
   RegionFlush = 5,
   RegionSpikeRecording = 7,
-  RegionProfiler,
+  RegionProfiler = 12,
   RegionStatistics,
 };
 
@@ -23,6 +23,13 @@ enum AppWord
   AppWordFlushKey,
   AppWordNumSpikeSources,
   AppWordMax,
+};
+
+enum ProfilerTag
+{
+  ProfilerTagSynapseShape,
+  ProfilerTagUpdateNeurons,
+  ProfilerTagApplyBuffer,
 };
 
 // Indices of statistic words
