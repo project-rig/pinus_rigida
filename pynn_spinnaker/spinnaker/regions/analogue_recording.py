@@ -57,7 +57,7 @@ class AnalogueRecording(Region):
 
         # Header word specifiying how many words are in each sample, indices
         # bit field and a sample bit field for each tick we're recording
-        return 4 + indices_bytes + (sample_bytes * self.record_ticks)
+        return 4 + indices_bytes + int(sample_bytes * self.record_ticks)
 
     def write_subregion_to_file(self, fp, vertex_slice):
         """Write a portion of the region to a file applying the formatter.

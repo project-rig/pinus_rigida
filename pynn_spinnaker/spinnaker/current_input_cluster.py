@@ -69,8 +69,10 @@ class CurrentInputCluster(object):
         # Loop through slice
         self.verts = []
         for post_slice in post_slices:
-            # Estimate SDRAM usage
+            # Estimate SDRAM usage and check
+            # it's an integer as otherwise C CSA fails
             sdram = self._estimate_sdram(post_slice)
+            assert isinstance(sdram, int)
             logger.debug("\t\t\tPost slice %s: %u bytes SDRAM",
                          str(post_slice), sdram)
 
@@ -82,7 +84,6 @@ class CurrentInputCluster(object):
             vertex_run_applications[input_vert] = current_input_app
 
             # Add resources to dictionary
-            # **TODO** add SDRAM
             vertex_resources[input_vert] = {machine.Cores: 1, machine.SDRAM: sdram}
 
     # --------------------------------------------------------------------------
