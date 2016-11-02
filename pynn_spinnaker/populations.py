@@ -33,12 +33,12 @@ Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 # Functions
 # --------------------------------------------------------------------------
 def _calc_clusters_per_core(cluster_width, constraint):
-    return int(math.ceil(2.0 ** math.floor(math.log(constraint /
-                                                    cluster_width, 2))))
+    return int(math.ceil(2.0 ** math.floor(math.log(float(constraint) /
+                                                    float(cluster_width), 2))))
 
 def _calc_cores_per_cluster(cluster_width, constraint):
-    return int(math.ceil(2.0 ** math.ceil(math.log(cluster_width /
-                                                   constraint, 2))))
+    return int(math.ceil(2.0 ** math.ceil(math.log(float(cluster_width) /
+                                                   float(constraint), 2))))
 
 # --------------------------------------------------------------------------
 # Assembly
