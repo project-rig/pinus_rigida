@@ -4,6 +4,9 @@
 // Common includes
 #include "../arm_intrinsics.h"
 #include "../fixed_point_number.h"
+
+// Maths includes
+#include "exp.h"
 #include "polynomial.h"
 #include "round.h"
 
