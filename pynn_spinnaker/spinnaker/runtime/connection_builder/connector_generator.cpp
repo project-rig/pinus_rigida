@@ -120,8 +120,10 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
 ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::FixedTotalNumber(uint32_t *&region)
 {
   m_AllowSelfConnections = *region++;
+  m_ConnectionsInSubmatrix = *region++;
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector");
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector: connections in submatrix: %u",
+    m_ConnectionsInSubmatrix);
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(

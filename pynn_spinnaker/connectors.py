@@ -9,6 +9,7 @@ Connection method classes for PyNN SpiNNaker
 import numpy as np
 import scipy
 from spinnaker import lazy_param_map
+import lazyarray as la
 
 # Import classes
 from pyNN.connectors import (AllToAllConnector,
@@ -26,6 +27,13 @@ from pyNN.connectors import (AllToAllConnector,
                              CloneConnector,
                              ArrayConnector)
 
+def _draw_hypergeom(context, **kwargs):
+    sample = np.random.hypergeometric(ngood = context['n'],
+                                 nbad = context['N'] - context['n'],
+                                 nsample = context['nsample'])
+    context['n'] -= sample
+    context['N'] -= context['nsample']
+    return la.larray(sample, shape=(1,))
 
 # ----------------------------------------------------------------------------
 # AllToAllConnector
@@ -48,6 +56,9 @@ class AllToAllConnector(AllToAllConnector):
     def _estimate_num_synapses(self, pre_slice, post_slice,
                                pre_size, post_size):
         return len(pre_slice) * len(post_slice)
+
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
 
 
 # ----------------------------------------------------------------------------
@@ -77,6 +88,9 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
         return int(round(self.p_connect * float(len(pre_slice)) *
                          float(len(post_slice))))
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
 
 # ----------------------------------------------------------------------------
 # OneToOneConnector
@@ -96,6 +110,9 @@ class OneToOneConnector(OneToOneConnector):
     def _estimate_num_synapses(self, pre_slice, post_slice,
                                pre_size, post_size):
         return min(len(pre_slice), len(post_slice))
+
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
 
 
 # ----------------------------------------------------------------------------
@@ -141,6 +158,10 @@ class FromListConnector(FromListConnector):
                 (post_indices >= post_slice.start) &
                 (post_indices < post_slice.stop)).sum()
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
+
 # ----------------------------------------------------------------------------
 # FixedNumberPostConnector
 # ----------------------------------------------------------------------------
@@ -174,6 +195,10 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
 
         return int(len(pre_slice) * self.n * post_fraction)
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
+
 # ----------------------------------------------------------------------------
 # FixedNumberPreConnector
 # ----------------------------------------------------------------------------
@@ -204,6 +229,10 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
 
         return int(len(post_slice) * self.n * pre_fraction)
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
+
 # ----------------------------------------------------------------------------
 # FixedTotalNumberConnector
 # ----------------------------------------------------------------------------
@@ -212,7 +241,8 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
-    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032)]
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032),
+                          (_draw_hypergeom, "u4")]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -239,3 +269,6 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
 
         # Multiply these by the total number of synapses
         return int(pre_fraction * post_fraction * float(self.n))
+
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return {'n': self.n, 'N': pre_size * post_size}

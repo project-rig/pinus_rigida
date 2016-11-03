@@ -106,7 +106,7 @@ class ConnectionBuilder(Region):
     # --------------------------------------------------------------------------
     def sizeof(self, post_vertex_slice, sub_matrix_props,
                chip_sub_matrix_projs, weight_fixed_point,
-               post_slice_index):
+               post_slice_index, projection_state_dict):
         """Get the size requirements of the region in bytes.
 
         Parameters
@@ -172,7 +172,7 @@ class ConnectionBuilder(Region):
 
     def write_subregion_to_file(self, fp, post_vertex_slice, sub_matrix_props,
                                 chip_sub_matrix_projs, weight_fixed_point,
-                                post_slice_index):
+                                post_slice_index, projection_state_dict):
         """Write a portion of the region to a file applying the formatter.
 
         Parameters
@@ -246,9 +246,11 @@ class ConnectionBuilder(Region):
             fp.write(lazy_param_map.apply_attributes(
                 synapse_type, synaptic_matrix.OnChipParamMap).tostring())
 
+            projection_state_dict[proj[0]]['nsample'] = len(post_vertex_slice) * len(prop.pre_n_slice)
             # Apply parameter map to connector parameters and write to region
             fp.write(lazy_param_map.apply_attributes(
-                connector, connector._on_chip_param_map).tostring())
+                connector, connector._on_chip_param_map,
+                context=projection_state_dict[proj[0]]).tostring())
 
             # Write delay parameter scaled to convert to timesteps and
             # with fixed point of zero to round to nearest timestep

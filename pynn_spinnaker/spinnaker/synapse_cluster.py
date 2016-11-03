@@ -16,7 +16,7 @@ from utils import Args, InputVertex
 
 # Import functions
 from pkg_resources import resource_filename
-from six import iteritems, iterkeys
+from six import iteritems, iterkeys, itervalues
 from utils import (get_model_executable_filename, load_regions, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
@@ -322,6 +322,12 @@ class SynapseCluster(object):
     def load(self, placements, allocations, machine_controller,
              incoming_projections, flush_mask):
 
+        projection_state_dict = {}
+        for p in itertools.chain.from_iterable(itervalues(incoming_projections)):
+            if p._can_generate_on_chip:
+                projection_state_dict[p] = p._connector._get_projection_initial_state(
+                    p.pre.size, p.post.size)
+
         # Loop through all the postsynaptic slices in this synapse cluster
         for post_slice_index, post_slice in enumerate(self.post_slices):
             logger.debug("\t\t\tPost slice:%s", str(post_slice))
@@ -453,7 +459,8 @@ class SynapseCluster(object):
                         v.post_neuron_slice, sub_matrix_props,
                         host_sub_matrix_rows, chip_sub_matrix_projs,
                         matrix_placements, weight_fixed_point, v.out_buffers,
-                        back_prop_in_buffers, flush_mask, post_slice_index)
+                        back_prop_in_buffers, flush_mask, post_slice_index,
+                        projection_state_dict)
 
                     # Load regions
                     v.region_memory = load_regions(
@@ -522,7 +529,7 @@ class SynapseCluster(object):
                               matrix_placements,
                               weight_fixed_point, out_buffers,
                               back_prop_in_buffers, flush_mask,
-                              post_slice_index):
+                              post_slice_index, projection_state_dict):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
@@ -565,5 +572,7 @@ class SynapseCluster(object):
             weight_fixed_point
         region_arguments[Regions.connection_builder].kwargs["post_slice_index"] =\
             post_slice_index
+        region_arguments[Regions.connection_builder].kwargs["projection_state_dict"] =\
+            projection_state_dict
 
         return region_arguments
