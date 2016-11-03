@@ -35,9 +35,9 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         self.synapse_bytes = 2 + synapse_type._synapse_trace_bytes
 
     # --------------------------------------------------------------------------
-    # Private methods
+    # Public methods
     # --------------------------------------------------------------------------
-    def _get_num_row_words(self, num_synapses):
+    def get_num_row_words(self, num_synapses):
         # Calculate size of control and plastic word arrays
         num_control_words, num_plastic_words =\
             self._get_num_array_words(num_synapses)
@@ -48,6 +48,9 @@ class ExtendedPlasticSynapticMatrix(SynapticMatrix):
         return self.NumHeaderWords + self.pre_state_words +\
             num_control_words + num_plastic_words
 
+    # --------------------------------------------------------------------------
+    # Private methods
+    # --------------------------------------------------------------------------
     def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
                            sub_row_sections):
         # Round up each extension sub-row's length to keep

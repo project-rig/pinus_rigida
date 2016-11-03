@@ -31,9 +31,9 @@ class PlasticSynapticMatrix(SynapticMatrix):
             float(synapse_type._pre_state_bytes) / 4.0))
 
     # --------------------------------------------------------------------------
-    # Private methods
+    # Public methods
     # --------------------------------------------------------------------------
-    def _get_num_row_words(self, num_synapses):
+    def get_num_row_words(self, num_synapses):
         # Both control and plastic words are stored as seperate
         # arrays of 16-bit elements so numbers of words
         # should be rounded up to keep them word aligned
@@ -44,6 +44,9 @@ class PlasticSynapticMatrix(SynapticMatrix):
         return self.NumHeaderWords + self.pre_state_words +\
             (2 * num_array_words)
 
+    # --------------------------------------------------------------------------
+    # Private methods
+    # --------------------------------------------------------------------------
     def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
                            sub_row_sections):
         # Round up each extension sub-row's length
