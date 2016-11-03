@@ -251,27 +251,19 @@ class SynapticMatrix(Region):
 
             # Loop through presynaptic vertices
             for pre_n_vert in pre_n_verts:
-                # Estimate maximum row length
-                max_cols = proj._estimate_max_row_synapses(
-                    pre_n_vert.neuron_slice, post_vertex_slice)
+                assert False
+                # Estimate size of sub-matrix
+                size_words, max_cols = proj._estimate_size_words(
+                    pre_n_vert.neuron_slice, post_vertex_slice, self)
 
-                # If matrix has any columns
-                if max_cols > 0:
-                    # **TODO** this takes no account of extension rows
-
-                    # Count rows
-                    num_rows = len(pre_n_vert.neuron_slice)
-
-                    # Calculate matrix size in words -
-                    # size of square matrix
-                    size_words = num_rows * self.get_num_row_words(max_cols)
-
+                # If sub-matrix has any synapses
+                if size_words > 0:
                     # Add sub matrix to list
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
                                   size_words, max_cols))
-                    sub_matrix_projs.append((proj, num_rows))
+                    sub_matrix_projs.append((proj, len(pre_n_vert.neuron_slice)))
 
         return sub_matrix_props, sub_matrix_projs
 

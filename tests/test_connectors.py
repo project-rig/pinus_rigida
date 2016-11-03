@@ -36,8 +36,8 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     proj = sim.Projection(pre, post, connector, sim.StaticSynapse())
 
     # Estimate maximum and mean row length
-    estimated_max_row_synapses = proj._estimate_max_row_synapses(
-        UnitStrideSlice(0, pre_size), post_slice)
+    estimated_max_row_synapses = proj._connector._estimate_max_row_synapses(
+        UnitStrideSlice(0, pre_size), post_slice, pre_size, post_size)
     estimated_mean_row_synapses = proj._connector._estimate_mean_row_synapses(
             UnitStrideSlice(0, pre_size), post_slice, pre_size, post_size)
 

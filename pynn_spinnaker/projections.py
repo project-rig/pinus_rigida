@@ -263,11 +263,90 @@ class Projection(common.Projection, ContextMixin):
 
         return direct_weights
 
-    def _estimate_max_row_synapses(self, pre_slice, post_slice):
+    def _estimate_max_dims(self, pre_slice, post_slice):
         # Calculate maximum synapses per row
         max_row_synapses = self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
-        return max_row_synapses
+
+        # Calculate maximum row delay
+        max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
+                         self._simulator.state.dt)
+
+        # Get delay parameter from synapse type
+        delay = self.synapse_type.native_parameters["delay"]
+
+        # If this projection has no synapses, so will all its sub-rows
+        if max_row_synapses == 0:
+            max_cols = 0
+            max_sub_rows = 0
+            max_sub_row_length = 0
+        # If parameter is randomly distributed
+        elif isinstance(delay.base_value, RandomDistribution):
+            dist_name = delay.base_value.name
+            pynn_params = delay.base_value.parameters
+
+            # If we have a means of sampling from this distribution using scipy
+            if dist_name in distribution:
+                # Get scipy distribution object and convert PyNN
+                # params into suitable form to pass to it
+                dist = distribution[dist_name][0]
+                params = distribution[dist_name][1](**pynn_params)
+
+                # Calculate the probability of a
+                # synapse being in the first sub-row
+                prob_first_sub_row = dist.cdf(max_row_delay, **params)
+                print("Prob in first row:%f" % prob_first_sub_row)
+
+                # Draw from the binomial distribution to determine an upper
+                # bound on the number of synapses this will represent
+                max_cols = scipy.stats.binom.ppf(0.9999, max_row_synapses,
+                                                 prob_first_sub_row)
+                print("Max cols:%u" % max_cols)
+
+                # Draw from the binomial distribution again to determine an
+                # upper bound on the number of synapses in subsequent sub-rows
+                max_sub_row_synapses = scipy.stats.binom.ppf(
+                    0.9999, max_row_synapses, 1.0 - prob_first_sub_row)
+                print("Max sub-row synapses:%u" % max_sub_row_synapses)
+
+                # Calculate the maximum range of delays
+                # this many synapses is likely to have
+                max_probability = 0.999 ** (1.0 / float(max_sub_row_synapses))
+                extension_delay_range = dist.ppf(max_probability, **params) -\
+                    dist.ppf(1.0 - max_probability, **params)
+
+                # Convert this to a maximum number of sub-rows
+                max_sub_rows = max(1, int(math.ceil(extension_delay_range /
+                                                    max_row_delay)))
+
+                # Divide mean number of synapses in row evenly between sub-rows
+                max_sub_row_length = max_sub_row_synapses // max_sub_rows
+                print("Extension delay range:%f, max sub rows:%u, max sub row length:%u"
+                      % (extension_delay_range, max_sub_rows, max_sub_row_length))
+            else:
+                logger.warn("Cannot estimate delay sub-row distribution with %s",
+                            dist_name)
+                max_cols = max_row_synapses
+                max_sub_rows = 0
+                max_sub_row_length = 0
+        # If parameter is a scalar
+        elif is_scalar(delay.base_value):
+            # If the delay is within the maximum row delay, then all
+            # the synapses in the row can be represented in a single sub-row
+            if delay.base_value <= max_row_delay:
+                max_cols = max_row_synapses
+                max_sub_rows = 0
+                max_sub_row_length = 0
+            # Otherwise, the first sub-row will contain no synapses,
+            # just a pointer forwards to the delay sub-row
+            else:
+                max_cols = 0
+                max_sub_rows = 1
+                max_sub_row_length = max_row_synapses
+        else:
+            raise NotImplementedError()
+
+        return max_cols, max_sub_rows, max_sub_row_length
 
     def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
                                               pre_rate, **kwargs):
@@ -290,7 +369,7 @@ class Projection(common.Projection, ContextMixin):
         elif isinstance(delay.base_value, RandomDistribution):
             dist_name = delay.base_value.name
             pynn_params = delay.base_value.parameters
-            #print dist_name, pynn_params
+
             # If we have a means of sampling from this distribution using scipy
             if dist_name in distribution:
                 # Get scipy distribution object and convert PyNN
