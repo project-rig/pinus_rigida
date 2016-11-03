@@ -303,14 +303,27 @@ class Projection(common.Projection, ContextMixin):
                 mean_row_upper = dist.ppf(mean_probability, **params)
                 mean_row_lower = dist.ppf(1.0 - mean_probability, **params)
 
+                # If lower bound is smaller than simulation timestep it
+                # cannot be simulated, give a warning and increase
+                # it to simulation timestep
+                if mean_row_lower < self._simulator.state.dt:
+                    logger.warn("Delay distribution likely to result "
+                                "in delays below simulation timestep of %f",
+                                self._simulator.state.dt)
+                    mean_row_lower = self._simulator.state.dts
+
                 # Determine the number of sub-rows required for this range
                 delay_range = mean_row_upper - mean_row_lower
                 num_sub_rows = max(1, int(math.ceil(delay_range /
                                                     max_row_delay)))
-                #print mean_row_synapses, mean_row_upper, mean_row_lower, delay_range, num_sub_rows
+
+                # If the lower bound is not within that supported by the first
+                # sub-row an extra sub-row will be required
+                if mean_row_lower > max_row_delay:
+                    num_sub_rows += 1
+
+                # Divide mean number of synapses in row evenly between sub-rows
                 mean_sub_row_synapses = mean_row_synapses // num_sub_rows
-                #print mean_sub_row_synapses
-                #assert False
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
