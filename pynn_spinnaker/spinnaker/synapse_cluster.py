@@ -231,9 +231,9 @@ class SynapseCluster(object):
                     logger.debug("\t\t\t\t\t\tCPU cycles:%u, SDRAM:%u bytes",
                                  cpu_cycles, sdram_bytes)
 
-                    # If adding this projection would overtax a processor
-                    # can handle or the matrix requires more than the
-                    # 16mb the key lookup data structure can address
+                    # If adding this projection would overtax the
+                    # processor or overflow the 16mb limit on synaptic
+                    # data imposed by the key lookup data structure
                     if ((vert_cpu_cycles + cpu_cycles) >= 200E6
                         or (vert_sdram_bytes + sdram_bytes) > (16 * 1024 * 1024)):
                         # Add current synapse vertex to list
