@@ -100,7 +100,7 @@ class SynapticMatrix(Region):
             fp.seek(placement * 4, 0)
 
             # Build matrix large enough for entire ragged matrix
-            num_row_words = self.get_num_row_words(matrix.max_cols)
+            num_row_words = self._get_num_row_words(matrix.max_cols)
             num_matrix_words = len(matrix_rows) * num_row_words
             matrix_words = np.empty((len(matrix_rows), num_row_words),
                                     dtype=np.uint32)
@@ -126,7 +126,7 @@ class SynapticMatrix(Region):
 
                 # Loop through extension rows
                 for r, ext_row in enumerate(row[1:], start=1):
-                    num_ext_row_words = self.get_num_row_words(len(ext_row[1]))
+                    num_ext_row_words = self._get_num_row_words(len(ext_row[1]))
                     next_row = None if len(row) == (r + 1) else row[r + 1]
                     self._write_row(
                         ext_row, next_row,
@@ -142,6 +142,9 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
+    def estimate_matrix_bytes(self, pre_slice, max_row_synapses):
+        return self._get_num_row_words(max_row_synapses) * len(pre_slice) * 4
+
     def partition_matrices(self, post_vertex_slice, pre_pop_sub_rows,
                            incoming_connections):
         # Loop through all incoming connections
@@ -220,7 +223,7 @@ class SynapticMatrix(Region):
                     # Calculate matrix size in words - size of square
                     # matrix added to number of extension words
                     size_words = num_ext_words +\
-                        (len(vert_sub_rows) * self.get_num_row_words(max_cols))
+                        (len(vert_sub_rows) * self._get_num_row_words(max_cols))
 
                     # Add sub matrix to list
                     sub_matrix_props.append(
@@ -281,7 +284,7 @@ class SynapticMatrix(Region):
 
         # Calculate the size of the ragged matrix
         num_rows = len(pre_n_vert.neuron_slice)
-        num_row_words = self.get_num_row_words(vert_matrix_prop.max_cols)
+        num_row_words = self._get_num_row_words(vert_matrix_prop.max_cols)
         num_matrix_words = (num_row_words * num_rows)
 
         logger.debug("\tReading matrix - max cols:%u, size words:%u, "
@@ -344,7 +347,7 @@ class SynapticMatrix(Region):
                 assert ext_row_start >= 0
 
                 # Convert extension row length to words
-                ext_row_end = ext_row_start + self.get_num_row_words(row[2])
+                ext_row_end = ext_row_start + self._get_num_row_words(row[2])
 
                 # Create view of new extension row data
                 ext_row_data = ext_words[ext_row_start:ext_row_end]
@@ -433,7 +436,7 @@ class SynapticMatrix(Region):
                 weight_fixed = float_to_weight(np.abs(row[1]["weight"]))
 
             # Write synapses
-            num_row_words = self.get_num_row_words(num_synapses)
+            num_row_words = self._get_num_row_words(num_synapses)
             self._write_synapses(dtcm_delay, weight_fixed,
                                  row[1]["index"],
                                  destination[3:num_row_words])

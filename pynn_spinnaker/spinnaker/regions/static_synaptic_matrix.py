@@ -25,14 +25,11 @@ class StaticSynapticMatrix(SynapticMatrix):
     OnChipParamMap = [("_signed_weight", "u4", lazy_param_map.integer)]
 
     # --------------------------------------------------------------------------
-    # Public methods
-    # --------------------------------------------------------------------------
-    def get_num_row_words(self, num_synapses):
-        return self.NumHeaderWords + num_synapses
-
-    # --------------------------------------------------------------------------
     # Private methods
     # --------------------------------------------------------------------------
+    def _get_num_row_words(self, num_synapses):
+        return self.NumHeaderWords + num_synapses
+
     def _get_num_ext_words(self, num_sub_rows, sub_row_lengths,
                            sub_row_sections):
         # Number of synapses in all but 1st delay

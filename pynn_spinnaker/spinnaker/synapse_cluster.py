@@ -224,11 +224,8 @@ class SynapseCluster(object):
 
                     # Estimate size of matrix
                     synaptic_matrix = self.regions[Regions.synaptic_matrix]
-                    ragged_words = synaptic_matrix.get_num_row_words(max_cols)
-                    delay_words = max_sub_rows *\
-                        synaptic_matrix.get_num_row_words(max_sub_row_length)
-
-                    sdram_bytes = len(pre_vertex.neuron_slice) * (ragged_words + delay_words) * 4
+                    sdram_bytes = synaptic_matrix.estimate_matrix_bytes(
+                        pre_vertex.neuron_slice, max_row_synapses)
 
                     logger.debug("\t\t\t\t\t\tCPU cycles:%u, SDRAM:%u bytes",
                                  cpu_cycles, sdram_bytes)
