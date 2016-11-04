@@ -20,12 +20,14 @@ from rig.bitfield import BitField
 @pytest.mark.parametrize("pre_size", [1000])
 @pytest.mark.parametrize("post_size, post_slice",
                          [(5000, UnitStrideSlice(0, 1024)),
-                          (5000, UnitStrideSlice(1024, 2048)),
-                          (5000, UnitStrideSlice(3976, 5000))])
+                          (5000, UnitStrideSlice(1024, 2048))])
 @pytest.mark.parametrize("delay", [0.1, 1.0,
                                    RandomDistribution("normal_clipped",
                                                       mu=1.5, sigma=0.75,
-                                                      low=0.1, high=np.inf)])
+                                                      low=0.1, high=np.inf),
+                                   RandomDistribution("normal_clipped",
+                                                      mu=0.5, sigma=0.2,
+                                                      low=0.1, high=0.7)])
 def test_estimate_max_dims(pre_size, post_size, post_slice, delay):
     # Setup simulator
     sim.setup(timestep=0.1, min_delay=1.0, max_delay=8.0)
@@ -35,7 +37,7 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay):
     post = sim.Population(post_size, sim.IF_curr_exp())
 
     # Connect the populations together
-    proj = sim.Projection(pre, post, sim.FixedProbabilityConnector(0.1),
+    proj = sim.Projection(pre, post, sim.AllToAllConnector(),
                           sim.StaticSynapse(delay=delay))
 
     # Create a 32-bit keyspace
@@ -56,14 +58,13 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay):
     key_lookup_region = KeyLookupBinarySearch()
     synaptic_matrix_region = StaticSynapticMatrix(proj.synapse_type)
 
-
     # Estimate matrix dimensions
     max_cols, max_sub_rows, max_sub_row_length =\
         proj._estimate_max_dims(UnitStrideSlice(0, pre_size), post_slice)
-    ragged_words = synaptic_matrix_region.get_num_row_words(max_cols)
-    delay_words = max_sub_rows *\
-        synaptic_matrix_region.get_num_row_words(max_sub_row_length)
-    max_size_words = pre_size * (ragged_words + delay_words)
+
+    # From this calculate max words
+    max_size_words = synaptic_matrix_region.estimate_matrix_words(
+        pre_size, max_cols, max_sub_rows, max_sub_row_length)
 
     # Create list of lists to contain matrix rows
     sub_rows = [[] for _ in range(pre_size)]
@@ -92,5 +93,5 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay):
                                                   incoming_connections)
 
     assert len(sub_matrix_props) == 1
-    assert (max_cols == 0 and sub_matrix_props[0].max_cols == 1) or sub_matrix_props[0].max_cols <= max_cols
+    assert (sub_matrix_props[0].max_cols - 1) <= max_cols
     assert sub_matrix_props[0].size_words <= max_size_words
