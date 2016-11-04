@@ -295,34 +295,37 @@ class Projection(common.Projection, ContextMixin):
                 # Calculate the probability of a
                 # synapse being in the first sub-row
                 prob_first_sub_row = dist.cdf(max_row_delay, **params)
-                print("Prob in first row:%f" % prob_first_sub_row)
 
                 # Draw from the binomial distribution to determine an upper
                 # bound on the number of synapses this will represent
-                max_cols = scipy.stats.binom.ppf(0.9999, max_row_synapses,
+                row_probability = 0.9999 ** (1.0 / float(len(pre_slice)))
+                max_cols = scipy.stats.binom.ppf(row_probability, max_row_synapses,
                                                  prob_first_sub_row)
-                print("Max cols:%u" % max_cols)
 
                 # Draw from the binomial distribution again to determine an
                 # upper bound on the number of synapses in subsequent sub-rows
                 max_sub_row_synapses = scipy.stats.binom.ppf(
-                    0.9999, max_row_synapses, 1.0 - prob_first_sub_row)
-                print("Max sub-row synapses:%u" % max_sub_row_synapses)
+                    row_probability, max_row_synapses, 1.0 - prob_first_sub_row)
 
-                # Calculate the maximum range of delays
-                # this many synapses is likely to have
-                max_probability = 0.999 ** (1.0 / float(max_sub_row_synapses))
-                extension_delay_range = dist.ppf(max_probability, **params) -\
-                    dist.ppf(1.0 - max_probability, **params)
+                # If there are any synapses outside of first delay sub-row
+                if max_sub_row_synapses == 0:
+                    assert max_cols == max_row_synapses
+                    max_sub_rows = 0
+                    max_sub_row_length = 0
+                else:
+                    # Calculate the maximum range of delays
+                    # this many synapses is likely to have
+                    max_probability = 0.9999 ** (1.0 / float(max_sub_row_synapses))
+                    extension_delay_range = dist.ppf(max_probability, **params) -\
+                        dist.ppf(1.0 - max_probability, **params)
 
-                # Convert this to a maximum number of sub-rows
-                max_sub_rows = max(1, int(math.ceil(extension_delay_range /
-                                                    max_row_delay)))
+                    # Convert this to a maximum number of sub-rows
+                    max_sub_rows = max(1, int(math.ceil(extension_delay_range /
+                                                        max_row_delay)))
 
-                # Divide mean number of synapses in row evenly between sub-rows
-                max_sub_row_length = max_sub_row_synapses // max_sub_rows
-                print("Extension delay range:%f, max sub rows:%u, max sub row length:%u"
-                      % (extension_delay_range, max_sub_rows, max_sub_row_length))
+                    # Divide mean number of synapses in row evenly between sub-rows
+                    max_sub_row_length = int(math.ceil(max_sub_row_synapses /
+                                                       max_sub_rows))
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
