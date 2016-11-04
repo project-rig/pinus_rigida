@@ -303,7 +303,7 @@ class Population(common.Population):
             self._neuron_j_constraint =\
                 self.celltype._calc_max_neurons_per_core(
                     hardware_timestep_us=hardware_timestep_us,
-                    num_input_processors=0)
+                    num_input_processors=len(dc_projections))
             logger.debug("\t\t\t%u neurons per neuron processor",
                          self._neuron_j_constraint)
 
@@ -315,13 +315,10 @@ class Population(common.Population):
                     pre_cell_type._calc_max_current_inputs_per_core(hardware_timestep_us)
                 logger.debug("\t\t\t%s - %u neurons per current input processor",
                             p.label, p._current_input_j_constraint)
-                assert isinstance(p._current_input_j_constraint, int)
             return
 
         # Iterate to find cluster configuration
         while True:
-            #max_constraint = min(self.size,
-            #                     max(itervalues(self._synapse_j_constraints)))
             max_constraint = max(itervalues(self._synapse_j_constraints))
             logger.debug("\t\t\tMax synapse j constraint:%u",
                          max_constraint)
@@ -338,8 +335,6 @@ class Population(common.Population):
 
                 # If there are any
                 if len(synaptic_projections) > 0:
-                    #s_type_constraint =\
-                    #    min(self._synapse_j_constraints[s_type], self.size)
                     s_type_constraint = self._synapse_j_constraints[s_type]
 
                     # Build suitable post-slice to estimate CPU usage over
@@ -348,10 +343,6 @@ class Population(common.Population):
                     # Loop through list of projections
                     total_cpu_cycles = 0.0
                     for proj in synaptic_projections:
-                        # If projection is directly connectable, skip
-                        if proj._directly_connectable:
-                            continue
-
                         # Estimate CPU cycles required to process sub-matrix
                         cpu_cycles = proj._estimate_spike_processing_cpu_cycles(
                             UnitStrideSlice(0, proj.pre.size), post_slice,
@@ -360,8 +351,13 @@ class Population(common.Population):
 
                         total_cpu_cycles += cpu_cycles
 
+                    # Calculate presynaptic (i) 'height' of synapse processors 
+                    # required to handle the synaptic processing of post_slice
                     available_core_cpu_cycles = 200E6 - s_type.model._constant_cpu_overhead
                     num_i_cores = int(math.ceil(float(total_cpu_cycles) / float(available_core_cpu_cycles)))
+
+                    # Calculate the postsynaptic (j) 'width' of synapse 
+                    # processors required to fill max_constraint width
                     num_j_cores = int(math.ceil(float(max_constraint) /
                                                 float(s_type_constraint)))
                     num_cores = num_i_cores * num_j_cores
@@ -381,7 +377,7 @@ class Population(common.Population):
             neuron_j_constraint =\
                 self.celltype._calc_max_neurons_per_core(
                     hardware_timestep_us=hardware_timestep_us,
-                    num_input_processors=total_i_cores)
+                    num_input_processors=total_i_cores + len(dc_projections))
 
             num_neuron_j = _calc_clusters_per_core(max_constraint, neuron_j_constraint)
             max_clusters = num_neuron_j
