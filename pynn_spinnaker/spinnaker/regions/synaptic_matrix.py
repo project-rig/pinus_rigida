@@ -142,8 +142,23 @@ class SynapticMatrix(Region):
     # --------------------------------------------------------------------------
     # Public methods
     # --------------------------------------------------------------------------
-    def estimate_matrix_bytes(self, pre_slice, max_row_synapses):
-        return self._get_num_row_words(max_row_synapses) * len(pre_slice) * 4
+    def estimate_matrix_words(self, num_pre, max_cols, max_sub_rows,
+                              max_sub_row_length):
+        # Because of the number of bits available for storing
+        # max_cols, rows with 0 synapses cannot be represented
+        max_cols = max(1, max_cols)
+
+        # Calculate the 'width' in words of
+        # the ragged portion of the synaptic matrix
+        ragged_words = self._get_num_row_words(max_cols)
+
+        # Calculate the maximum size in words of the delays
+        # sub-rows associated with any pre-synaptic neuron
+        delay_words =\
+            (max_sub_rows * self._get_num_row_words(max_sub_row_length))
+
+        # Calculate final size
+        return num_pre * (ragged_words + delay_words)
 
     def partition_matrices(self, post_vertex_slice, pre_pop_sub_rows,
                            incoming_connections):

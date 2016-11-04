@@ -212,7 +212,7 @@ class SynapseCluster(object):
 
                     # If this projection doesn't result in any
                     # synapses don't add connection
-                    if max_cols == 0 and max_delay_sub_rows:
+                    if max_cols == 0 and max_delay_sub_rows == 0:
                         logger.debug("\t\t\t\t\t\tNo synapses")
                         continue
 
@@ -225,7 +225,8 @@ class SynapseCluster(object):
                     # Estimate size of matrix
                     synaptic_matrix = self.regions[Regions.synaptic_matrix]
                     sdram_bytes = synaptic_matrix.estimate_matrix_bytes(
-                        pre_vertex.neuron_slice, max_row_synapses)
+                        len(pre_vertex.neuron_slice), max_cols,
+                        max_sub_rows, max_sub_row_length) * 4
 
                     logger.debug("\t\t\t\t\t\tCPU cycles:%u, SDRAM:%u bytes",
                                  cpu_cycles, sdram_bytes)
