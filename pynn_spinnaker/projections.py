@@ -299,8 +299,9 @@ class Projection(common.Projection, ContextMixin):
                 # Draw from the binomial distribution to determine an upper
                 # bound on the number of synapses this will represent
                 row_probability = 0.9999 ** (1.0 / float(len(pre_slice)))
-                max_cols = scipy.stats.binom.ppf(row_probability, max_row_synapses,
-                                                 prob_first_sub_row)
+                max_cols = int(scipy.stats.binom.ppf(row_probability,
+                                                     max_row_synapses,
+                                                     prob_first_sub_row))
 
                 # Draw from the binomial distribution again to determine an
                 # upper bound on the number of synapses in subsequent sub-rows
