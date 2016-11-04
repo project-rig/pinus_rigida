@@ -212,7 +212,7 @@ class SynapseCluster(object):
 
                     # If this projection doesn't result in any
                     # synapses don't add connection
-                    if max_cols == 0 and max_delay_sub_rows == 0:
+                    if max_cols == 0 and max_sub_rows == 0:
                         logger.debug("\t\t\t\t\t\tNo synapses")
                         continue
 
