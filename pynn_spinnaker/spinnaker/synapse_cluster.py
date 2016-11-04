@@ -224,7 +224,7 @@ class SynapseCluster(object):
 
                     # Estimate size of matrix
                     synaptic_matrix = self.regions[Regions.synaptic_matrix]
-                    sdram_bytes = synaptic_matrix.estimate_matrix_bytes(
+                    sdram_bytes = synaptic_matrix.estimate_matrix_words(
                         len(pre_vertex.neuron_slice), max_cols,
                         max_sub_rows, max_sub_row_length) * 4
 
