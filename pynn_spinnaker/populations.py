@@ -33,12 +33,12 @@ Synapse = namedtuple("Synapse", ["weight", "delay", "index"])
 # Functions
 # --------------------------------------------------------------------------
 def _calc_clusters_per_core(cluster_width, constraint):
-    return int(math.ceil(2.0 ** math.floor(math.log(float(constraint) /
-                                                    float(cluster_width), 2))))
+    return int(math.ceil(2.0 ** math.floor(np.log2(float(constraint) /
+                                                   float(cluster_width)))))
 
 def _calc_cores_per_cluster(cluster_width, constraint):
-    return int(math.ceil(2.0 ** math.ceil(math.log(float(cluster_width) /
-                                                   float(constraint), 2))))
+    return int(math.ceil(2.0 ** math.ceil(np.log2(float(cluster_width) /
+                                                 float(constraint)))))
 
 # --------------------------------------------------------------------------
 # Assembly
@@ -407,7 +407,7 @@ class Population(common.Population):
             # Search downwards through possible power-of-two cluster widths
             logger.debug("\t\t\t\tMax synapse clusters:%u",
                          max_clusters)
-            max_cluster_power = int(math.log(max_clusters, 2))
+            max_cluster_power = int(np.log2(max_clusters))
             for s in (2 ** p for p in range(max_cluster_power, -1, -1)):
                 cluster_width = s * max_constraint
                 logger.debug("\t\t\t\tCluster width:%u", cluster_width)
@@ -429,7 +429,7 @@ class Population(common.Population):
 
                 # If this configuration can fit on a chip
                 if((cluster_synapse_processors + cluster_neuron_processors +
-                    sum(cluster_current_input_processors)) <= 16):
+                    sum(cluster_current_input_processors)) <= 17):
                     logger.debug("\t\t\t\t\tCluster fits on chip!")
 
                     # Calculate final neuron J constraint
@@ -449,9 +449,11 @@ class Population(common.Population):
             # Divide the constraint on any synapse processors
             # which currently have maximum constraint by 2
             new_max_constraint = max_constraint // 2
-            self._synapse_j_constraints =\
-                {s_type : new_max_constraint if c == max_constraint else c
-                    for s_type, c in iteritems(self._synapse_j_constraints)}
+            self._synapse_j_constraints = {
+                s_type: (new_max_constraint
+                         if constraint == max_constraint
+                         else constraint)
+                for s_type, constraint in iteritems(self._synapse_j_constraints)}
 
 
     def _create_neural_cluster(self, pop_id, timer_period_us, simulation_ticks,
