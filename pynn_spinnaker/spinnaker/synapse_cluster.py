@@ -126,6 +126,9 @@ class SynapseCluster(object):
         "delay_buffers_not_processed",
         "input_buffer_overflows",
         "key_lookup_fails",
+        "delay_buffer_overflows",
+        "task_queue_full",
+        "timer_event_overflows",
     )
 
     def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,

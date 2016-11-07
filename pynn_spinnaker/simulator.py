@@ -227,6 +227,12 @@ class State(common.control.BaseState):
                             np.sum(stats["input_buffer_overflows"]))
                 logger.info("\t\t\tKey lookup failures:%u",
                             np.sum(stats["key_lookup_fails"]))
+                logger.info("\t\t\tDelay buffer overflows:%u",
+                            np.sum(stats["delay_buffer_overflows"]))
+                logger.info("\t\t\tTask queue overflows:%u",
+                                np.sum(stats["task_queue_full"]))
+                logger.info("\t\t\tTimer event overruns:%u",
+                                np.sum(stats["timer_event_overflows"]))
 
             # If population has a neural cluster
             if pop._neural_cluster is not None:
