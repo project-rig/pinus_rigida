@@ -197,7 +197,6 @@ class IF_cond_exp(cells.IF_cond_exp):
     # --------------------------------------------------------------------------
     # How many of these neurons per core can
     # a SpiNNaker neuron processor handle
-    # **TODO** correct neuron_update_cpu_cycles for Cond
     _calc_max_neurons_per_core = partial(calc_max_neurons_per_core,
                                          neuron_update_cpu_cycles=167,
                                          synapse_shape_cpu_cycles=28)
