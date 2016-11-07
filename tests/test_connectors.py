@@ -23,7 +23,8 @@ from pynn_spinnaker.spinnaker.utils import UnitStrideSlice
                           sim.FixedProbabilityConnector(1.0),
                           sim.FixedNumberPreConnector(10),
                           sim.FixedNumberPostConnector(100),
-                          sim.FixedNumberPostConnector(1000),])
+                          sim.FixedNumberPostConnector(1000),
+                          sim.FixedTotalNumberConnector(500000)])
 def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     # Setup simulator
     sim.setup(timestep=1.0, min_delay=1.0, max_delay=8.0, spinnaker_hostname="")
@@ -51,6 +52,9 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
     # corresponding to neurons in postsynaptic vertex
     proj.post._mask_local = np.zeros((post_size,), dtype=bool)
     proj.post._mask_local[post_slice.python_slice] = True
+
+    # Some connectors also use num_processes for partial connector building
+    proj._simulator.state.num_processes = 5
 
     # Build projection
     proj._build(matrix_rows=sub_rows,
