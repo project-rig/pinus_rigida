@@ -3,6 +3,10 @@
 // Common includes
 #include "../common/log.h"
 #include "../common/random/mars_kiss64.h"
+#include "../common/maths/hypergeometric.h"
+
+// Namespaces
+using namespace Common::Maths;
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ConnectorGenerator::AllToAll
@@ -17,7 +21,7 @@ ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&region)
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
-  MarsKiss64 &, uint32_t (&indices)[1024]) const
+  MarsKiss64 &, uint32_t (&indices)[1024])
 {
   if(numPostNeurons != maxRowSynapses)
   {
@@ -52,7 +56,7 @@ ConnectionBuilder::ConnectorGenerator::OneToOne::OneToOne(uint32_t *&)
 unsigned int ConnectionBuilder::ConnectorGenerator::OneToOne::Generate(
   unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
-  MarsKiss64 &, uint32_t (&indices)[1024]) const
+  MarsKiss64 &, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to
   // connect to
@@ -75,14 +79,13 @@ ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32
   m_Probability = *region++;
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed-probability connector: probability:%u",
-    m_Probability
-  );
+    m_Probability);
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
-  MarsKiss64 &rng, uint32_t (&indices)[1024]) const
+  MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to not
   // connect to if self connections are not allowed
@@ -121,6 +124,7 @@ ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::FixedTotalNumber(uint32
 {
   m_AllowSelfConnections = *region++;
   m_ConnectionsInSubmatrix = *region++;
+  m_SubmatrixSize = *region++;
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector: connections in submatrix: %u",
     m_ConnectionsInSubmatrix);
@@ -129,10 +133,26 @@ ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::FixedTotalNumber(uint32
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
-  MarsKiss64 &rng, uint32_t (&indices)[1024]) const
+  MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
-  // Write indices
-  unsigned int k = 0;
+  unsigned int i;
+  unsigned int numInRow = Hypergeom(m_ConnectionsInSubmatrix,
+				    m_SubmatrixSize - m_ConnectionsInSubmatrix,
+				    numPostNeurons, rng);
+  m_ConnectionsInSubmatrix -= numInRow;
+  m_SubmatrixSize -= numPostNeurons;
 
-  return k;
+  // Reservoir sampling
+  for(i=0; i<numInRow; i++)
+    indices[i] = i;
+  for(i=numInRow; i<numPostNeurons; i++)
+  {
+    // j = rand(0, i) (inclusive)
+    unsigned int u01 = (rng.GetNext() & 0x00007fff);
+    unsigned int j = (u01 * (i+1)) >> 15;
+    if (j < numInRow)
+      indices[j] = i;
+  }
+
+  return numInRow;
 }

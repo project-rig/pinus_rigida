@@ -38,7 +38,7 @@ public:
                                 unsigned int numPostNeurons,
 				unsigned int vertexPostSlice,
 				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]) const = 0;
+                                uint32_t (&indices)[1024]);
 
 };
 
@@ -57,7 +57,7 @@ public:
                                 unsigned int numPostNeurons,
 				unsigned int vertexPostSlice,
 				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]) const;
+                                uint32_t (&indices)[1024]);
 
 private:
   AllToAll(uint32_t *&);
@@ -83,7 +83,7 @@ public:
                                 unsigned int numPostNeurons,
 				unsigned int vertexPostSlice,
 				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]) const;
+                                uint32_t (&indices)[1024]);
 
 private:
   OneToOne(uint32_t *&);
@@ -104,7 +104,7 @@ public:
                                 unsigned int numPostNeurons,
 				unsigned int vertexPostSlice,
 				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]) const;
+                                uint32_t (&indices)[1024]);
 
 private:
   FixedProbability(uint32_t *&region);
@@ -131,7 +131,7 @@ public:
                                 unsigned int numPostNeurons,
 				unsigned int vertexPostSlice,
 				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]) const;
+                                uint32_t (&indices)[1024]);
 
 private:
   FixedTotalNumber(uint32_t *&region);
@@ -141,6 +141,7 @@ private:
   //-----------------------------------------------------------------------------
   uint32_t m_AllowSelfConnections;
   uint32_t m_ConnectionsInSubmatrix;
+  uint32_t m_SubmatrixSize;
 };
 
 } // ConnectorGenerators

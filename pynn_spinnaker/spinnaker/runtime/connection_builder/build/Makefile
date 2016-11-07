@@ -6,7 +6,11 @@ SOURCES = ../connection_builder.cpp \
 	../matrix_generator.cpp \
 	../param_generator.cpp \
 	../../common/config.cpp \
-	../../common/maths/normal.cpp
+	../../common/maths/normal.cpp \
+	../../common/maths/hypergeometric.cpp \
+	../../common/maths/ln.cpp \
+	../../common/maths/logfact.cpp \
+	../../common/maths/exp.cpp \
 
 CFLAGS += -I $(CURDIR)
 

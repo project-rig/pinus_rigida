@@ -27,12 +27,17 @@ from pyNN.connectors import (AllToAllConnector,
                              CloneConnector,
                              ArrayConnector)
 
-def _draw_hypergeom(context, **kwargs):
+def _draw_hypergeom(context, post_slice_size, pre_slice_size, **kwargs):
+    nsample = post_slice_size * pre_slice_size
     sample = np.random.hypergeometric(ngood = context['n'],
                                  nbad = context['N'] - context['n'],
-                                 nsample = context['nsample'])
+                                 nsample = nsample)
     context['n'] -= sample
-    context['N'] -= context['nsample']
+    context['N'] -= nsample
+    return la.larray(sample, shape=(1,))
+
+def _submat_size(context, post_slice_size, pre_slice_size, **kwargs):
+    return la.larray(post_slice_size * pre_slice_size, shape=(1,))
     return la.larray(sample, shape=(1,))
 
 # ----------------------------------------------------------------------------
@@ -242,7 +247,8 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     _directly_connectable = False
 
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032),
-                          (_draw_hypergeom, "u4")]
+                          (_draw_hypergeom, "u4"),
+                          (_submat_size, "u4")]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
