@@ -366,12 +366,18 @@ class SynapseCluster(object):
                         # Cache original post mask (due to above
                         # this is slightly pointless but still)
                         old_post_mask = proj.post._mask_local
+                        old_num_processes = proj._simulator.state.num_processes
 
                         # Create new local mask to select only the columns
                         # corresponding to neurons in postsynaptic vertex
                         proj.post._mask_local = np.zeros((proj.post.size,),
                                                          dtype=bool)
                         proj.post._mask_local[post_slice.python_slice] = True
+
+                        # Some connectors also use num_processes for
+                        # partial connector building so override this too
+                        proj._simulator.state.num_processes =\
+                            len(self.post_slices)
 
                         # Cache original connector callback
                         old_connector_callback = proj._connector.callback
@@ -382,9 +388,11 @@ class SynapseCluster(object):
                                     weight_range=weight_range,
                                     directly_connect=False)
 
-                        # Restore old mask and connector callback
+                        # Restore old mask, connector callback
+                        # and number of processes
                         proj.post._mask_local = old_post_mask
                         proj._connector.callback = old_connector_callback
+                        proj._simulator.state.num_processes = old_num_processes
 
                     # Convert rows to numpy and add to dictionary
                     pre_pop_sub_rows[pre_pop] = [np.asarray(r, dtype=row_dtype)
