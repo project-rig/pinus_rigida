@@ -154,8 +154,8 @@ class SynapticMatrix(Region):
 
         # Calculate the maximum size in words of the delays
         # sub-rows associated with any pre-synaptic neuron
-        delay_words =\
-            (max_sub_rows * self._get_num_row_words(max_sub_row_length))
+        delay_words = (max_sub_rows *
+                       self._get_num_row_words(max_sub_row_length))
 
         # Calculate final size
         return num_pre * (ragged_words + delay_words)
