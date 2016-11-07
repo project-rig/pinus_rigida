@@ -21,6 +21,9 @@ from rig.bitfield import BitField
 @pytest.mark.parametrize("post_size, post_slice",
                          [(5000, UnitStrideSlice(0, 1024)),
                           (5000, UnitStrideSlice(1024, 2048))])
+@pytest.mark.parametrize("connector",
+                         [sim.AllToAllConnector(),
+                          sim.FixedProbabilityConnector(0.1)])
 @pytest.mark.parametrize("delay", [0.1, 1.0,
                                    RandomDistribution("normal_clipped",
                                                       mu=1.5, sigma=0.75,
@@ -28,7 +31,7 @@ from rig.bitfield import BitField
                                    RandomDistribution("normal_clipped",
                                                       mu=0.5, sigma=0.2,
                                                       low=0.1, high=0.7)])
-def test_estimate_max_dims(pre_size, post_size, post_slice, delay):
+def test_estimate_max_dims(pre_size, post_size, post_slice, delay, connector):
     # Setup simulator
     sim.setup(timestep=0.1, min_delay=1.0, max_delay=8.0)
 
@@ -37,8 +40,7 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay):
     post = sim.Population(post_size, sim.IF_curr_exp())
 
     # Connect the populations together
-    proj = sim.Projection(pre, post, sim.AllToAllConnector(),
-                          sim.StaticSynapse(delay=delay))
+    proj = sim.Projection(pre, post, connector, sim.StaticSynapse(delay=delay))
 
     # Create a 32-bit keyspace
     keyspace = BitField(32)
