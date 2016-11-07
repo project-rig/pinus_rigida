@@ -204,6 +204,9 @@ def calc_slice_bitfield_words(vertex_slice):
     return calc_bitfield_words(len(vertex_slice))
 
 
+def calc_timestep_mul(hardware_timestep_us):
+    return min(1.0, float(hardware_timestep_us) / 1000.0)
+
 def combine_row_offset_length(offset, length, num_length_bits):
     assert length >= 1 and length <= (2 ** num_length_bits)
     assert offset >= 0 and offset < (2 ** (32 - num_length_bits))

@@ -9,6 +9,7 @@ from pyNN.standardmodels import StandardCellType
 from . import simulator
 import itertools
 import logging
+import math
 import numpy as np
 import scipy
 from rig import machine
@@ -24,6 +25,17 @@ from .random import NativeRNG
 from spinnaker.utils import get_model_comparable, is_scalar
 
 logger = logging.getLogger("pynn_spinnaker")
+
+distribution = {
+    "normal":
+        (scipy.stats.norm,
+         lambda mu, sigma: {"loc": mu, "scale": sigma}),
+    "normal_clipped":
+        (scipy.stats.truncnorm,
+         lambda mu, sigma, low, high: {"loc": mu, "scale": sigma,
+                                       "a": (low - mu) / sigma,
+                                       "b": (high - mu) / sigma}),
+}
 
 # --------------------------------------------------------------------------
 # SynapseClusterType
@@ -187,7 +199,7 @@ class Projection(common.Projection, ContextMixin):
                 self._simulator.state.dt, timer_period_us, simulation_ticks,
                 self.pre.recorder.indices_to_record, self.pre.spinnaker_config,
                 receptor_index, vertex_load_applications, vertex_run_applications,
-                vertex_resources, self.current_input_j_constraint, self.pre.size)
+                vertex_resources, self._current_input_j_constraint, self.pre.size)
         # Otherwise, null current input cluster
         else:
             self._current_input_cluster = None
@@ -251,13 +263,182 @@ class Projection(common.Projection, ContextMixin):
 
         return direct_weights
 
-    def _estimate_max_row_synapses(self, pre_slice, post_slice):
-        return self._connector._estimate_max_row_synapses(
+    def _estimate_max_dims(self, pre_slice, post_slice):
+        # Calculate maximum synapses per row
+        max_row_synapses = self._connector._estimate_max_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
 
-    def _estimate_num_synapses(self, pre_slice, post_slice):
-        return self._connector._estimate_num_synapses(
+        # Calculate maximum row delay
+        max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
+                         self._simulator.state.dt)
+
+        # Get delay parameter from synapse type
+        delay = self.synapse_type.native_parameters["delay"]
+
+        # If this projection has no synapses, so will all its sub-rows
+        if max_row_synapses == 0:
+            max_cols = 0
+            max_sub_rows = 0
+            max_sub_row_length = 0
+        # If parameter is randomly distributed
+        elif isinstance(delay.base_value, RandomDistribution):
+            dist_name = delay.base_value.name
+            pynn_params = delay.base_value.parameters
+
+            # If we have a means of sampling from this distribution using scipy
+            if dist_name in distribution:
+                # Get scipy distribution object and convert PyNN
+                # params into suitable form to pass to it
+                dist = distribution[dist_name][0]
+                params = distribution[dist_name][1](**pynn_params)
+
+                # Calculate the probability of a
+                # synapse being in the first sub-row
+                prob_first_sub_row = dist.cdf(max_row_delay, **params)
+
+                # Draw from the binomial distribution to determine an upper
+                # bound on the number of synapses this will represent
+                row_probability = 0.9999 ** (1.0 / float(len(pre_slice)))
+                max_cols = int(scipy.stats.binom.ppf(row_probability,
+                                                     max_row_synapses,
+                                                     prob_first_sub_row))
+
+                # Draw from the binomial distribution again to determine an
+                # upper bound on the number of synapses in subsequent sub-rows
+                max_sub_row_synapses = scipy.stats.binom.ppf(
+                    row_probability, max_row_synapses, 1.0 - prob_first_sub_row)
+
+                # If there are any synapses outside of first delay sub-row
+                if max_sub_row_synapses == 0:
+                    assert max_cols == max_row_synapses
+                    max_sub_rows = 0
+                    max_sub_row_length = 0
+                else:
+                    # Calculate the maximum range of delays
+                    # this many synapses is likely to have
+                    max_probability = 0.9999 ** (1.0 / float(max_sub_row_synapses))
+                    extension_delay_range = dist.ppf(max_probability, **params) -\
+                        dist.ppf(1.0 - max_probability, **params)
+
+                    # Convert this to a maximum number of sub-rows
+                    max_sub_rows = max(1, int(math.ceil(extension_delay_range /
+                                                        max_row_delay)))
+
+                    # Divide mean number of synapses in row evenly between sub-rows
+                    max_sub_row_length = int(math.ceil(max_sub_row_synapses /
+                                                       max_sub_rows))
+            else:
+                logger.warn("Cannot estimate delay sub-row distribution with %s",
+                            dist_name)
+                max_cols = max_row_synapses
+                max_sub_rows = 0
+                max_sub_row_length = 0
+        # If parameter is a scalar
+        elif is_scalar(delay.base_value):
+            # If the delay is within the maximum row delay, then all
+            # the synapses in the row can be represented in a single sub-row
+            if delay.base_value <= max_row_delay:
+                max_cols = max_row_synapses
+                max_sub_rows = 0
+                max_sub_row_length = 0
+            # Otherwise, the first sub-row will contain no synapses,
+            # just a pointer forwards to the delay sub-row
+            else:
+                max_cols = 0
+                max_sub_rows = 1
+                max_sub_row_length = max_row_synapses
+        else:
+            raise NotImplementedError()
+
+        return max_cols, max_sub_rows, max_sub_row_length
+
+    def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
+                                              pre_rate, **kwargs):
+        # Use connector to estimate mean number of synapses in each row
+        mean_row_synapses =  self._connector._estimate_mean_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
+
+         # Calculate maximum row delay
+        max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
+                         self._simulator.state.dt)
+
+        # Get delay parameter from synapse type
+        delay = self.synapse_type.native_parameters["delay"]
+
+        # If this projection has no synapses, so will all its sub-rows
+        if mean_row_synapses == 0:
+            num_sub_rows = 1
+            mean_sub_row_synapses = 0
+        # If parameter is randomly distributed
+        elif isinstance(delay.base_value, RandomDistribution):
+            dist_name = delay.base_value.name
+            pynn_params = delay.base_value.parameters
+
+            # If we have a means of sampling from this distribution using scipy
+            if dist_name in distribution:
+                # Get scipy distribution object and convert PyNN
+                # params into suitable form to pass to it
+                dist = distribution[dist_name][0]
+                params = distribution[dist_name][1](**pynn_params)
+
+                # Get the mean upper and lower bounds of the row's delays
+                mean_probability = 0.5 ** (1.0 / float(mean_row_synapses))
+                mean_row_upper = dist.ppf(mean_probability, **params)
+                mean_row_lower = dist.ppf(1.0 - mean_probability, **params)
+
+                # If lower bound is smaller than simulation timestep it
+                # cannot be simulated, give a warning and increase
+                # it to simulation timestep
+                if mean_row_lower < self._simulator.state.dt:
+                    logger.warn("Delay distribution likely to result "
+                                "in delays below simulation timestep of %f",
+                                self._simulator.state.dt)
+                    mean_row_lower = self._simulator.state.dts
+
+                # Determine the number of sub-rows required for this range
+                delay_range = mean_row_upper - mean_row_lower
+                num_sub_rows = max(1, int(math.ceil(delay_range /
+                                                    max_row_delay)))
+
+                # If the lower bound is not within that supported by the first
+                # sub-row an extra sub-row will be required
+                if mean_row_lower > max_row_delay:
+                    num_sub_rows += 1
+
+                # Divide mean number of synapses in row evenly between sub-rows
+                mean_sub_row_synapses = mean_row_synapses // num_sub_rows
+            else:
+                logger.warn("Cannot estimate delay sub-row distribution with %s",
+                            dist_name)
+
+                mean_sub_row_synapses = mean_row_synapses
+                num_sub_rows = 1
+        # If parameter is a scalar
+        elif is_scalar(delay.base_value):
+            # If the delay is within the maximum row delay, then all
+            # the synapses in the row can be represented in a single sub-row
+            if delay.base_value <= max_row_delay:
+                num_sub_rows = 1
+                mean_sub_row_synapses = mean_row_synapses
+            # Otherwise, the first sub-row will contain no synapses,
+            # just a pointer forwards to the delay sub-row
+            else:
+                num_sub_rows = 2
+                mean_sub_row_synapses = int((1 + mean_row_synapses) / 2.0)
+        else:
+            raise NotImplementedError()
+
+        # Use synapse type to estimate CPU cost of processing sub row
+        row_cpu_cost = self.synapse_type._get_row_cpu_cost(mean_sub_row_synapses,
+                                                           pre_rate=pre_rate,
+                                                           **kwargs)
+        # Multiply this by the number of required subrows
+        row_cpu_cost *= num_sub_rows
+
+        # Scale row CPU cycles by number of presynaptic
+        # neurons and their firing rate
+        return (row_cpu_cost * self.pre.spinnaker_config.mean_firing_rate *
+                len(pre_slice))
 
     def _allocate_out_buffers(self, placements, allocations,
                               machine_controller):

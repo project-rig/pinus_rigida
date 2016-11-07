@@ -10,6 +10,7 @@
 #include "../common/profiler.h"
 #include "../common/spike_recording.h"
 #include "../common/spinnaker.h"
+#include "../common/statistics.h"
 #include "../common/utils.h"
 
 // Configuration include
@@ -34,6 +35,7 @@ const uint DMATagOutputWrite = Source::DMATagMax;
 //----------------------------------------------------------------------------
 Config g_Config;
 uint32_t g_AppWords[AppWordMax];
+Statistics<StatWordMax> g_Statistics;
 
 SpikeRecording g_SpikeRecording;
 
@@ -97,6 +99,12 @@ bool ReadSDRAMData(uint32_t *baseAddress, uint32_t flags)
     return false;
   }
 
+  if(!g_Statistics.ReadSDRAMData(
+    Config::GetRegionStart(baseAddress, RegionStatistics),
+    flags))
+  {
+    return false;
+  }
 
   return true;
 }
@@ -130,6 +138,13 @@ void TimerTick(uint tick, uint)
     // Finalise profiling
     Profiler::Finalise();
 
+    // Copy diagnostic stats out of spin1 API
+    g_Statistics[StatWordTaskQueueFull] = diagnostics.task_queue_full;
+    g_Statistics[StatWordNumTimerEventOverflows] = diagnostics.total_times_tick_tic_callback_overran;
+
+    // Finalise statistics
+    g_Statistics.Finalise();
+
     // Exit simulation
     spin1_exit(0);
   }
@@ -151,9 +166,11 @@ void TimerTick(uint tick, uint)
       };
 
     // Update spike source
+    Profiler::WriteEntry(Profiler::Enter | ProfilerTagUpdateNeurons);
     g_SpikeSource.Update(tick, emitSpikeLambda, g_SpikeRecording,
       g_AppWords[AppWordNumSpikeSources]
     );
+    Profiler::WriteEntry(Profiler::Exit | ProfilerTagUpdateNeurons);
 
     // Transfer spike recording buffer to SDRAM
     g_SpikeRecording.TransferBuffer(DMATagOutputWrite);

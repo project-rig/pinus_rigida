@@ -367,7 +367,11 @@ void DMATransferDone(uint, uint tag)
         auto rowOffsetLength = DelayBuffer::R(word);
         LOG_PRINT(LOG_LEVEL_TRACE, "\t\tAdding delay extension row for tick %u, num synapses:%u, offset word:%u",
           tick, rowOffsetLength.GetNumSynapses(), rowOffsetLength.GetWordOffset());
-        g_DelayBuffer.AddRow(tick, rowOffsetLength, flush);
+        if(!g_DelayBuffer.AddRow(tick, rowOffsetLength, flush))
+        {
+          LOG_PRINT(LOG_LEVEL_TRACE, "Cannot schedule delay row read");
+          g_Statistics[StatWordDelayBufferOverflows]++;
+        }
       };
 
     // Create lambda function to write back row
@@ -490,6 +494,10 @@ void TimerTick(uint tick, uint)
     // Finalise profiling
     Profiler::Finalise();
 
+    // Copy diagnostic stats out of spin1 API
+    g_Statistics[StatWordTaskQueueFull] = diagnostics.task_queue_full;
+    g_Statistics[StatWordNumTimerEventOverflows] = diagnostics.total_times_tick_tic_callback_overran;
+    
     // Finalise statistics
     g_Statistics.Finalise();
 
