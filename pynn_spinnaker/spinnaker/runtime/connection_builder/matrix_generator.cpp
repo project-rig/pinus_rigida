@@ -29,76 +29,18 @@ ConnectionBuilder::MatrixGenerator::Base::Base(uint32_t *&region)
   m_SignedWeight = *region++;
 }
 //-----------------------------------------------------------------------------
-void ConnectionBuilder::MatrixGenerator::Base::TraceUInt(uint32_t (&values)[1024],
-                                                         unsigned int number) const
-{
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-  for(unsigned int i = 0; i < number; i++)
-  {
-    io_printf(IO_BUF, "%u,", values[i]);
-  }
-  io_printf(IO_BUF, "\n");
-#endif
-}
-//-----------------------------------------------------------------------------
-void ConnectionBuilder::MatrixGenerator::Base::TraceInt(int32_t (&values)[1024],
-                                                        unsigned int number) const
-{
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-  for(unsigned int i = 0; i < number; i++)
-  {
-    io_printf(IO_BUF, "%u,", values[i]);
-  }
-  io_printf(IO_BUF, "\n");
-#endif
-}
-//-----------------------------------------------------------------------------
-unsigned int ConnectionBuilder::MatrixGenerator::Base::GenerateRow(unsigned int row,
-  unsigned int weightFixedPoint, unsigned int numPostNeurons,
-  const ConnectorGenerator::Base *connectorGenerator,
-  const ParamGenerator::Base *delayGenerator,
-  const ParamGenerator::Base *weightGenerator,
-  uint32_t (&indices)[1024], int32_t (&delays)[1024], int32_t (&weights)[1024],
-  MarsKiss64 &rng) const
-{
-  LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating indices");
-  const unsigned int numIndices = connectorGenerator->Generate(row, numPostNeurons,
-                                                               rng, indices);
-  TraceUInt(indices, numIndices);
-  
-  // Generate delays for each index
-  LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating delays");
-  delayGenerator->Generate(numIndices, 0, rng, delays);
-  TraceInt(delays, numIndices);
-
-  // Generate weights for each index
-  LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
-  weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
-  TraceInt(weights, numIndices);
-
-  // Return row length
-  return numIndices;
-}
-
-//-----------------------------------------------------------------------------
-// ConnectionBuilder::MatrixGenerator::Static
-//-----------------------------------------------------------------------------
-ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region) : Base(region)
-{
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix: %u signed weights",
-    IsSignedWeight());
-}
-//-----------------------------------------------------------------------------
-bool ConnectionBuilder::MatrixGenerator::Static::Generate(
-  uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
-  unsigned int maxRowSynapses, unsigned int weightFixedPoint,
-  unsigned int numPostNeurons, unsigned int sizeWords, unsigned int numRows,
+bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
+  unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
+  unsigned int sizeWords, unsigned int numRows,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
   MarsKiss64 &rng) const
 {
   typedef Common::RowOffsetLength<10> RowOffsetLength;
+
+  // Calculate the maximum number of words in a row
+  const unsigned int maxRowWords = GetMaxRowWords(maxRowSynapses);
 
   // End address of matrix
   uint32_t *endAddress = matrixAddress + sizeWords;
@@ -115,13 +57,24 @@ bool ConnectionBuilder::MatrixGenerator::Static::Generate(
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tRow %u", i);
 
-    // Generate indices, weights and delays for row
+    // Generate postsynaptic indices for row
     uint32_t indices[1024];
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating indices");
+    const unsigned int numIndices = connectorGenerator->Generate(i, numPostNeurons,
+                                                                 rng, indices);
+    TraceUInt(indices, numIndices);
+
+    // Generate delays for each index
     int32_t delays[1024];
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating delays");
+    delayGenerator->Generate(numIndices, 0, rng, delays);
+    TraceInt(delays, numIndices);
+
+    // Generate weights for each index
     int32_t weights[1024];
-    const unsigned int numIndices = GenerateRow(i,
-      weightFixedPoint, numPostNeurons, connectorGenerator, delayGenerator,
-      weightGenerator, indices, delays, weights, rng);
+    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
+    weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
+    TraceInt(weights, numIndices);
 
     // Update total number of synapses
     numSynapses += numIndices;
@@ -210,45 +163,24 @@ bool ConnectionBuilder::MatrixGenerator::Static::Generate(
         *rowAddress++ = 0;
         *rowAddress++ = 0;
 
-        // Loop through newly-sorted sub-row indices
-        for(uint16_t *j = subRowStartIndex; j != newSubRowStartIndex; j++)
-        {
-          // Extract index pointed to by sorted index
-          const uint32_t postIndex = indices[*j];
-
-          // Clamp delays and weights pointed to be sorted index
-          const int32_t delay = ClampDelay(delays[*j] - startDelay);
-          const int32_t weight = ClampWeight(weights[*j]);
-
-          // Build synaptic word
-          const uint32_t word = (postIndex & IndexMask) |
-            (((uint32_t)delay & DelayMask) << IndexBits) |
-            (weight << (DelayBits + IndexBits));
-
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-          io_printf(IO_BUF, "%u,", word);
-#endif
-          // Write word to matrix
-          *rowAddress++ = word;
-        }
-
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-        io_printf(IO_BUF, "\n");
-#endif
+        // Write row
+        unsigned int rowWords = WriteRow(rowAddress, startDelay,
+                                         subRowStartIndex, newSubRowStartIndex,
+                                         indices, delays, weights);
 
         // If this is the first delay sub-row, advance the
         // ragged matrix past the padded row and update row
         // address so it writes to the start of the delay matrix
         if(firstSubRow)
         {
-          raggedMatrixAddress += (3 + maxRowSynapses);
+          raggedMatrixAddress += (3 + maxRowWords);
           rowAddress = delayMatrixAddress;
         }
         // Otherwise, advance the delay matrix address past
         // the sub-row and update row-address so it writes here
         else
         {
-          delayMatrixAddress += (3 + numSubRowSynapses);
+          delayMatrixAddress += (3 + rowWords);
           rowAddress = delayMatrixAddress;
         }
       }
@@ -260,6 +192,78 @@ bool ConnectionBuilder::MatrixGenerator::Static::Generate(
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tGenerated %u synapses", numSynapses);
   return true;
+}
+//-----------------------------------------------------------------------------
+void ConnectionBuilder::MatrixGenerator::Base::TraceUInt(uint32_t (&values)[1024],
+                                                         unsigned int number) const
+{
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  for(unsigned int i = 0; i < number; i++)
+  {
+    io_printf(IO_BUF, "%u,", values[i]);
+  }
+  io_printf(IO_BUF, "\n");
+#endif
+}
+//-----------------------------------------------------------------------------
+void ConnectionBuilder::MatrixGenerator::Base::TraceInt(int32_t (&values)[1024],
+                                                        unsigned int number) const
+{
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  for(unsigned int i = 0; i < number; i++)
+  {
+    io_printf(IO_BUF, "%u,", values[i]);
+  }
+  io_printf(IO_BUF, "\n");
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// ConnectionBuilder::MatrixGenerator::Static
+//-----------------------------------------------------------------------------
+ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region) : Base(region)
+{
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tStatic synaptic matrix: %u signed weights",
+    IsSignedWeight());
+}
+//-----------------------------------------------------------------------------
+unsigned int ConnectionBuilder::MatrixGenerator::Static::WriteRow(uint32_t *rowAddress,
+  int32_t startDelay, const uint16_t *subRowStartIndex, const uint16_t *subRowEndIndex,
+  const uint32_t (&indices)[1024], const int32_t (&delays)[1024], const int32_t (&weights)[1024]) const
+{
+  // Loop through newly-sorted sub-row indices
+  for(const uint16_t *j = subRowStartIndex; j != subRowEndIndex; j++)
+  {
+    // Extract index pointed to by sorted index
+    const uint32_t postIndex = indices[*j];
+
+    // Clamp delays and weights pointed to be sorted index
+    const int32_t delay = ClampDelay(delays[*j] - startDelay);
+    const int32_t weight = ClampWeight(weights[*j]);
+
+    // Build synaptic word
+    const uint32_t word = (postIndex & IndexMask) |
+      (((uint32_t)delay & DelayMask) << IndexBits) |
+      (weight << (DelayBits + IndexBits));
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    io_printf(IO_BUF, "%u,", word);
+#endif
+    // Write word to matrix
+    *rowAddress++ = word;
+  }
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  io_printf(IO_BUF, "\n");
+#endif
+
+  // Return number of words written to row
+  return (subRowEndIndex - subRowStartIndex);
+}
+//-----------------------------------------------------------------------------
+unsigned int ConnectionBuilder::MatrixGenerator::Static::GetMaxRowWords(unsigned int maxRowSynapses) const
+{
+  return maxRowSynapses;
 }
 
 //-----------------------------------------------------------------------------
@@ -279,104 +283,70 @@ ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region) : Base(r
             IsSignedWeight(), preStateBytes, m_PreStateWords, m_SynapseTraceBytes);
 }
 //-----------------------------------------------------------------------------
-bool ConnectionBuilder::MatrixGenerator::Plastic::Generate(
-  uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
-  unsigned int maxRowSynapses, unsigned int weightFixedPoint,
-  unsigned int numPostNeurons, unsigned int sizeWords, unsigned int numRows,
-  const ConnectorGenerator::Base *connectorGenerator,
-  const ParamGenerator::Base *delayGenerator,
-  const ParamGenerator::Base *weightGenerator,
-  MarsKiss64 &rng) const
+unsigned int ConnectionBuilder::MatrixGenerator::Plastic::WriteRow(uint32_t *rowAddress,
+  int32_t startDelay, const uint16_t *subRowStartIndex, const uint16_t *subRowEndIndex,
+  const uint32_t (&indices)[1024], const int32_t (&delays)[1024], const int32_t (&weights)[1024]) const
 {
-  // Calculate the number of words required to contain control array
-  const unsigned int maxControlArrayWords = (maxRowSynapses / 2)
-    + (((maxRowSynapses & 1) != 0) ? 1 : 0);
-
-  // Calculate the number of words required to contain synapse array
-  const unsigned int maxPlasticArrayBytes = maxRowSynapses * (2 + m_SynapseTraceBytes);
-  const unsigned int maxPlasticArrayWords = (maxPlasticArrayBytes / 4)
-    + (((maxPlasticArrayBytes & 3) != 0) ? 1 : 0);
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tMax control array words:%u, Max synapse array words:%u",
-            maxControlArrayWords, maxPlasticArrayWords);
-
-  // Loop through rows
-  unsigned int numSynapses = 0;
-  for(unsigned int i = 0; i < numRows; i++)
+  // Zero presynaptic state words
+  for(unsigned int w = 0; w < m_PreStateWords; w++)
   {
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tRow %u (%08x)", i, matrixAddress);
-
-    // Generate indices, weights and delays for row
-    uint32_t indices[1024];
-    int32_t delays[1024];
-    int32_t weights[1024];
-    const unsigned int numIndices = GenerateRow(i,
-      weightFixedPoint, numPostNeurons, connectorGenerator, delayGenerator,
-      weightGenerator, indices, delays, weights, rng);
-
-    // Update total number of synapses
-    numSynapses += numIndices;
-
-    // Write row length
-    *matrixAddress++ = numIndices;
-
-    // **TODO** support delay extension
-    *matrixAddress++ = 0;
-    *matrixAddress++ = 0;
-
-    // Zero presynaptic state words
-    for(unsigned int w = 0; w < m_PreStateWords; w++)
-    {
-      *matrixAddress++ = 0;
-    }
-
-    // Calculate the size of each array (fixed and plastic) in words
-    const unsigned int numSynapseArrayBytes = numIndices * (2 + m_SynapseTraceBytes);
-    const unsigned int numPlasticArrayWords = (numSynapseArrayBytes / 4)
-      + (((numSynapseArrayBytes & 3) != 0) ? 1 : 0);
-
-    // From this get 8-bit pointer to synapses and 16-bit pointer to control half words
-    uint8_t *synapseAddress = reinterpret_cast<uint8_t*>(matrixAddress);
-    uint16_t *controlAddress = reinterpret_cast<uint16_t*>(matrixAddress + numPlasticArrayWords);
-
-    // Loop through synapses
-    for(unsigned int j = 0; j < numIndices; j++)
-    {
-      // Clamp delays and weights
-      delays[j] = ClampDelay(delays[j]);
-      weights[j] = ClampWeight(weights[j]);
-
-      // Write weight to first two synapse bytes
-      uint16_t *weightAddress = reinterpret_cast<uint16_t*>(synapseAddress);
-      *weightAddress = (uint16_t)weights[j];
-
-      // Go onto next synapse
-      synapseAddress += 2;
-
-      // Write synapse trace bytes
-      for(unsigned int s = 0; s < m_SynapseTraceBytes; s++)
-      {
-        *synapseAddress++ = 0;
-      }
-
-      // Build control word
-      const uint16_t controlWord = (uint16_t)(indices[j] & IndexMask) |
-        (((uint32_t)delays[j] & DelayMask) << IndexBits);
-
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-      io_printf(IO_BUF, "%u/%u,", weights[j], controlWord);
-#endif
-      // Write control word
-      *controlAddress++ = controlWord;
-    }
-
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-    io_printf(IO_BUF, "\n");
-#endif
-
-    // Advance over synapse and control half words; and padding to next word
-    matrixAddress += (maxControlArrayWords + maxPlasticArrayWords);
+    *rowAddress++ = 0;
   }
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tGenerated %u synapses", numSynapses);
-  return true;
+  // Calculate row length in synapses
+  const unsigned int numIndices = subRowEndIndex - subRowStartIndex;
+
+  // Calculate the size of the plastic and control parts of row
+  const unsigned int numPlasticArrayWords = GetNumPlasticWords(numIndices);
+  const unsigned int numControlArrayWords = GetNumControlWords(numIndices);
+
+  // From this get 8-bit pointer to synapses and 16-bit pointer to control half words
+  uint8_t *synapseAddress = reinterpret_cast<uint8_t*>(rowAddress);
+  uint16_t *controlAddress = reinterpret_cast<uint16_t*>(rowAddress + numPlasticArrayWords);
+
+  // Loop through newly-sorted sub-row indices
+  for(const uint16_t *j = subRowStartIndex; j != subRowEndIndex; j++)
+  {
+    // Extract index pointed to by sorted index
+    const uint32_t postIndex = indices[*j];
+
+    // Clamp delays and weights pointed to be sorted index
+    const int32_t delay = ClampDelay(delays[*j] - startDelay);
+    const int32_t weight = ClampWeight(weights[*j]);
+
+    // Write weight to first two synapse bytes
+    uint16_t *weightAddress = reinterpret_cast<uint16_t*>(synapseAddress);
+    *weightAddress = (uint16_t)weight;
+
+    // Go onto next synapse
+    synapseAddress += 2;
+
+    // Write synapse trace bytes
+    for(unsigned int s = 0; s < m_SynapseTraceBytes; s++)
+    {
+      *synapseAddress++ = 0;
+    }
+
+    // Build control word
+    const uint16_t controlWord = (uint16_t)(postIndex & IndexMask) |
+      (((uint32_t)delay & DelayMask) << IndexBits);
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+    io_printf(IO_BUF, "%u/%u,", weight, controlWord);
+#endif
+      // Write control word
+    *controlAddress++ = controlWord;
+  }
+
+#if LOG_LEVEL <= LOG_LEVEL_TRACE
+  io_printf(IO_BUF, "\n");
+#endif
+
+  // Return total size
+  return m_PreStateWords + numPlasticArrayWords + numControlArrayWords;
+}
+//-----------------------------------------------------------------------------
+unsigned int ConnectionBuilder::MatrixGenerator::Plastic::GetMaxRowWords(unsigned int maxRowSynapses) const
+{
+  return GetNumPlasticWords(maxRowSynapses) + GetNumControlWords(maxRowSynapses);
 }
