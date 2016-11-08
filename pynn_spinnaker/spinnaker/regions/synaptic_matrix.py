@@ -275,7 +275,7 @@ class SynapticMatrix(Region):
                                             post_vertex_slice)
 
                 # If sub-matrix has any synapses
-                if max_cols > 0 or max_delay_sub_rows > 0:
+                if max_cols > 0 or max_sub_rows > 0:
                     # Estimate the maximum size of this in SDRAM
                     size_words = self.estimate_matrix_words(
                         len(pre_n_vert.neuron_slice), max_cols,
@@ -285,7 +285,7 @@ class SynapticMatrix(Region):
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
-                                  size_words, max_cols))
+                                  size_words, max(1, max_cols)))
                     sub_matrix_projs.append((proj, len(pre_n_vert.neuron_slice)))
 
         return sub_matrix_props, sub_matrix_projs
