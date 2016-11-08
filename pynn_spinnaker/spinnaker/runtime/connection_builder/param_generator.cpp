@@ -97,8 +97,7 @@ ConnectionBuilder::ParamGenerator::NormalClipped::NormalClipped(uint32_t *&regio
   m_Sigma = *reinterpret_cast<int32_t*>(region++);
   m_Low = *reinterpret_cast<int32_t*>(region++);
   m_High = *reinterpret_cast<int32_t*>(region++);
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tNormal clipped parameter: mu:%d, sigma:%d,\
-                             low:%d, high:%d",
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\t\tNormal clipped parameter: mu:%d, sigma:%d, low:%d, high:%d",
             m_Mu, m_Sigma, m_Low, m_High);
 }
 //-----------------------------------------------------------------------------
