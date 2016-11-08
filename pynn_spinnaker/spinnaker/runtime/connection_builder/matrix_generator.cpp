@@ -345,5 +345,5 @@ unsigned int ConnectionBuilder::MatrixGenerator::Plastic::WriteRow(uint32_t *row
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::MatrixGenerator::Plastic::GetMaxRowWords(unsigned int maxRowSynapses) const
 {
-  return GetNumPlasticWords(maxRowSynapses) + GetNumControlWords(maxRowSynapses);
+  return m_PreStateWords + GetNumPlasticWords(maxRowSynapses) + GetNumControlWords(maxRowSynapses);
 }
