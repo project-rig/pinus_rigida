@@ -89,15 +89,19 @@ ConnectionBuilder::MatrixGenerator::Static::Static(uint32_t *&region) : Base(reg
     IsSignedWeight());
 }
 //-----------------------------------------------------------------------------
-bool ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddress,
+bool ConnectionBuilder::MatrixGenerator::Static::Generate(
+  uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
   unsigned int maxRowSynapses, unsigned int weightFixedPoint,
-  unsigned int numPostNeurons, unsigned int numRows,
+  unsigned int numPostNeurons, unsigned int sizeWords, unsigned int numRows,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
   MarsKiss64 &rng) const
 {
   typedef Common::RowOffsetLength<10> RowOffsetLength;
+
+  // End address of matrix
+  uint32_t *endAddress = matrixAddress + sizeWords;
 
   // Ragged section of matrix begins at matrix address
   uint32_t *raggedMatrixAddress = matrixAddress;
@@ -173,13 +177,20 @@ bool ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
           return false;
         }
 
+        // If this row is going to go past end of memory allocated for matrix
+        if(rowAddress > endAddress)
+        {
+          LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
+          return false;
+        }
+
         // If this isn't the first sub-row
         if(!firstSubRow)
         {
           // Build a row offset-length object based on this row's number of
           // synapses and its offset from the start of the matrix
           RowOffsetLength rowOffsetLength(numSubRowSynapses,
-                                          rowAddress - matrixAddress);
+                                          rowAddress - synapticMatrixBaseAddress);
 
           // Write row's delay offset and the word representation of it's
           // offset and length to the correct part of the previous sub-row
@@ -191,7 +202,7 @@ bool ConnectionBuilder::MatrixGenerator::Static::Generate(uint32_t *matrixAddres
         *rowAddress++ = numSubRowSynapses;
 
         // The next sub-row will want to write its delay details
-        // here so cache its pointer and its starting delay
+        // here so cache its pointer and uint32_t *synapticMatrixBaseAddress, its starting delay
         previousSubRowDelayAddress = rowAddress;
         previousSubRowStartDelay = startDelay;
 
@@ -268,9 +279,10 @@ ConnectionBuilder::MatrixGenerator::Plastic::Plastic(uint32_t *&region) : Base(r
             IsSignedWeight(), preStateBytes, m_PreStateWords, m_SynapseTraceBytes);
 }
 //-----------------------------------------------------------------------------
-bool ConnectionBuilder::MatrixGenerator::Plastic::Generate(uint32_t *matrixAddress,
+bool ConnectionBuilder::MatrixGenerator::Plastic::Generate(
+  uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
   unsigned int maxRowSynapses, unsigned int weightFixedPoint,
-  unsigned int numPostNeurons, unsigned int numRows,
+  unsigned int numPostNeurons, unsigned int sizeWords, unsigned int numRows,
   const ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
