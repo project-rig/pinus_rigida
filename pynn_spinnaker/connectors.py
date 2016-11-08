@@ -27,11 +27,16 @@ from pyNN.connectors import (AllToAllConnector,
                              CloneConnector,
                              ArrayConnector)
 
-def _draw_hypergeom(context, post_slice_size, pre_slice_size, **kwargs):
+def _draw_num_connections(context, post_slice_size, pre_slice_size, **kwargs):
     nsample = post_slice_size * pre_slice_size
-    sample = np.random.hypergeometric(ngood = context['n'],
-                                 nbad = context['N'] - context['n'],
-                                 nsample = nsample)
+
+    if context['with_replacement']:
+        sample = np.random.binomial(n = context['n'],
+                                    p = float(nsample) / context['N'])
+    else:
+        sample = np.random.hypergeometric(ngood = context['n'],
+                                          nbad = context['N'] - context['n'],
+                                          nsample = nsample)
     context['n'] -= sample
     context['N'] -= nsample
     return la.larray(sample, shape=(1,))
@@ -238,7 +243,8 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     _directly_connectable = False
 
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.u032),
-                          (_draw_hypergeom, "u4"),
+                          ("with_replacement", "u4", lazy_param_map.u032),
+                          (_draw_num_connections, "u4"),
                           (_submat_size, "u4")]
 
     # --------------------------------------------------------------------------
@@ -268,4 +274,5 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         return int(pre_fraction * post_fraction * float(self.n) / float(pre_size))
 
     def _get_projection_initial_state(self, pre_size, post_size):
-        return {'n': self.n, 'N': pre_size * post_size}
+        return {'n': self.n, 'N': pre_size * post_size,
+                'with_replacement':self.with_replacement}

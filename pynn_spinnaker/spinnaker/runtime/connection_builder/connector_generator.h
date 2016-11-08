@@ -140,6 +140,7 @@ private:
   // Members
   //-----------------------------------------------------------------------------
   uint32_t m_AllowSelfConnections;
+  uint32_t m_WithReplacement;
   uint32_t m_ConnectionsInSubmatrix;
   uint32_t m_SubmatrixSize;
 };
