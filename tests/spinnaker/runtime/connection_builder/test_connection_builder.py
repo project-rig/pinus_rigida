@@ -24,12 +24,16 @@ def _run_network(pop_size, connector, synapse, required_params, dt=1.0):
     pre = sim.Population(pop_size, sim.IF_curr_exp())
     post = sim.Population(pop_size, sim.IF_curr_exp())
 
+    # As we're not actually simulating the network, give a low
+    # mean firing rate estimate so partitioning will be optimistic
+    pre.spinnaker_config.mean_firing_rate = 0.1
+
     # Connect the populations together
     proj = sim.Projection(pre, post, connector,
                           synapse)
 
     # Check that projection will be generated on chip
-    #assert proj._can_generate_on_chip
+    assert proj._can_generate_on_chip
 
     # Run for a token period (it's ignored as we're stopping after load)
     sim.run(1)
@@ -44,14 +48,24 @@ def _run_network(pop_size, connector, synapse, required_params, dt=1.0):
 # Tests
 # ----------------------------------------------------------------------------
 @pytest.mark.parametrize("pop_size", [200, 2000])
-@pytest.mark.parametrize("delay", [4.0, 10.0])
-def test_static_delay(pop_size, delay):
+@pytest.mark.parametrize("synapse",
+                         [sim.StaticSynapse(weight=0.0, delay=4.0),
+                          sim.StaticSynapse(weight=0.0, delay=10.0),
+                          sim.STDPMechanism(
+                              timing_dependence=sim.SpikePairRule(A_plus=0.0, A_minus=0.0),
+                              weight_dependence=sim.AdditiveWeightDependence(w_min=0.0, w_max=1.0),
+                              weight=0.0, delay=4.0),
+                          sim.STDPMechanism(
+                              timing_dependence=sim.SpikePairRule(A_plus=0.0, A_minus=0.0),
+                              weight_dependence=sim.AdditiveWeightDependence(w_min=0.0, w_max=1.0),
+                              weight=0.0, delay=10.0)])
+def test_static_delay(pop_size, synapse):
     # Run network
     proj, proj_data = _run_network(pop_size, sim.AllToAllConnector(),
-                                   sim.StaticSynapse(weight=0.0, delay=delay),
-                                   ["delay"])
+                                   synapse, ["delay"])
 
     # Check they all match
+    delay = synapse.native_parameters["delay"].base_value
     assert all(d == delay for d in proj_data[2])
 
 @pytest.mark.parametrize("pop_size", [200, 2000])
