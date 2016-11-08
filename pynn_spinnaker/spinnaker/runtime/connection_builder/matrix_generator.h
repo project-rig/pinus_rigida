@@ -47,7 +47,7 @@ public:
   //-----------------------------------------------------------------------------
   // Declared virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
+  virtual bool Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
     unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
@@ -62,7 +62,7 @@ protected:
   void TraceInt(int32_t (&values)[1024], unsigned int number) const;
 
   unsigned int GenerateRow(unsigned int row,
-    unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
+    unsigned int weightFixedPoint, unsigned int numPostNeurons,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
@@ -112,7 +112,7 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
+  virtual bool Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
     unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
@@ -134,7 +134,7 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual void Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
+  virtual bool Generate(uint32_t *matrixAddress, unsigned int maxRowSynapses,
     unsigned int weightFixedPoint, unsigned int numPostNeurons, unsigned int numRows,
     const ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,

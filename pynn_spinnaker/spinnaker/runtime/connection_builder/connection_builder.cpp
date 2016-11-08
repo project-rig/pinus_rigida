@@ -124,11 +124,15 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
       // Generate matrix
       LOG_PRINT(LOG_LEVEL_INFO, "\t\tAddress:%08x, row synapses:%u",
                 matrixAddress, matrixRowSynapses);
-      matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
-                                g_AppWords[AppWordWeightFixedPoint],
-                                g_AppWords[AppWordNumPostNeurons], numRows,
-                                connectorGenerator, delayGenerator, weightGenerator,
-                                rng);
+      if(!matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
+                                    g_AppWords[AppWordWeightFixedPoint],
+                                    g_AppWords[AppWordNumPostNeurons], numRows,
+                                    connectorGenerator, delayGenerator, weightGenerator,
+                                    rng))
+      {
+        LOG_PRINT(LOG_LEVEL_ERROR, "\tMatrix generation failed");
+        return false;
+      }
 
     }
     else
