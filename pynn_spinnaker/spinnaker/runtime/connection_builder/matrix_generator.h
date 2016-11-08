@@ -3,6 +3,9 @@
 // Standard includes
 #include <cstdint>
 
+// Common includes
+#include "../common/row_offset_length.h"
+
 // Connection builder includes
 #include "generator_factory.h"
 
@@ -76,7 +79,7 @@ protected:
     // If weights aren't signed and weight is negative, zero
     // **NOTE** negative weights caused by inhibitory
     // weights should have been already flipped in host
-    return (!m_SignedWeight && weight < 0) ? 0 : weight;
+    return (!IsSignedWeight() && weight < 0) ? 0 : weight;
   }
 
   int32_t ClampDelay(int32_t delay) const
@@ -85,7 +88,7 @@ protected:
     return (delay < 1) ? 1 : delay;
   }
 
-  bool IsSignedWeight() const{ return m_SignedWeight; }
+  bool IsSignedWeight() const{ return (m_SignedWeight != 0); }
 
 
   //-----------------------------------------------------------------------------
@@ -95,6 +98,14 @@ protected:
   static const uint32_t IndexBits = 10;
   static const uint32_t DelayMask = ((1 << DelayBits) - 1);
   static const uint32_t IndexMask = ((1 << IndexBits) - 1);
+
+  static const uint32_t NumHeaderWords = 3;
+  static const uint32_t MaxDTCMDelaySlots = 7;
+
+  //-----------------------------------------------------------------------------
+  // Typedefines
+  //-----------------------------------------------------------------------------
+  typedef Common::RowOffsetLength<IndexBits> RowOffsetLength;
 
 private:
   //-----------------------------------------------------------------------------

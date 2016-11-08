@@ -5,7 +5,6 @@
 
 // Common includes
 #include "../common/log.h"
-#include "../common/row_offset_length.h"
 
 // Connection builder includes
 #include "connector_generator.h"
@@ -37,8 +36,6 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
   const ParamGenerator::Base *weightGenerator,
   MarsKiss64 &rng) const
 {
-  typedef Common::RowOffsetLength<10> RowOffsetLength;
-
   // Calculate the maximum number of words in a row
   const unsigned int maxRowWords = GetMaxRowWords(maxRowSynapses);
 
@@ -49,7 +46,7 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
   uint32_t *raggedMatrixAddress = matrixAddress;
 
   // Delay extension section of matrix begins after padded ragged matrix
-  uint32_t *delayMatrixAddress = matrixAddress + ((3 + maxRowSynapses) * numRows);
+  uint32_t *delayMatrixAddress = matrixAddress + ((NumHeaderWords + maxRowWords) * numRows);
 
   // Loop through rows
   unsigned int numSynapses = 0;
@@ -97,11 +94,11 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
     // Loop through possible sub-row delay ranges
     uint16_t *subRowStartIndex = &sortedRowIndices[0];
     uint16_t *subRowEndIndex = &sortedRowIndices[numIndices];
-    for(int32_t startDelay = 0; subRowStartIndex != subRowEndIndex; startDelay += 7)
+    for(int32_t startDelay = 0; subRowStartIndex != subRowEndIndex; startDelay += MaxDTCMDelaySlots)
     {
       // Is this the first sub-row?
       const bool firstSubRow = (startDelay == 0);
-      const int32_t endDelay = startDelay + 7;
+      const int32_t endDelay = startDelay + MaxDTCMDelaySlots;
 
       // Indirectly partition the delays to determine which are in current sub-row
       uint16_t *newSubRowStartIndex = std::partition(subRowStartIndex, subRowEndIndex,
@@ -173,14 +170,14 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
         // address so it writes to the start of the delay matrix
         if(firstSubRow)
         {
-          raggedMatrixAddress += (3 + maxRowWords);
+          raggedMatrixAddress += (NumHeaderWords + maxRowWords);
           rowAddress = delayMatrixAddress;
         }
         // Otherwise, advance the delay matrix address past
         // the sub-row and update row-address so it writes here
         else
         {
-          delayMatrixAddress += (3 + rowWords);
+          delayMatrixAddress += (NumHeaderWords + rowWords);
           rowAddress = delayMatrixAddress;
         }
       }
