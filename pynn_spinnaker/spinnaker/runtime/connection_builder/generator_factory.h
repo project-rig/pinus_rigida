@@ -4,8 +4,8 @@
 #include <new>
 
 // Rig CPP common includes
-#include "compile_time_crc.h"
-#include "log.h"
+#include "rig_cpp_common/compile_time_crc.h"
+#include "rig_cpp_common/log.h"
 
 // Macros
 #define ADD_FACTORY_CREATOR(T)                         \

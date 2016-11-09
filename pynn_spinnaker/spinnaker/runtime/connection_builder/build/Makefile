@@ -6,8 +6,8 @@ PYNN_SOURCES = ../connection_builder.cpp \
 	../matrix_generator.cpp \
 	../param_generator.cpp
 
-RIG_CPP_COMMON_SOURCES = config.cpp \
-	maths/normal.cpp
+RIG_CPP_COMMON_SOURCES = rig_cpp_common/config.cpp \
+	rig_cpp_common/maths/normal.cpp
 
 CFLAGS += -I $(CURDIR)
 

@@ -1,12 +1,12 @@
 #include "param_generator.h"
 
 // Rig CPP common includes
-#include "fixed_point_number.h"
-#include "arm_intrinsics.h"
-#include "log.h"
-#include "maths/normal.h"
-#include "random/non_uniform.h"
-#include "random/mars_kiss64.h"
+#include "rig_cpp_common/fixed_point_number.h"
+#include "rig_cpp_common/arm_intrinsics.h"
+#include "rig_cpp_common/log.h"
+#include "rig_cpp_common/maths/normal.h"
+#include "rig_cpp_common/random/non_uniform.h"
+#include "rig_cpp_common/random/mars_kiss64.h"
 
 // Namespaces
 using namespace Common::ARMIntrinsics;
