@@ -12,12 +12,14 @@ import sys
 
 # Import classes
 from collections import defaultdict
-from utils import Args, InputVertex
+from rig_cpp_common.utils import Args
+from utils import InputVertex
 
 # Import functions
 from pkg_resources import resource_filename
+from rig_cpp_common.utils import load_regions
 from six import iteritems, iterkeys
-from utils import (get_model_executable_filename, load_regions, split_slice)
+from utils import get_model_executable_filename, split_slice
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -467,7 +469,7 @@ class SynapseCluster(object):
                     # Load regions
                     v.region_memory = load_regions(
                         self.regions, region_arguments,
-                        machine_controller, core)
+                        machine_controller, core, logger)
 
                     # Store sub matrix properties and placements in vertex
                     # so they can be used to subsequently read weights back

@@ -8,12 +8,13 @@ from rig import machine
 
 # Import classes
 from collections import defaultdict
-from utils import Args
+from rig_cpp_common.utils import Args
 
 # Import functions
+from rig_cpp_common.utils import load_regions
 from six import iteritems
 from utils import (calc_bitfield_words, calc_slice_bitfield_words,
-                   get_model_executable_filename, load_regions, split_slice)
+                   get_model_executable_filename, split_slice)
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -301,7 +302,8 @@ class NeuralCluster(object):
 
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
-                                               machine_controller, core)
+                                               machine_controller, core,
+                                               logger)
 
     def read_recorded_spikes(self):
         # Loop through all neuron vertices and read spike times into dictionary
