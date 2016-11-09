@@ -1,8 +1,8 @@
 #include "connector_generator.h"
 
-// Common includes
-#include "../common/log.h"
-#include "../common/random/mars_kiss64.h"
+// Rig CPP common includes
+#include "log.h"
+#include "random/mars_kiss64.h"
 
 //-----------------------------------------------------------------------------
 // ConnectionBuilder::ConnectorGenerator::AllToAll

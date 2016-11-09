@@ -1,11 +1,13 @@
 #include "connection_builder.h"
 
+// Rig CPP common includes
+#include "config.h"
+#include "log.h"
+#include "spinnaker.h"
+#include "random/mars_kiss64.h"
+
 // Common includes
-#include "../common/config.h"
-#include "../common/log.h"
 #include "../common/key_lookup_binary_search.h"
-#include "../common/spinnaker.h"
-#include "../common/random/mars_kiss64.h"
 
 // Connection builder includes
 #include "connector_generator.h"

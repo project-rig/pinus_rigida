@@ -3,9 +3,9 @@
 // Standard includes
 #include <new>
 
-// Common includes
-#include "../common/compile_time_crc.h"
-#include "../common/log.h"
+// Rig CPP common includes
+#include "compile_time_crc.h"
+#include "log.h"
 
 // Macros
 #define ADD_FACTORY_CREATOR(T)                         \

@@ -1,7 +1,7 @@
 #include "matrix_generator.h"
 
-// Common includes
-#include "../common/log.h"
+// Rig CPP common includes
+#include "log.h"
 
 // Connection builder includes
 #include "connector_generator.h"
