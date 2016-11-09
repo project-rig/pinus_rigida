@@ -1,11 +1,12 @@
 PYNN_APP = neuron_spikesourcepoisson
 
 # Build object list
-SOURCES = ../../../common/config.cpp \
-	../../../common/bit_field.cpp \
-	../../../common/profiler.cpp \
-	../../spike_source.cpp
+PYNN_SOURCES = ../../spike_source.cpp
+
+RIG_CPP_COMMON_SOURCES = config.cpp \
+	bit_field.cpp \
+	profiler.cpp
 
 CFLAGS += -I $(CURDIR)
 
-include ../../../Makefile.depend
+include ../../../Makefile.common
