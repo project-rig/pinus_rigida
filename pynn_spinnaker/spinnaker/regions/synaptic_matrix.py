@@ -5,7 +5,7 @@ import numpy as np
 
 # Import classes
 from collections import namedtuple
-from region import Region
+from rig_cpp_common.regions import Region
 from rig.type_casts import NumpyFloatToFixConverter, NumpyFixToFloatConverter
 
 # Import functions

@@ -12,6 +12,7 @@ import sys
 
 # Import classes
 from collections import defaultdict
+from rig_cpp_common.regions import Profiler, Statistics, System
 from rig_cpp_common.utils import Args
 from utils import InputVertex
 
@@ -140,8 +141,7 @@ class SynapseCluster(object):
                  vertex_resources, post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
-        self.regions[Regions.system] = regions.System(timer_period_us,
-                                                      sim_ticks)
+        self.regions[Regions.system] = System(timer_period_us, sim_ticks)
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
@@ -150,8 +150,7 @@ class SynapseCluster(object):
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
         self.regions[Regions.connection_builder] = regions.ConnectionBuilder(
             sim_timestep_ms)
-        self.regions[Regions.statistics] = regions.Statistics(
-            len(self.statistic_names))
+        self.regions[Regions.statistics] = Statistics(len(self.statistic_names))
 
         # Create correct type of synaptic matrix region
         self.regions[Regions.synaptic_matrix] =\
@@ -168,7 +167,7 @@ class SynapseCluster(object):
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
-                regions.Profiler(config.num_profile_samples)
+                Profiler(config.num_profile_samples)
 
         # Split population slice
         self.post_slices = split_slice(post_pop_size, post_synaptic_width)
