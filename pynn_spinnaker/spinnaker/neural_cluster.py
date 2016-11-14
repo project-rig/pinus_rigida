@@ -341,16 +341,10 @@ class NeuralCluster(object):
         # Get the statistics recording region
         region = self.regions[Regions.statistics]
 
-        # Convert stats to numpy array
-        # **TODO** this slightly gnarly numpy stuff could move into utils
-        np_stats = np.asarray([region.read_stats(v.region_memory[Regions.statistics])
-                            for v in self.verts])
-        # Convert stats into record array
-        stat_names = ",".join(self.statistic_names)
-        stat_format = ",".join(
-            itertools.repeat("u4", len(self.statistic_names)))
-        return np.core.records.fromarrays(np_stats.T, names=stat_names,
-                                          formats=stat_format)
+        # Read stats from all vertices
+        return region.read_stats(
+            [v.region_memory[Regions.statistics] for v in self.verts],
+            self.statistic_names)
 
     # --------------------------------------------------------------------------
     # Private methods
