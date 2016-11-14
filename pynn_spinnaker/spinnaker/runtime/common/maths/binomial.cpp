@@ -1,9 +1,9 @@
 #include "binomial.h"
 
 // Common includes
-#include "../fixed_point_number.h"
-#include "../random/mars_kiss64.h"
-#include "ln.h"
+#include "rig_cpp_common/fixed_point_number.h"
+#include "rig_cpp_common/random/mars_kiss64.h"
+#include "rig_cpp_common/maths/ln.h"
 #include "recip.h"
 
 // Namespaces

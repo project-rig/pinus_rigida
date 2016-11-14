@@ -1,7 +1,7 @@
 #pragma once
 
 // Common includes
-#include "../fixed_point_number.h"
+#include "rig_cpp_common/fixed_point_number.h"
 
 // Forward declarations
 namespace Common

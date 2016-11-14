@@ -1,8 +1,8 @@
 // Common includes
-#include "../fixed_point_number.h"
+#include "rig_cpp_common/fixed_point_number.h"
 
 // Maths includes
-#include "ln.h"
+#include "rig_cpp_common/maths/ln.h"
 #include "logfact.h"
 
 // Namespaces
@@ -15,7 +15,7 @@ using namespace Common::FixedPointNumber;
 namespace
 {
 
-// Log factorial for arguments 0-12 
+// Log factorial for arguments 0-63
 const S1615 logFact[64] = {
   0,0,22713,58712,104138,156876,215588,279352,347491,419490,494941,573515,
   654941,738989,825465,914203,1005055,1097894,1192605,1289089,1387253,1487016,
@@ -38,11 +38,15 @@ namespace Maths
 // Log factorial
 S1615 LogFact(uint32_t n)
 {
-  S1615 n1 = (S1615)(n << 15);
-  if (n < 64) // Lookup table for argument values 0..63
+  if (n < 64) // Lookup table for argument values 0-63
     return logFact[n];  
-  else // Simple Stirling approximation
+  else
+  {
+    S1615 n1 = (S1615)(n << 15);
+    // Stirling approximation
+    // (n+0.5)*log(n) - n + 0.5*log(2*pi)
     return MulS1615((n1 + 16384), Ln(n1))  - n1 + 30111;
+  }
 }
     
 } // Maths

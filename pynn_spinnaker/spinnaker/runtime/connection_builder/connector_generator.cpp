@@ -1,12 +1,12 @@
 #include "connector_generator.h"
 
-// Common includes
-#include "../common/log.h"
-#include "../common/random/mars_kiss64.h"
+// Rig CPP common includes
+#include "rig_cpp_common/log.h"
+#include "rig_cpp_common/random/mars_kiss64.h"
+
 #include "../common/maths/hypergeometric.h"
 #include "../common/maths/binomial.h"
 
-// Namespaces
 using namespace Common::Maths;
 
 //-----------------------------------------------------------------------------
@@ -37,11 +37,12 @@ unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
 
   // Write indices
-  int i;
+  unsigned int i;
   unsigned int k = 0;
   for(i = 0; i < numPostNeurons; i++)
   {
-    if (m_AllowSelfConnections || i != columnRelativeToPost)
+    if (m_AllowSelfConnections ||
+	!(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
       indices[k++] = i;
   }
 
@@ -68,7 +69,7 @@ unsigned int ConnectionBuilder::ConnectorGenerator::OneToOne::Generate(
   unsigned int k = 0;
   // If that index is within this slice, add index to row
   if (columnRelativeToPost >= 0 || columnRelativeToPost < (int)numPostNeurons)
-    indices[k++] = columnRelativeToPost;
+    indices[k++] = (uint32_t)columnRelativeToPost;
 
   return k;
 }
@@ -95,13 +96,14 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
 
   // Write indices
-  int i;
+  unsigned int i;
   unsigned int k = 0;
   for(i = 0; i < numPostNeurons; i++)
   {
     // If draw if less than probability, add index to row
     if(rng.GetNext() < m_Probability &&
-       (m_AllowSelfConnections || i != columnRelativeToPost))
+       (m_AllowSelfConnections ||
+	!(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost))))
     {
       indices[k++] = i;
     }
