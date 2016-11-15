@@ -8,6 +8,7 @@ from rig import machine
 
 # Import classes
 from collections import defaultdict
+from rig_cpp_common.regions import Profiler, Statistics, System
 from rig_cpp_common.utils import Args
 
 # Import functions
@@ -160,8 +161,7 @@ class NeuralCluster(object):
                  requires_back_prop, pop_size):
         # Create standard regions
         self.regions = {}
-        self.regions[Regions.system] = regions.System(
-            timer_period_us, sim_ticks)
+        self.regions[Regions.system] = System(timer_period_us, sim_ticks)
         self.regions[Regions.neuron] = cell_type._neuron_region_class(
             cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.back_prop_output] = regions.SDRAMBackPropOutput(
@@ -170,8 +170,7 @@ class NeuralCluster(object):
                                                     sim_timestep_ms)
         self.regions[Regions.spike_recording] = regions.SpikeRecording(
             indices_to_record, sim_timestep_ms, sim_ticks)
-        self.regions[Regions.statistics] = regions.Statistics(
-            len(self.statistic_names))
+        self.regions[Regions.statistics] = Statistics(len(self.statistic_names))
 
         # If cell type has any receptors i.e. any need for synaptic input
         if len(cell_type.receptor_types) > 0:
@@ -210,7 +209,7 @@ class NeuralCluster(object):
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
-                regions.Profiler(config.num_profile_samples)
+                Profiler(config.num_profile_samples)
 
         # Split population slice
         neuron_slices = split_slice(pop_size, post_synaptic_width)
@@ -344,16 +343,10 @@ class NeuralCluster(object):
         # Get the statistics recording region
         region = self.regions[Regions.statistics]
 
-        # Convert stats to numpy array
-        # **TODO** this slightly gnarly numpy stuff could move into utils
-        np_stats = np.asarray([region.read_stats(v.region_memory[Regions.statistics])
-                            for v in self.verts])
-        # Convert stats into record array
-        stat_names = ",".join(self.statistic_names)
-        stat_format = ",".join(
-            itertools.repeat("u4", len(self.statistic_names)))
-        return np.core.records.fromarrays(np_stats.T, names=stat_names,
-                                          formats=stat_format)
+        # Read stats from all vertices
+        return region.read_stats(
+            [v.region_memory[Regions.statistics] for v in self.verts],
+            self.statistic_names)
 
     # --------------------------------------------------------------------------
     # Private methods

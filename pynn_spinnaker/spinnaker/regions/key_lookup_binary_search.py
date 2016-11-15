@@ -2,7 +2,7 @@
 import struct
 
 # Import classes
-from region import Region
+from rig_cpp_common.regions import Region
 
 # Import functions
 from ..utils import combine_row_offset_length

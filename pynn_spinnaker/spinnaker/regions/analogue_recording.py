@@ -4,7 +4,7 @@ import numpy as np
 import struct
 
 # Import classes
-from region import Region
+from rig_cpp_common.regions import Region
 from rig.type_casts import NumpyFixToFloatConverter
 
 # Import functions

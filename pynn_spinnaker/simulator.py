@@ -370,7 +370,6 @@ class State(common.control.BaseState):
             logger.debug("Found %u chip machine", len(self.system_info))
 
         # Place-and-route
-        # **NOTE** don't create application map at this stage
         logger.info("Placing and routing")
         placements, allocations, run_app_map, routing_tables =\
             place_and_route_wrapper(vertex_resources, vertex_run_applications,

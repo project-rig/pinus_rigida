@@ -1,5 +1,5 @@
 # Import classes
-from region import Region
+from rig_cpp_common.regions import Region
 from rig.type_casts import NumpyFloatToFixConverter
 
 

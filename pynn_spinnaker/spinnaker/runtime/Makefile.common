@@ -61,6 +61,19 @@ else
   TOOLS_DIR := ../../tools
 endif
 
+ifdef PROFILER_ENABLED
+	BUILDDIR = build_profiled
+	CFLAGS += -DPROFILER_ENABLED
+	APP = $(PYNN_APP)_profiled
+else
+	BUILDDIR = build
+	APP = $(PYNN_APP)
+endif
+
+ifdef LOG_LEVEL
+	CFLAGS += -DLOG_LEVEL=$(LOG_LEVEL)
+endif
+
 #-------------------------------------------------------------------------------
 
 # Set up the various compile/link options for GNU and ARM tools
@@ -135,20 +148,6 @@ CP  := \cp
 RM  := \rm -f
 LS  := \ls -l
 
-#-------------------------------------------------------------------------------
-
-ifdef PROFILER_ENABLED
-	BUILDDIR = build_profiled
-	CFLAGS += -DPROFILER_ENABLED
-	APP = $(PYNN_APP)_profiled
-else
-	BUILDDIR = build
-	APP = $(PYNN_APP)
-endif
-
-ifdef LOG_LEVEL
-	CFLAGS += -DLOG_LEVEL=$(LOG_LEVEL)
-endif
 
 # Find Rig CPP common directory
 RIG_CPP_COMMON := $(shell rig_cpp_common_path)
