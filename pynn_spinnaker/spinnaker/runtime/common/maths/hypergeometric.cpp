@@ -23,6 +23,11 @@ uint32_t randhg_hin_core(uint32_t ngood, uint32_t nbad, uint32_t nsample,
   uint32_t n = ngood + nbad, x;
   S1615 ln_p, p, u;
 
+  uint32_t maxval = (ngood < nsample) ? ngood : nsample;
+
+  do
+  {
+
   if(nsample < nbad)
   {
     ln_p = LogFact(nbad) - LogFact(n) + LogFact(n-nsample) - LogFact(nbad-nsample);
@@ -33,25 +38,25 @@ uint32_t randhg_hin_core(uint32_t ngood, uint32_t nbad, uint32_t nsample,
     ln_p = LogFact(ngood) - LogFact(n) + LogFact(nsample) - LogFact(nsample-nbad);
     x = nsample - nbad;
   }
-	
-  u = (S1615)(rng.GetNext() & 0x00007FFF);
+  ln_p += 340695;
+
+  u = (S1615)(rng.GetNext() & 0x3fffffff);
 
   p = ExpS1615(ln_p);
   while(u > p)
   {
     u -= p;
-    ln_p += Ln((ngood-x) << 15);
-    ln_p -= Ln((x+1) << 15);
-    ln_p += Ln((nsample-x) << 15);
-    ln_p -= Ln((nbad-nsample+1+x) << 15);
+    ln_p += Ln(ngood-x);
+    ln_p -= Ln(x+1);
+    ln_p += Ln(nsample-x);
+    ln_p -= Ln(nbad-nsample+1+x);
     p = ExpS1615(ln_p);
     x++;
-    if(x == n)
-      break;      // TODO error?
+    if(x > maxval)
+      break;
   }
 
-  if (x > n)
-    x = n;
+  } while (x > maxval);
 
   return x;
 }

@@ -23,15 +23,12 @@ uint32_t randbin_bg_core(uint32_t n, S1615 ln_1_min_p,
   if (ln_1_min_p >= 0)
     return x;
 
-  // TODO implement reciprocal for negative values
-  // replace neg_recip with recip
-  // replace -Ln(u) with Ln(u) below
-  S1615 neg_recip_ln_1_min_p = Reciprocal(-ln_1_min_p);
+  S1615 recip_ln_1_min_p = Reciprocal(ln_1_min_p);
 
   while (1)
   {
-    S1615 u = (S1615)(rng.GetNext() & 0x00007fff);
-    y += (MulS1615(-Ln(u), neg_recip_ln_1_min_p) >> 15) + 1;
+    S1615 u = (S1615)(rng.GetNext() & 0x7fffffff);
+    y += (MulS1615(Ln(u) - 363408, recip_ln_1_min_p) >> 15) + 1;
     if (y > n)
       break;
     x += 1;
