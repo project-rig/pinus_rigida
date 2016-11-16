@@ -79,7 +79,7 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
     // Generate indices so as to begin partitioning
     // with row in the order it was generated
     uint16_t sortedRowIndices[1024];
-    for(unsigned int i = 0; i < 1024; i++)
+    for(unsigned int i = 0; i < numIndices; i++)
     {
       sortedRowIndices[i] = (uint16_t)i;
     }
@@ -113,7 +113,7 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
 
       // If there are any synapses in the sub-row or
       // this is the first sub-row - which is always written
-      if(numSubRowSynapses != 0 || firstSubRow)
+      if(numSubRowSynapses > 0 || firstSubRow)
       {
         LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tSub-row (%08x) with delay [%u, %u) - %u synapses",
           rowAddress, startDelay, endDelay, numSubRowSynapses);
