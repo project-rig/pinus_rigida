@@ -109,7 +109,7 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
       );
 
       // Calculate the number of synapses in this section of the sub-row
-      const unsigned int numSubRowSynapses = newSubRowStartIndex - subRowStartIndex;
+      unsigned int numSubRowSynapses = newSubRowStartIndex - subRowStartIndex;
 
       // If there are any synapses in the sub-row or
       // this is the first sub-row - which is always written
@@ -122,9 +122,11 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
         // the maximum number of synapses per ragged-row
         if(firstSubRow && numSubRowSynapses > maxRowSynapses)
         {
-          LOG_PRINT(LOG_LEVEL_ERROR, "Generated matrix with %u synapses in first sub-row when maximum is %u",
+          LOG_PRINT(LOG_LEVEL_WARN, "Generated matrix with %u synapses in first sub-row when maximum is %u",
                     numSubRowSynapses, maxRowSynapses);
-          return false;
+
+          // Reduce number of synapses to maximum
+          numSubRowSynapses = maxRowSynapses;
         }
 
         // If this row is going to go past end of memory allocated for matrix
@@ -160,9 +162,13 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
         *rowAddress++ = 0;
         *rowAddress++ = 0;
 
+        // As sub-row has now been potentially truncated to fit
+        // within ragged matrix, calculate new pointer to end index
+        const uint16_t *subRowEndIndex = subRowStartIndex + numSubRowSynapses;
+
         // Write row
         unsigned int rowWords = WriteRow(rowAddress, startDelay,
-                                         subRowStartIndex, newSubRowStartIndex,
+                                         subRowStartIndex, subRowEndIndex,
                                          indices, delays, weights);
 
         // If this is the first delay sub-row, advance the
