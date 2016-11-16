@@ -79,8 +79,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     _directly_connectable = False
 
     # If this connector can be generated on chip, parameter map to use
-    _on_chip_param_map = [("p_connect", "u4", lazy_param_map.u032),
-                          ("allow_self_connections", "u4", lazy_param_map.integer)]
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer),
+                          ("p_connect", "u4", lazy_param_map.u032)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
