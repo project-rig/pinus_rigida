@@ -215,7 +215,7 @@ class ConnectionBuilder(Region):
                 seed = rngs[0]._seed_generator.randint(
                 2**32, dtype=np.uint32, size=self.SeedWords)
             else:
-                seed = [0] * 4
+                seed = np.zeros(4, dtype=np.uint32)
 
             fp.write(seed.tostring())
 
