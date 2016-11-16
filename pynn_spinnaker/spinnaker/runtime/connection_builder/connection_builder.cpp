@@ -88,13 +88,14 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
 
     // Read basic matrix properties
     const uint32_t key = *region++;
+    const uint32_t sizeWords = *region++;
     const uint32_t numRows = *region++;
     const uint32_t matrixTypeHash = *region++;
     const uint32_t connectorTypeHash = *region++;
     const uint32_t delayTypeHash = *region++;
     const uint32_t weightTypeHash = *region++;
-    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, num rows:%u, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u",
-              i, key, numRows, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash);
+    LOG_PRINT(LOG_LEVEL_INFO, "\tMatrix %u: key %08x, size words:%u, num rows:%u, matrix type hash:%u, connector type hash:%u, delay type hash:%u, weight type hash:%u",
+              i, key, sizeWords, numRows, matrixTypeHash, connectorTypeHash, delayTypeHash, weightTypeHash);
 
     // Generate matrix, connector, delays and weights
     const auto matrixGenerator = g_MatrixGeneratorFactory.Create(matrixTypeHash, region,
@@ -129,11 +130,17 @@ bool ReadConnectionBuilderRegion(uint32_t *region, uint32_t)
       // Generate matrix
       LOG_PRINT(LOG_LEVEL_INFO, "\t\tAddress:%08x, row synapses:%u",
                 matrixAddress, matrixRowSynapses);
-      matrixGenerator->Generate(matrixAddress, matrixRowSynapses,
-                                g_AppWords[AppWordWeightFixedPoint],
-                                g_AppWords[AppWordNumPostNeurons], numRows, postVertexSlice,
-				preVertexSlice, connectorGenerator, delayGenerator,
-                                weightGenerator, rng);
+      if(!matrixGenerator->Generate(g_SynapticMatrixBaseAddress, matrixAddress,
+                                    matrixRowSynapses,
+                                    g_AppWords[AppWordWeightFixedPoint],
+                                    g_AppWords[AppWordNumPostNeurons],
+                                    sizeWords, numRows, postVertexSlice, preVertexSlice,
+                                    connectorGenerator, delayGenerator, weightGenerator,
+                                    rng))
+      {
+        LOG_PRINT(LOG_LEVEL_ERROR, "\tMatrix generation failed");
+        return false;
+      }
 
     }
     else

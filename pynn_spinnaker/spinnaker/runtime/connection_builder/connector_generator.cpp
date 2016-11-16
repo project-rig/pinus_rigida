@@ -21,29 +21,23 @@ ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&region)
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
-  unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  unsigned int row, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   MarsKiss64 &, uint32_t (&indices)[1024])
 {
-  if(numPostNeurons != maxRowSynapses)
-  {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Cannot generate all-to-all connection row num post neurons:%u != max row synapses:%u",
-      numPostNeurons, maxRowSynapses);
-    return 0;
-  }
-
   // The column index on the diagonal for this row, i.e., the column to not
   // connect to if self connections are not allowed
-  int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
+  const int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
 
   // Write indices
   unsigned int i;
   unsigned int k = 0;
   for(i = 0; i < numPostNeurons; i++)
   {
-    if (m_AllowSelfConnections ||
-	!(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
+    if (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
+    {
       indices[k++] = i;
+    }
   }
 
   return k;
@@ -58,19 +52,20 @@ ConnectionBuilder::ConnectorGenerator::OneToOne::OneToOne(uint32_t *&)
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::OneToOne::Generate(
-  unsigned int row, unsigned int, unsigned int numPostNeurons,
+  unsigned int row, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   MarsKiss64 &, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to
   // connect to
-  int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
+  const int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
 
   unsigned int k = 0;
   // If that index is within this slice, add index to row
   if (columnRelativeToPost >= 0 || columnRelativeToPost < (int)numPostNeurons)
+  {
     indices[k++] = (uint32_t)columnRelativeToPost;
-
+  }
   return k;
 }
 
@@ -87,13 +82,13 @@ ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
-  unsigned int row, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  unsigned int row, unsigned int numPostNeurons,
   unsigned int vertexPostSlice, unsigned int vertexPreSlice,
   MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to not
   // connect to if self connections are not allowed
-  int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
+  const int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
 
   // Write indices
   unsigned int i;
@@ -101,26 +96,13 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   for(i = 0; i < numPostNeurons; i++)
   {
     // If draw if less than probability, add index to row
-    if(rng.GetNext() < m_Probability &&
-       (m_AllowSelfConnections ||
-	!(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost))))
+    if(rng.GetNext() < m_Probability && (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost))))
     {
       indices[k++] = i;
     }
   }
 
-  // If we have drawn less than the maximum number of synapses
-  if(k <= maxRowSynapses)
-  {
-    return k;
-  }
-  // Otherwise give error and return maximum
-  else
-  {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Fixed probability connector generation has resulted in %u synapses but max is %u",
-              k, maxRowSynapses);
-    return maxRowSynapses;
-  }
+  return k;
 }
 
 //-----------------------------------------------------------------------------
@@ -134,11 +116,11 @@ ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::FixedTotalNumber(uint32
   m_SubmatrixSize = *region++;
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector: connections in submatrix: %u %u",
-	    m_ConnectionsInSubmatrix, m_WithReplacement);
+            m_ConnectionsInSubmatrix, m_WithReplacement);
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
-  unsigned int, unsigned int maxRowSynapses, unsigned int numPostNeurons,
+  unsigned int, unsigned int numPostNeurons,
   unsigned int, unsigned int,
   MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
@@ -146,14 +128,18 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
 
   unsigned int numInRow;
   if (m_WithReplacement)
+  {
     numInRow = Binomial(m_ConnectionsInSubmatrix,
-			 numPostNeurons,
-			 m_SubmatrixSize, rng);
+      numPostNeurons,
+      m_SubmatrixSize, rng);
+  }
   else
+  {
     numInRow = Hypergeom(m_ConnectionsInSubmatrix,
-			 m_SubmatrixSize - m_ConnectionsInSubmatrix,
-			 numPostNeurons, rng);
-
+      m_SubmatrixSize - m_ConnectionsInSubmatrix,
+      numPostNeurons, rng);
+  }
+  
   m_ConnectionsInSubmatrix -= numInRow;
   m_SubmatrixSize -= numPostNeurons;
 
@@ -170,27 +156,21 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   {
     // Reservoir sampling
     for(i=0; i<numInRow; i++)
+    {
       indices[i] = i;
+    }
+
     for(i=numInRow; i<numPostNeurons; i++)
     {
       // j = rand(0, i) (inclusive)
       unsigned int u01 = (rng.GetNext() & 0x00007fff);
       unsigned int j = (u01 * (i+1)) >> 15;
       if (j < numInRow)
-	indices[j] = i;
+      {
+        indices[j] = i;
+      }
     }
   }
 
-  // If we have drawn less than the maximum number of synapses
-  if(numInRow <= maxRowSynapses)
-  {
-    return numInRow;
-  }
-  // Otherwise give error and return maximum
-  else
-  {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Fixed total number connector generation has resulted in %u synapses but max is %u",
-              numInRow, maxRowSynapses);
-    return maxRowSynapses;
-  }
+  return numInRow;
 }

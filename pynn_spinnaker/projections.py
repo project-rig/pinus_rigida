@@ -574,23 +574,6 @@ class Projection(common.Projection, ContextMixin):
             elif not is_scalar(p.base_value):
                 return False
 
-        # Calculate maximum delay that is supported using ring-buffer
-        # **TODO** support on-chip generation of rowlets
-        max_delay_slots = self.synapse_type._max_dtcm_delay_slots
-        max_delay = float(max_delay_slots) * self._simulator.state.dt
-
-        # If delay is random and its maximum value is
-        # larger than the maximum, return false
-        delay = s_params["delay"].base_value
-        if (isinstance(delay, RandomDistribution)
-            and delay.rng._estimate_dist_max_value(delay.name,
-                                                   delay.parameters) > max_delay):
-            return False
-
-        # If delay is a constant larger than the maximum, return false
-        if is_scalar(delay) and delay > max_delay:
-            return False
-
         # All checks passed
         return True
 

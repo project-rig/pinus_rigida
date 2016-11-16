@@ -34,11 +34,9 @@ public:
   //-----------------------------------------------------------------------------
   // Declared virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons,
-				unsigned int vertexPostSlice,
-				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]);
+  virtual unsigned int Generate(unsigned int row, unsigned int numPostNeurons,
+                                unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+                                MarsKiss64 &rng, uint32_t (&indices)[1024]) = 0;
 
 };
 
@@ -53,11 +51,9 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons,
-				unsigned int vertexPostSlice,
-				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]);
+  virtual unsigned int Generate(unsigned int row, unsigned int numPostNeurons,
+                                unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+                                MarsKiss64 &rng, uint32_t (&indices)[1024]);
 
 private:
   AllToAll(uint32_t *&);
@@ -79,11 +75,9 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons,
-				unsigned int vertexPostSlice,
-				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]);
+  virtual unsigned int Generate(unsigned int row, unsigned int numPostNeurons,
+                                unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+                                MarsKiss64 &rng, uint32_t (&indices)[1024]);
 
 private:
   OneToOne(uint32_t *&);
@@ -100,11 +94,9 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons,
-				unsigned int vertexPostSlice,
-				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]);
+  virtual unsigned int Generate(unsigned int row, unsigned int numPostNeurons,
+                                unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+                                MarsKiss64 &rng, uint32_t (&indices)[1024]);
 
 private:
   FixedProbability(uint32_t *&region);
@@ -127,11 +119,9 @@ public:
   //-----------------------------------------------------------------------------
   // Base virtuals
   //-----------------------------------------------------------------------------
-  virtual unsigned int Generate(unsigned int row, unsigned int maxRowSynapses,
-                                unsigned int numPostNeurons,
-				unsigned int vertexPostSlice,
-				unsigned int vertexPreSlice, MarsKiss64 &rng,
-                                uint32_t (&indices)[1024]);
+  virtual unsigned int Generate(unsigned int row, unsigned int numPostNeurons,
+                                unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+                                MarsKiss64 &rng, uint32_t (&indices)[1024]);
 
 private:
   FixedTotalNumber(uint32_t *&region);
