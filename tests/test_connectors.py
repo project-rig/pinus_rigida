@@ -61,6 +61,9 @@ def test_estimate_max_row_synapses(pre_size, post_size, post_slice, connector):
                 weight_range=weight_range,
                 directly_connect=False)
 
+    # Reset number of processes
+    proj._simulator.state.num_processes = 1
+
     # Calculate actual maximum and mean row length
     actual_max_row_synapses = max(len(s) for s in sub_rows)
     actual_mean_row_synapses = sum(len(s) for s in sub_rows) / float(len(sub_rows))
