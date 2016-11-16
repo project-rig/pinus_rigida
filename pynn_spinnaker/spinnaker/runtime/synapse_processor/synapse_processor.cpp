@@ -3,12 +3,12 @@
 // Standard includes
 #include <climits>
 
-// Common includes
-#include "../common/config.h"
-#include "../common/log.h"
-#include "../common/profiler.h"
-#include "../common/spinnaker.h"
-#include "../common/statistics.h"
+// Rig CPP common includes
+#include "rig_cpp_common/config.h"
+#include "rig_cpp_common/log.h"
+#include "rig_cpp_common/profiler.h"
+#include "rig_cpp_common/spinnaker.h"
+#include "rig_cpp_common/statistics.h"
 
 // Synapse processor includes
 #include "sdram_back_propagation_input.h"
@@ -243,7 +243,7 @@ void SetupNextDMARowRead()
 
   // If there's another spike in the input buffer
   uint32_t key;
-  if(g_SpikeInputBuffer.GetNextSpike(key))
+  if(g_SpikeInputBuffer.Pop(key))
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for spike %x", key);
 
@@ -333,7 +333,7 @@ void MCPacketReceived(uint key, uint)
 
   // If there was space to add spike to incoming
   // spike queue, start DMA row fetch pipeline
-  if(g_SpikeInputBuffer.AddSpike(key))
+  if(g_SpikeInputBuffer.Push(key))
   {
     DMAStartRowFetchPipeline();
   }

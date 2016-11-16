@@ -6,11 +6,14 @@ from rig import machine
 
 # Import classes
 from collections import defaultdict
-from utils import (Args, InputVertex)
+from rig_cpp_common.utils import Args
+from rig_cpp_common.regions import Profiler, System
+from utils import InputVertex
 
 # Import functions
+from rig_cpp_common.utils import load_regions
 from six import iteritems
-from utils import (get_model_executable_filename, load_regions, split_slice)
+from utils import get_model_executable_filename, split_slice
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -44,8 +47,7 @@ class CurrentInputCluster(object):
                  post_synaptic_width, pop_size):
         # Create standard regions
         self.regions = {}
-        self.regions[Regions.system] = regions.System(
-            timer_period_us, sim_ticks)
+        self.regions[Regions.system] = System(timer_period_us, sim_ticks)
         self.regions[Regions.neuron] = cell_type._neuron_region_class(
             cell_type, parameters, initial_values, sim_timestep_ms, pop_size)
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
@@ -56,7 +58,7 @@ class CurrentInputCluster(object):
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
-                regions.Profiler(config.num_profile_samples)
+                Profiler(config.num_profile_samples)
 
         # Slice current input
         post_slices = split_slice(pop_size, post_synaptic_width)
@@ -143,7 +145,8 @@ class CurrentInputCluster(object):
 
                 # Load regions
                 v.region_memory = load_regions(self.regions, region_arguments,
-                                               machine_controller, core)
+                                               machine_controller, core,
+                                               logger)
 
     def read_recorded_spikes(self):
         # Loop through all current input vertices

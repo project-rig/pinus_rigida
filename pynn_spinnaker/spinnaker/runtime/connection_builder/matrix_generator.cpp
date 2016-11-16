@@ -3,8 +3,8 @@
 // Standard includes
 #include <algorithm>
 
-// Common includes
-#include "../common/log.h"
+// Rig CPP common includes
+#include "rig_cpp_common/log.h"
 
 // Connection builder includes
 #include "connector_generator.h"

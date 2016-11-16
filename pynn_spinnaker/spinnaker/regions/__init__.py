@@ -11,13 +11,10 @@ from output_buffer import OutputBuffer
 from output_weight import OutputWeight
 from parameter_space import ParameterSpace
 from plastic_synaptic_matrix import PlasticSynapticMatrix
-from profiler import Profiler
 from sdram_back_prop_input import SDRAMBackPropInput
 from sdram_back_prop_output import SDRAMBackPropOutput
 from spike_recording import SpikeRecording
 from spike_source_array import SpikeSourceArray
 from spike_source_poisson import SpikeSourcePoisson
-from statistics import Statistics
 from static_synaptic_matrix import StaticSynapticMatrix
 from synaptic_matrix import SynapticMatrix
-from system import System

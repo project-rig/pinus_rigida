@@ -8,7 +8,7 @@ import struct
 # Import classes
 from ...random import NativeRNG
 from pyNN.random import RandomDistribution
-from region import Region
+from rig_cpp_common.regions import Region
 
 # Import functions
 from rig.type_casts import float_to_fp

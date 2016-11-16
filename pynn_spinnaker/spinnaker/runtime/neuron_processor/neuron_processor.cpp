@@ -3,16 +3,18 @@
 // Standard includes
 #include <climits>
 
+// Rig CPP common includes
+#include "rig_cpp_common/config.h"
+#include "rig_cpp_common/fixed_point_number.h"
+#include "rig_cpp_common/log.h"
+#include "rig_cpp_common/profiler.h"
+#include "rig_cpp_common/spinnaker.h"
+#include "rig_cpp_common/statistics.h"
+#include "rig_cpp_common/utils.h"
+
 // Common includes
-#include "../common/config.h"
-#include "../common/fixed_point_number.h"
 #include "../common/flush.h"
-#include "../common/log.h"
-#include "../common/profiler.h"
 #include "../common/spike_recording.h"
-#include "../common/spinnaker.h"
-#include "../common/statistics.h"
-#include "../common/utils.h"
 
 // Neuron processor includes
 #include "analogue_recording.h"

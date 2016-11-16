@@ -12,12 +12,15 @@ import sys
 
 # Import classes
 from collections import defaultdict
-from utils import Args, InputVertex
+from rig_cpp_common.regions import Profiler, Statistics, System
+from rig_cpp_common.utils import Args
+from utils import InputVertex
 
 # Import functions
 from pkg_resources import resource_filename
+from rig_cpp_common.utils import load_regions
 from six import iteritems, iterkeys
-from utils import (get_model_executable_filename, load_regions, split_slice)
+from utils import get_model_executable_filename, split_slice
 
 logger = logging.getLogger("pynn_spinnaker")
 
@@ -138,8 +141,7 @@ class SynapseCluster(object):
                  vertex_resources, post_synaptic_width):
         # Dictionary of regions
         self.regions = {}
-        self.regions[Regions.system] = regions.System(timer_period_us,
-                                                      sim_ticks)
+        self.regions[Regions.system] = System(timer_period_us, sim_ticks)
         self.regions[Regions.key_lookup] = regions.KeyLookupBinarySearch()
         self.regions[Regions.output_buffer] = regions.OutputBuffer()
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
@@ -148,8 +150,7 @@ class SynapseCluster(object):
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
         self.regions[Regions.connection_builder] = regions.ConnectionBuilder(
             sim_timestep_ms)
-        self.regions[Regions.statistics] = regions.Statistics(
-            len(self.statistic_names))
+        self.regions[Regions.statistics] = Statistics(len(self.statistic_names))
 
         # Create correct type of synaptic matrix region
         self.regions[Regions.synaptic_matrix] =\
@@ -166,7 +167,7 @@ class SynapseCluster(object):
         # Add profiler region if required
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
-                regions.Profiler(config.num_profile_samples)
+                Profiler(config.num_profile_samples)
 
         # Split population slice
         self.post_slices = split_slice(post_pop_size, post_synaptic_width)
@@ -467,7 +468,7 @@ class SynapseCluster(object):
                     # Load regions
                     v.region_memory = load_regions(
                         self.regions, region_arguments,
-                        machine_controller, core)
+                        machine_controller, core, logger)
 
                     # Store sub matrix properties and placements in vertex
                     # so they can be used to subsequently read weights back
@@ -488,15 +489,10 @@ class SynapseCluster(object):
         # Get the statistics recording region
         region = self.regions[Regions.statistics]
 
-        # Convert stats to numpy array
-        np_stats = np.asarray([region.read_stats(v.region_memory[Regions.statistics])
-                            for v in self.verts])
-        # Convert stats into record array
-        stat_names = ",".join(self.statistic_names)
-        stat_format = ",".join(
-            itertools.repeat("u4", len(self.statistic_names)))
-        return np.core.records.fromarrays(np_stats.T, names=stat_names,
-                                          formats=stat_format)
+        # Read stats from all vertices
+        return region.read_stats(
+            [v.region_memory[Regions.statistics] for v in self.verts],
+            self.statistic_names)
 
     def read_synaptic_matrices(self, pre_pop, names, sim_timestep_ms):
         # Get the synaptic matrix region
