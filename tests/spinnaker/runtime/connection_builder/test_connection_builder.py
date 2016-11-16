@@ -123,7 +123,7 @@ def test_connector_delay_dist(delay_dist):
 @pytest.mark.parametrize("weight_dist",
                          [RandomDistribution("normal_clipped", [87.8e-3, 87.8e-3 * 0.1, 0.0, 1000.0], rng=native_rng),
                           RandomDistribution("uniform", low=0.0, high=0.01, rng=native_rng)])
-def test_connector_delay_dist(weight_dist):
+def test_connector_weight_dist(weight_dist):
     # Run network
     proj, proj_data = _run_network(1000, sim.AllToAllConnector(),
                                    sim.StaticSynapse(weight=weight_dist, delay=1.0),
