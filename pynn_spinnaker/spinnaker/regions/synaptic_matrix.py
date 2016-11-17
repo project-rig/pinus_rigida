@@ -313,7 +313,7 @@ class SynapticMatrix(Region):
                                   pre_n_vert.routing_mask,
                                   pre_n_vert.neuron_slice,
                                   pre_n_vert.vert_index,
-                                  size_words, max(1, max_cols)
+                                  size_words, max(1, max_cols),
                                   max_delay_rows_per_second))
                                   
                     sub_matrix_projs.append((proj, len(pre_n_vert.neuron_slice)))
