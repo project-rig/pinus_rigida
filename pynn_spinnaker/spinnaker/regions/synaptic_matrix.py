@@ -14,7 +14,8 @@ from ..utils import combine_row_offset_length, extract_row_offset_length
 
 logger = logging.getLogger("pynn_spinnaker")
 
-SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols"])
+SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols",
+                                     "max_delay_rows_per_second"])
 
 # ------------------------------------------------------------------------------
 # SynapticMatrix
@@ -45,7 +46,7 @@ class SynapticMatrix(Region):
         """Get the size requirements of the region in bytes.
 
         Parameters
-        ----------
+        ----------haha when
         sub_matrix_props : list of :py:class:`._SubMatrix`
             Properties of the sub matrices to be written
             to synaptic matrix region
@@ -78,7 +79,7 @@ class SynapticMatrix(Region):
             Properties of the sub matrices to be written
             to synaptic matrix region
         host_sub_matrix_rows : list of list of numpy arrays
-            Partitioned matrix rows generated on hostto be written to SpiNNaker
+            Partitioned matrix rows generated on host to be written to SpiNNaker
         matrix_placements : list of integers
             Offsets in words at which sub_matrices will be
             written into synaptic matrix region
@@ -183,6 +184,7 @@ class SynapticMatrix(Region):
                 # with this presynaptic neuron vert
                 vert_sub_rows = sub_rows[pre_n_vert.neuron_slice.python_slice]
 
+                max_sub_rows = 0
                 max_cols = 1
                 num_ext_words = 0
                 any_connections = False
@@ -222,6 +224,10 @@ class SynapticMatrix(Region):
                                         np.split(sub_row, sub_row_sections))
                                     if e == 0 or len(r) > 0]
 
+                        # Update maximum number of sub-rows
+                        max_sub_rows = max(max_sub_rows,
+                                           len(vert_sub_rows[i]) - 1)
+
                         # Calculate number of extension words thos
                         num_ext_words += self._get_num_ext_words(
                             len(vert_sub_rows[i]), sub_row_lengths,
@@ -240,11 +246,19 @@ class SynapticMatrix(Region):
                     size_words = num_ext_words +\
                         (len(vert_sub_rows) * self._get_num_row_words(max_cols))
 
+                    # Estimate the maximum number of delay rows the
+                    # synapse processor handling this sub-matrix
+                    # will be required to process each second
+                    max_delay_rows_per_second =\
+                        (max_sub_rows * len(pre_n_vert.neuron_slice) *
+                         pre_pop.spinnaker_config.mean_firing_rate)
+
                     # Add sub matrix to list
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
-                                  size_words, max_cols))
+                                  size_words, max_cols,
+                                  max_delay_rows_per_second))
                     sub_matrix_rows.append(vert_sub_rows)
 
         return sub_matrix_props, sub_matrix_rows
@@ -281,11 +295,19 @@ class SynapticMatrix(Region):
                         len(pre_n_vert.neuron_slice), max_cols,
                         max_sub_rows, max_sub_row_length)
 
+                    # Estimate the maximum number of delay rows the
+                    # synapse processor handling this sub-matrix
+                    # will be required to process each second
+                    max_delay_rows_per_second =\
+                        (max_sub_rows * len(pre_n_vert.neuron_slice) *
+                         proj.pre.spinnaker_config.mean_firing_rate)
+
                     # Add sub matrix to list
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
-                                  size_words, max(1, max_cols)))
+                                  size_words, max(1, max_cols),
+                                  max_delay_rows_per_second))
                     sub_matrix_projs.append((proj, len(pre_n_vert.neuron_slice)))
 
         return sub_matrix_props, sub_matrix_projs
