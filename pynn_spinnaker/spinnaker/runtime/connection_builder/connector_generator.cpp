@@ -115,7 +115,8 @@ ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::FixedTotalNumber(uint32
   m_ConnectionsInSubmatrix = *region++;
   m_SubmatrixSize = *region++;
 
-  LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector: connections in submatrix: %u %u",
+  LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector: connections in submatrix: %u, "
+			"with replacement: %u",
             m_ConnectionsInSubmatrix, m_WithReplacement);
 }
 //-----------------------------------------------------------------------------
@@ -124,53 +125,81 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   unsigned int, unsigned int,
   MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
-  unsigned int i;
+  unsigned int i, u01, j, numInRow;
 
-  unsigned int numInRow;
-  if (m_WithReplacement)
+  // Determine how many of the submatrix connections are within this row
+  // If there are no connections left to allocate to a row,
+  // then there are no connections in this row
+  if (m_ConnectionsInSubmatrix == 0)
   {
-    numInRow = Binomial(m_ConnectionsInSubmatrix,
-      numPostNeurons,
-      m_SubmatrixSize, rng);
+	numInRow = 0;
   }
+  // If we're on the last row of the submatrix, then all of the remaining
+  // submatrix connections get allocated to this row
+  else if (numPostNeurons == m_SubmatrixSize)
+  {
+	numInRow = m_ConnectionsInSubmatrix;
+  }
+  // Otherwise, sample from the distribution over the number of the submatrix
+  // connections that will end up within this row. The distribution depends
+  // on whether the connections are made with or without replacement
   else
   {
-    numInRow = Hypergeom(m_ConnectionsInSubmatrix,
-      m_SubmatrixSize - m_ConnectionsInSubmatrix,
-      numPostNeurons, rng);
+	// Sample from a binomial distribution to determine how many of
+	// the submatrix connections are within this row
+	if (m_WithReplacement)
+	{
+	  // Each of the connections has a (row size)/(submatrix size)
+	  // probability of ending up in this row
+	  numInRow = Binomial(m_ConnectionsInSubmatrix,
+                          numPostNeurons,
+                          m_SubmatrixSize, rng);
+	}
+	// Sample from a hypergeometric distribution to determine how many of
+	// the submatrix connections are within this row
+	else
+	{
+	  // In the whole submatrix, there are some number of connections,
+	  // some number of non-connections, and our row is a random sample
+	  // of (row size) of them
+	  numInRow = Hypergeom(m_ConnectionsInSubmatrix,
+                           m_SubmatrixSize - m_ConnectionsInSubmatrix,
+                           numPostNeurons, rng);
+	}
   }
-  
-  m_ConnectionsInSubmatrix -= numInRow;
-  m_SubmatrixSize -= numPostNeurons;
 
+  // Sample from the possible connections in this row numInRow times
   if (m_WithReplacement)
   {
+	// Sample them with replacement
     for(i=0; i<numInRow; i++)
     {
-      unsigned int u01 = (rng.GetNext() & 0x00007fff);
-      unsigned int j = (u01 * numPostNeurons) >> 15;
+      u01 = (rng.GetNext() & 0x00007fff);
+      j = (u01 * numPostNeurons) >> 15;
       indices[i] = j;
     }
   }
   else
   {
-    // Reservoir sampling
+	// Sample them without replacement using reservoir sampling
     for(i=0; i<numInRow; i++)
     {
       indices[i] = i;
     }
-
     for(i=numInRow; i<numPostNeurons; i++)
     {
       // j = rand(0, i) (inclusive)
-      unsigned int u01 = (rng.GetNext() & 0x00007fff);
-      unsigned int j = (u01 * (i+1)) >> 15;
+      u01 = (rng.GetNext() & 0x00007fff);
+      j = (u01 * (i+1)) >> 15;
       if (j < numInRow)
       {
         indices[j] = i;
       }
     }
   }
+
+  m_ConnectionsInSubmatrix -= numInRow;
+  m_SubmatrixSize -= numPostNeurons;
 
   return numInRow;
 }
