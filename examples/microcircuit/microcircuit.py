@@ -10,7 +10,7 @@ from network_params import *
 import logging
 import pyNN
 import time
-from neo.io import PickleIO
+from neo.io import PyNNTextIO
 import plotting
 
 
@@ -48,14 +48,14 @@ if sim.rank() == 0 :
 start_writing = time.time()
 for layer in n.pops :
     for pop in n.pops[layer] :
-        io = PickleIO(filename=system_params['output_path'] \
-             + "/spikes_" + layer + '_' + pop + '_' + str(sim.rank()) + ".pkl")
+        io = PyNNTextIO(filename=system_params['output_path'] \
+             + "/spikes_" + layer + '_' + pop + '_' + str(sim.rank()) + ".txt")
         spikes = n.pops[layer][pop].get_data('spikes', gather=False)
         for segment in spikes.segments :
             io.write_segment(segment)
         if record_v :
-            io = PickleIO(filename=system_params['output_path'] \
-                 + "/vm_" + layer + '_' + pop + '_' + str(sim.rank()) + ".pkl")
+            io = PyNNTextIO(filename=system_params['output_path'] \
+                 + "/vm_" + layer + '_' + pop + '_' + str(sim.rank()) + ".txt")
             vm = n.pops[layer][pop].get_data('v', gather=False)
             for segment in vm.segments :
                 try :
