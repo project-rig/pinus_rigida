@@ -59,7 +59,7 @@ def show_raster_bars(t_start, t_stop, n_rec, frac_to_plot, path):
         t_spikes = t_spikes[np.where(ids < num_neurons + id_count + 1)[0]]
         ids = ids[np.where(ids < num_neurons + id_count + 1)[0]]
         axarr[0].plot(t_spikes, ids, '.', color=color[pop])
-        id_count = ids[-1]
+        id_count = 0 if len(ids) == 0 else ids[-1]
 
     # Plot bar plot
     axarr[1].barh(np.arange(0, 8, 1) + 0.1, rates[::-1], color=color[::-1] * 4)
