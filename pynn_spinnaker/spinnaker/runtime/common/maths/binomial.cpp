@@ -22,7 +22,7 @@ namespace
 // Since the number of times through the loop is the value returned,
 // expected execution time is proportional to n*p
 uint32_t randbin_bg_core(uint32_t n, S1615 ln_1_min_p,
-			 MarsKiss64 &rng)
+                         MarsKiss64 &rng)
 {
   uint32_t y = 0, x = 0;
   if (ln_1_min_p >= 0)
@@ -88,6 +88,6 @@ uint32_t Binomial(uint32_t n, uint32_t num, uint32_t denom, MarsKiss64 &rng)
     return randbin_bg_core(n, Ln((int32_t)denom-(int32_t)num) - Ln((int32_t)denom), rng);
   }
 }
-  
+
 } // Maths
 } // Common

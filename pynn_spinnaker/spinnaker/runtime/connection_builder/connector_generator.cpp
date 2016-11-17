@@ -17,7 +17,7 @@ ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&region)
   m_AllowSelfConnections = *region++;
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tAll-to-all connector: Allow self connections: %u",
-	    m_AllowSelfConnections);
+            m_AllowSelfConnections);
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
@@ -116,8 +116,7 @@ ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::FixedTotalNumber(uint32
   m_SubmatrixSize = *region++;
 
   LOG_PRINT(LOG_LEVEL_INFO, "\t\tFixed total number connector: connections in submatrix: %u, "
-			"with replacement: %u",
-            m_ConnectionsInSubmatrix, m_WithReplacement);
+            "with replacement: %u", m_ConnectionsInSubmatrix, m_WithReplacement);
 }
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
@@ -132,46 +131,46 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   // then there are no connections in this row
   if (m_ConnectionsInSubmatrix == 0)
   {
-	numInRow = 0;
+    numInRow = 0;
   }
   // If we're on the last row of the submatrix, then all of the remaining
   // submatrix connections get allocated to this row
   else if (numPostNeurons == m_SubmatrixSize)
   {
-	numInRow = m_ConnectionsInSubmatrix;
+    numInRow = m_ConnectionsInSubmatrix;
   }
   // Otherwise, sample from the distribution over the number of the submatrix
   // connections that will end up within this row. The distribution depends
   // on whether the connections are made with or without replacement
   else
   {
-	// Sample from a binomial distribution to determine how many of
-	// the submatrix connections are within this row
-	if (m_WithReplacement)
-	{
-	  // Each of the connections has a (row size)/(submatrix size)
-	  // probability of ending up in this row
-	  numInRow = Binomial(m_ConnectionsInSubmatrix,
+    // Sample from a binomial distribution to determine how many of
+    // the submatrix connections are within this row
+    if (m_WithReplacement)
+    {
+      // Each of the connections has a (row size)/(submatrix size)
+      // probability of ending up in this row
+      numInRow = Binomial(m_ConnectionsInSubmatrix,
                           numPostNeurons,
                           m_SubmatrixSize, rng);
-	}
-	// Sample from a hypergeometric distribution to determine how many of
-	// the submatrix connections are within this row
-	else
-	{
-	  // In the whole submatrix, there are some number of connections,
-	  // some number of non-connections, and our row is a random sample
-	  // of (row size) of them
-	  numInRow = Hypergeom(m_ConnectionsInSubmatrix,
+    }
+    // Sample from a hypergeometric distribution to determine how many of
+    // the submatrix connections are within this row
+    else
+    {
+      // In the whole submatrix, there are some number of connections,
+      // some number of non-connections, and our row is a random sample
+      // of (row size) of them
+      numInRow = Hypergeom(m_ConnectionsInSubmatrix,
                            m_SubmatrixSize - m_ConnectionsInSubmatrix,
                            numPostNeurons, rng);
-	}
+    }
   }
 
   // Sample from the possible connections in this row numInRow times
   if (m_WithReplacement)
   {
-	// Sample them with replacement
+    // Sample them with replacement
     for(i=0; i<numInRow; i++)
     {
       u01 = (rng.GetNext() & 0x00007fff);
@@ -181,7 +180,7 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   }
   else
   {
-	// Sample them without replacement using reservoir sampling
+    // Sample them without replacement using reservoir sampling
     for(i=0; i<numInRow; i++)
     {
       indices[i] = i;

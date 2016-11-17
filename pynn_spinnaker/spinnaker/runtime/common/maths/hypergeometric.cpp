@@ -23,8 +23,8 @@ namespace
 // the expected execution time is proportional to
 // nsample * (ngood / (ngood+nbad))
 uint32_t randhg_hin_core(uint32_t ngood, uint32_t nbad, uint32_t nsample,
-			 MarsKiss64 &rng)
-{	
+                         MarsKiss64 &rng)
+{
   uint32_t n = ngood + nbad, x;
   S1615 ln_p, p, u;
 
@@ -119,6 +119,6 @@ uint32_t Hypergeom(uint32_t ngood, uint32_t nbad, uint32_t nsample, MarsKiss64 &
     }
   }
 }
-  
+
 } // Maths
 } // Common
