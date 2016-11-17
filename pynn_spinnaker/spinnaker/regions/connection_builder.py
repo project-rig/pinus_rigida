@@ -230,7 +230,7 @@ class ConnectionBuilder(Region):
             logger.debug("\t\t\t\t\tWriting connection builder data for "
                 "projection key:%08x, num words:%u, num rows:%u, "
                 "matrix type:%s, connector type:%s, delay type:%s, weight type:%s, ",
-                prop.key, proj[1], synaptic_matrix.__name__,
+                prop.key, prop.size_words, proj[1], synaptic_matrix.__name__,
                 connector.__class__.__name__, _get_param_type_name(delay),
                 _get_param_type_name(weight))
 
