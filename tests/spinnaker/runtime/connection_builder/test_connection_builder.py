@@ -103,10 +103,13 @@ def test_connector_metrics(pop_size, connector):
     assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
     assert estimated_mean_row_synapses >= (0.75 * actual_mean_row_synapses)
 
-@pytest.mark.parametrize("delay_dist", [RandomDistribution("normal_clipped",
-                                                           [1.5, 0.75, 0.1, 1000.0],
-                                                           rng=native_rng)])
-def test_connector_delay_dist(delay_dist):
+@pytest.mark.parametrize("delay_dist_name_params", [("normal_clipped", [1.5, 0.75, 0.1, 1000.0])])
+def test_connector_delay_dist(delay_dist_name_params):
+    # Build PyNN distribution object
+    delay_dist = RandomDistribution(delay_dist_name_params[0],
+                                    delay_dist_name_params[1],
+                                    rng=native_rng)
+
     # Run network
     proj, proj_data = _run_network(1000, sim.AllToAllConnector(),
                                    sim.StaticSynapse(weight=0.0, delay=delay_dist),
@@ -120,14 +123,24 @@ def test_connector_delay_dist(delay_dist):
     test = ks_2samp(proj_data[2], samples)
     assert test[1] > 0.05
 
-@pytest.mark.parametrize("weight_dist",
-                         [RandomDistribution("normal_clipped", [87.8e-3, 87.8e-3 * 0.1, 0.0, 1000.0], rng=native_rng),
-                          RandomDistribution("uniform", low=0.0, high=0.01, rng=native_rng)])
-def test_connector_weight_dist(weight_dist):
+@pytest.mark.parametrize("weight_dist_name_params",
+                         [("normal_clipped", [0.277647978563, 0.0277647978563, 0.0, 1000.0], False),
+                          ("normal_clipped", [-1.11059191425, 0.111059191425, -1000.0, 0.0], True),
+                          ("uniform", [0.0, 0.01], False)])
+def test_connector_weight_dist(weight_dist_name_params):
+    # Build PyNN distribution object
+    weight_dist = RandomDistribution(weight_dist_name_params[0],
+                                     weight_dist_name_params[1],
+                                     rng=native_rng)
+
     # Run network
     proj, proj_data = _run_network(1000, sim.AllToAllConnector(),
                                    sim.StaticSynapse(weight=weight_dist, delay=1.0),
                                    ["weight"], 1.0)
+
+    # **HACK** because of issue #60 
+    if weight_dist_name_params[2]:
+        proj_data[2] = np.multiply(proj_data[2], -1)
 
     # Generate some samples from original distribution
     samples = weight_dist.next(len(proj_data))
