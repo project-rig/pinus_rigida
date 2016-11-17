@@ -129,7 +129,7 @@ class Network:
                         source_index=structure[source_layer][source_pop]
                         if sim.rank() == 0:
                             print('creating connections from %s%s to %s%s' % (source_layer, source_pop, target_layer, target_pop))
-                        weight=self.w[target_index][source_index]
+                        weight=float(self.w[target_index][source_index])
                         if source_pop == 'E' and source_layer == 'L4' and target_layer == 'L23' and target_pop == 'E':
                             w_sd=weight * w_rel_234
                         else:
