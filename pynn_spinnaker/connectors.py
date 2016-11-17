@@ -262,7 +262,10 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         M = pre_size * post_size
         N = len(post_slice)
 
-        return int(scipy.stats.hypergeom.ppf(0.9999, M=M, N=N, n=self.n))
+        if self.with_replacement:
+            return int(scipy.stats.binom.ppf(0.9999, n=self.n, p=float(N)/M))
+        else:
+            return int(scipy.stats.hypergeom.ppf(0.9999, M=M, N=N, n=self.n))
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
