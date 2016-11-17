@@ -9,6 +9,7 @@ Connection method classes for PyNN SpiNNaker
 import numpy as np
 import scipy
 from spinnaker import lazy_param_map
+import lazyarray as la
 
 # Import classes
 from pyNN.connectors import (AllToAllConnector,
@@ -26,6 +27,23 @@ from pyNN.connectors import (AllToAllConnector,
                              CloneConnector,
                              ArrayConnector)
 
+def _draw_num_connections(context, post_slice_size, pre_slice_size, **kwargs):
+    nsample = post_slice_size * pre_slice_size
+
+    if context['with_replacement']:
+        sample = np.random.binomial(n = context['n'],
+                                    p = float(nsample) / context['N'])
+    else:
+        sample = np.random.hypergeometric(ngood = context['n'],
+                                          nbad = context['N'] - context['n'],
+                                          nsample = nsample)
+    context['n'] -= sample
+    context['N'] -= nsample
+    return la.larray(sample, shape=(1,))
+
+def _submat_size(context, post_slice_size, pre_slice_size, **kwargs):
+    return la.larray(post_slice_size * pre_slice_size, shape=(1,))
+    return la.larray(sample, shape=(1,))
 
 # ----------------------------------------------------------------------------
 # AllToAllConnector
@@ -36,7 +54,7 @@ class AllToAllConnector(AllToAllConnector):
     _directly_connectable = False
 
     # If this connector can be generated on chip, parameter map to use
-    _on_chip_param_map = []
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -49,6 +67,9 @@ class AllToAllConnector(AllToAllConnector):
                                     pre_size, post_size):
         return len(post_slice)
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
 # ----------------------------------------------------------------------------
 # FixedProbabilityConnector
 # ----------------------------------------------------------------------------
@@ -58,7 +79,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     _directly_connectable = False
 
     # If this connector can be generated on chip, parameter map to use
-    _on_chip_param_map = [("p_connect", "u4", lazy_param_map.u032)]
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer),
+                          ("p_connect", "u4", lazy_param_map.u032)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -73,6 +95,9 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
         return int(round(self.p_connect * float(len(post_slice))))
+
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
 
 # ----------------------------------------------------------------------------
 # OneToOneConnector
@@ -92,6 +117,9 @@ class OneToOneConnector(OneToOneConnector):
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
         return 1 if pre_slice.overlaps(post_slice) else 0
+
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
 
 # ----------------------------------------------------------------------------
 # FromListConnector
@@ -134,6 +162,10 @@ class FromListConnector(FromListConnector):
         # Return average row length
         return np.average(hist)
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
+
 # ----------------------------------------------------------------------------
 # FixedNumberPostConnector
 # ----------------------------------------------------------------------------
@@ -141,6 +173,8 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -165,6 +199,10 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
 
         return int(self.n * post_fraction)
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
+
 # ----------------------------------------------------------------------------
 # FixedNumberPreConnector
 # ----------------------------------------------------------------------------
@@ -172,6 +210,8 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer)]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -190,6 +230,10 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
                                     pre_size, post_size):
         return int(len(post_slice) * float(self.n) / float(pre_size))
 
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return None
+
+
 # ----------------------------------------------------------------------------
 # FixedTotalNumberConnector
 # ----------------------------------------------------------------------------
@@ -197,6 +241,11 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer),
+                          ("with_replacement", "u4", lazy_param_map.integer),
+                          (_draw_num_connections, "u4"),
+                          (_submat_size, "u4")]
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -223,3 +272,7 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
 
         # Multiply these by the total number of synapses
         return int(pre_fraction * post_fraction * float(self.n) / float(pre_size))
+
+    def _get_projection_initial_state(self, pre_size, post_size):
+        return {'n': self.n, 'N': pre_size * post_size,
+                'with_replacement':self.with_replacement}

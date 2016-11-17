@@ -14,8 +14,10 @@ from ..utils import combine_row_offset_length, extract_row_offset_length
 
 logger = logging.getLogger("pynn_spinnaker")
 
-SubMatrix = namedtuple("SubMatrix", ["key", "mask", "size_words", "max_cols",
+SubMatrix = namedtuple("SubMatrix", ["key", "mask", "pre_n_slice", "pre_slice_index",
+                                     "size_words", "max_cols",
                                      "max_delay_rows_per_second"])
+
 
 # ------------------------------------------------------------------------------
 # SynapticMatrix
@@ -257,8 +259,11 @@ class SynapticMatrix(Region):
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
+                                  pre_n_vert.neuron_slice,
+                                  pre_n_vert.vert_index,
                                   size_words, max_cols,
                                   max_delay_rows_per_second))
+
                     sub_matrix_rows.append(vert_sub_rows)
 
         return sub_matrix_props, sub_matrix_rows
@@ -306,8 +311,11 @@ class SynapticMatrix(Region):
                     sub_matrix_props.append(
                         SubMatrix(pre_n_vert.routing_key,
                                   pre_n_vert.routing_mask,
-                                  size_words, max(1, max_cols),
+                                  pre_n_vert.neuron_slice,
+                                  pre_n_vert.vert_index,
+                                  size_words, max(1, max_cols)
                                   max_delay_rows_per_second))
+                                  
                     sub_matrix_projs.append((proj, len(pre_n_vert.neuron_slice)))
 
         return sub_matrix_props, sub_matrix_projs
@@ -443,7 +451,7 @@ class SynapticMatrix(Region):
         return next_row_delay, next_row_offset, next_row_length, synapses
 
     def _write_row(self, row, next_row, next_row_offset,
-                             float_to_weight, destination):
+                   float_to_weight, destination):
         # Write actual length of row (in synapses)
         num_synapses = len(row[1])
         destination[0] = num_synapses

@@ -31,7 +31,8 @@ ConnectionBuilder::MatrixGenerator::Base::Base(uint32_t *&region)
 bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
   unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
   unsigned int sizeWords, unsigned int numRows,
-  const ConnectorGenerator::Base *connectorGenerator,
+  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+  ConnectorGenerator::Base *connectorGenerator,
   const ParamGenerator::Base *delayGenerator,
   const ParamGenerator::Base *weightGenerator,
   MarsKiss64 &rng) const
@@ -57,8 +58,8 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
     // Generate postsynaptic indices for row
     uint32_t indices[1024];
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating indices");
-    const unsigned int numIndices = connectorGenerator->Generate(i, numPostNeurons,
-                                                                 rng, indices);
+    const unsigned int numIndices = connectorGenerator->Generate(
+      i, numPostNeurons, vertexPostSlice, vertexPreSlice, rng, indices);
     TraceUInt(indices, numIndices);
 
     // Generate delays for each index

@@ -19,7 +19,7 @@ from utils import InputVertex
 # Import functions
 from pkg_resources import resource_filename
 from rig_cpp_common.utils import load_regions
-from six import iteritems, iterkeys
+from six import iteritems, iterkeys, itervalues
 from utils import get_model_executable_filename, split_slice
 
 logger = logging.getLogger("pynn_spinnaker")
@@ -147,6 +147,10 @@ class SynapseCluster(object):
         self.regions[Regions.delay_buffer] = regions.DelayBuffer(
             sim_timestep_ms, max_delay_ms)
         self.regions[Regions.back_prop_input] = regions.SDRAMBackPropInput()
+
+        # Split population slice
+        self.post_slices = split_slice(post_pop_size, post_synaptic_width)
+
         self.regions[Regions.connection_builder] = regions.ConnectionBuilder(
             sim_timestep_ms)
         self.regions[Regions.statistics] = Statistics(len(self.statistic_names))
@@ -167,9 +171,6 @@ class SynapseCluster(object):
         if config.num_profile_samples is not None:
             self.regions[Regions.profiler] =\
                 Profiler(config.num_profile_samples)
-
-        # Split population slice
-        self.post_slices = split_slice(post_pop_size, post_synaptic_width)
 
         logger.debug("\t\tSynapse model:%s, Receptor index:%u",
                      synapse_model.__class__.__name__, receptor_index)
@@ -323,8 +324,14 @@ class SynapseCluster(object):
     def load(self, placements, allocations, machine_controller,
              incoming_projections, flush_mask):
 
+        projection_state_dict = {}
+        for p in itertools.chain.from_iterable(itervalues(incoming_projections)):
+            if p._can_generate_on_chip:
+                projection_state_dict[p] = p._connector._get_projection_initial_state(
+                    p.pre.size, p.post.size)
+
         # Loop through all the postsynaptic slices in this synapse cluster
-        for post_slice in self.post_slices:
+        for post_slice_index, post_slice in enumerate(self.post_slices):
             logger.debug("\t\t\tPost slice:%s", str(post_slice))
 
             # Get 'column' of vertices in this postsynaptic slice
@@ -462,7 +469,8 @@ class SynapseCluster(object):
                         v.post_neuron_slice, sub_matrix_props,
                         host_sub_matrix_rows, chip_sub_matrix_projs,
                         matrix_placements, weight_fixed_point, v.out_buffers,
-                        back_prop_in_buffers, flush_mask)
+                        back_prop_in_buffers, flush_mask, post_slice_index,
+                        projection_state_dict)
 
                     # Load regions
                     v.region_memory = load_regions(
@@ -525,7 +533,8 @@ class SynapseCluster(object):
                               host_sub_matrix_rows, chip_sub_matrix_projs,
                               matrix_placements,
                               weight_fixed_point, out_buffers,
-                              back_prop_in_buffers, flush_mask):
+                              back_prop_in_buffers, flush_mask,
+                              post_slice_index, projection_state_dict):
         region_arguments = defaultdict(Args)
 
         # Add kwargs for regions that require them
@@ -566,5 +575,9 @@ class SynapseCluster(object):
             post_vertex_slice
         region_arguments[Regions.connection_builder].kwargs["weight_fixed_point"] =\
             weight_fixed_point
+        region_arguments[Regions.connection_builder].kwargs["post_slice_index"] =\
+            post_slice_index
+        region_arguments[Regions.connection_builder].kwargs["projection_state_dict"] =\
+            projection_state_dict
 
         return region_arguments

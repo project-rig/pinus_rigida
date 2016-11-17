@@ -53,7 +53,8 @@ public:
   bool Generate(uint32_t *synapticMatrixBaseAddress, uint32_t *matrixAddress,
     unsigned int maxRowSynapses, unsigned int weightFixedPoint, unsigned int numPostNeurons,
     unsigned int sizeWords, unsigned int numRows,
-    const ConnectorGenerator::Base *connectorGenerator,
+    unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+    ConnectorGenerator::Base *connectorGenerator,
     const ParamGenerator::Base *delayGenerator,
     const ParamGenerator::Base *weightGenerator,
     MarsKiss64 &rng) const;
