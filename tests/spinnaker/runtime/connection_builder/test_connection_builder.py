@@ -103,6 +103,48 @@ def test_connector_metrics(pop_size, connector):
     assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
     assert estimated_mean_row_synapses >= (0.75 * actual_mean_row_synapses)
 
+@pytest.mark.parametrize("pop_size", [200, 2000])
+@pytest.mark.parametrize("connection_proportion", [0.05, 0.2])
+@pytest.mark.parametrize("with_replacement", [True, False])
+def test_fixed_number_connector(pop_size, connection_proportion, with_replacement):
+
+    num_connections = int(connection_proportion * pop_size**2)
+    connector = sim.FixedTotalNumberConnector(num_connections,
+                                              with_replacement=with_replacement,
+                                              rng=native_rng)
+
+    proj, proj_data = _run_network(pop_size, connector,
+                                   sim.StaticSynapse(weight=0.0, delay=1.0),
+                                   [])
+
+    # Estimate maximum and mean row length
+    pop_slice = UnitStrideSlice(0, pop_size)
+    estimated_max_row_synapses = connector._estimate_max_row_synapses(
+        pop_slice, pop_slice, pop_size, pop_size)
+    estimated_mean_row_synapses = connector._estimate_mean_row_synapses(
+        pop_slice, pop_slice, pop_size, pop_size)
+
+    # Build row-length histogram
+    row_length_histogram = binned_statistic(proj_data[0], proj_data[1],
+                                            statistic="count", bins=range(pop_size + 1))[0]
+
+    assert int(row_length_histogram.sum()) == num_connections
+
+    # Computer max and mean
+    actual_max_row_synapses = np.amax(row_length_histogram)
+    actual_mean_row_synapses = np.average(row_length_histogram)
+
+    # Check estimated maximum is greater or equal than actual maximum
+    assert estimated_max_row_synapses >= actual_max_row_synapses
+
+    # Check estimated maximum isn't TOO big
+    assert estimated_max_row_synapses <= actual_max_row_synapses * 3.0
+
+    # Check estimated mean is approximately correct
+    assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
+    assert estimated_mean_row_synapses >= (0.75 * actual_mean_row_synapses)
+
+
 @pytest.mark.parametrize("delay_dist", [RandomDistribution("normal_clipped",
                                                            [1.5, 0.75, 0.1, 1000.0],
                                                            rng=native_rng)])
