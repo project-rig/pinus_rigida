@@ -30,7 +30,11 @@ from pyNN.connectors import (AllToAllConnector,
 def _draw_num_connections(context, post_slice_size, pre_slice_size, **kwargs):
     nsample = post_slice_size * pre_slice_size
 
-    if context['with_replacement']:
+    if context['n'] == 0:
+        sample = 0
+    elif nsample == context['N']:
+        sample = context['n']
+    elif context['with_replacement']:
         sample = np.random.binomial(n = context['n'],
                                     p = float(nsample) / context['N'])
     else:
@@ -39,6 +43,7 @@ def _draw_num_connections(context, post_slice_size, pre_slice_size, **kwargs):
                                           nsample = nsample)
     context['n'] -= sample
     context['N'] -= nsample
+
     return la.larray(sample, shape=(1,))
 
 def _submat_size(context, post_slice_size, pre_slice_size, **kwargs):
@@ -262,7 +267,10 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         M = pre_size * post_size
         N = len(post_slice)
 
-        return int(scipy.stats.hypergeom.ppf(0.9999, M=M, N=N, n=self.n))
+        if self.with_replacement:
+            return int(scipy.stats.binom.ppf(0.9999**(float(N)/M), n=self.n, p=float(N)/M))
+        else:
+            return int(scipy.stats.hypergeom.ppf(0.9999**(float(N)/M), M=M, N=N, n=self.n))
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
