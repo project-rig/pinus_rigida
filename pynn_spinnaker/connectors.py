@@ -267,7 +267,9 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         M = pre_size * post_size
         N = len(post_slice)
 
-        if self.with_replacement:
+        if self.n == 0:
+            return 0
+        elif self.with_replacement:
             return int(scipy.stats.binom.ppf(0.9999**(float(N)/M), n=self.n, p=float(N)/M))
         else:
             return int(scipy.stats.hypergeom.ppf(0.9999**(float(N)/M), M=M, N=N, n=self.n))
