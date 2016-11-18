@@ -62,135 +62,151 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
       i, numPostNeurons, vertexPostSlice, vertexPreSlice, rng, indices);
     TraceUInt(indices, numIndices);
 
-    // Generate delays for each index
-    int32_t delays[1024];
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating delays");
-    delayGenerator->Generate(numIndices, 0, rng, delays);
-    TraceInt(delays, numIndices);
-
-    // Generate weights for each index
-    int32_t weights[1024];
-    LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
-    weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
-    TraceInt(weights, numIndices);
-
-    // Update total number of synapses
-    numSynapses += numIndices;
-
-    // Generate indices so as to begin partitioning
-    // with row in the order it was generated
-    uint16_t sortedRowIndices[1024];
-    for(unsigned int i = 0; i < numIndices; i++)
+    // If this row should be empty
+    if(numIndices == 0)
     {
-      sortedRowIndices[i] = (uint16_t)i;
+      // Write zeros for the number of synapses in
+      // row and for the delay extension fields
+      *raggedMatrixAddress++ = 0;
+      *raggedMatrixAddress++ = 0;
+      *raggedMatrixAddress++ = 0;
+
+      // Skip to correct address to start next ragged row
+      raggedMatrixAddress += maxRowWords;
     }
-
-    // First sub-row starts at next ragged address
-    uint32_t *rowAddress = raggedMatrixAddress;
-
-    // There is no previous sub-row at this point
-    uint32_t *previousSubRowDelayAddress = NULL;
-    uint32_t previousSubRowStartDelay = 0;
-
-    // Loop through possible sub-row delay ranges
-    uint16_t *subRowStartIndex = &sortedRowIndices[0];
-    uint16_t *subRowEndIndex = &sortedRowIndices[numIndices];
-    for(int32_t startDelay = 0; subRowStartIndex != subRowEndIndex; startDelay += MaxDTCMDelaySlots)
+    // Otherwise
+    else
     {
-      // Is this the first sub-row?
-      const bool firstSubRow = (startDelay == 0);
-      const int32_t endDelay = startDelay + MaxDTCMDelaySlots;
+      // Generate delays for each index
+      int32_t delays[1024];
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating delays");
+      delayGenerator->Generate(numIndices, 0, rng, delays);
+      TraceInt(delays, numIndices);
 
-      // Indirectly partition the delays to determine which are in current sub-row
-      uint16_t *newSubRowStartIndex = std::partition(subRowStartIndex, subRowEndIndex,
-        [delays, endDelay](uint16_t i)
-        {
-          return delays[i] < endDelay;
-        }
-      );
+      // Generate weights for each index
+      int32_t weights[1024];
+      LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating weights");
+      weightGenerator->Generate(numIndices, weightFixedPoint, rng, weights);
+      TraceInt(weights, numIndices);
 
-      // Calculate the number of synapses in this section of the sub-row
-      unsigned int numSubRowSynapses = newSubRowStartIndex - subRowStartIndex;
+      // Update total number of synapses
+      numSynapses += numIndices;
 
-      // If there are any synapses in the sub-row or
-      // this is the first sub-row - which is always written
-      if(numSubRowSynapses > 0 || firstSubRow)
+      // Generate indices so as to begin partitioning
+      // with row in the order it was generated
+      uint16_t sortedRowIndices[1024];
+      for(unsigned int i = 0; i < numIndices; i++)
       {
-        LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tSub-row (%08x) with delay [%u, %u) - %u synapses",
-          rowAddress, startDelay, endDelay, numSubRowSynapses);
-
-        // If this is the first sub-row and we have exceeded
-        // the maximum number of synapses per ragged-row
-        if(firstSubRow && numSubRowSynapses > maxRowSynapses)
-        {
-          LOG_PRINT(LOG_LEVEL_WARN, "Generated matrix with %u synapses in first sub-row when maximum is %u",
-                    numSubRowSynapses, maxRowSynapses);
-
-          // Reduce number of synapses to maximum
-          numSubRowSynapses = maxRowSynapses;
-        }
-
-        // If this row is going to go past end of memory allocated for matrix
-        if(rowAddress > endAddress)
-        {
-          LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
-          return false;
-        }
-
-        // If this isn't the first sub-row
-        if(!firstSubRow)
-        {
-          // Build a row offset-length object based on this row's number of
-          // synapses and its offset from the start of the matrix
-          RowOffsetLength rowOffsetLength(numSubRowSynapses,
-                                          rowAddress - synapticMatrixBaseAddress);
-
-          // Write row's delay offset and the word representation of it's
-          // offset and length to the correct part of the previous sub-row
-          previousSubRowDelayAddress[0] = startDelay - previousSubRowStartDelay;
-          previousSubRowDelayAddress[1] = rowOffsetLength.GetWord();
-        }
-
-        // Write number of indices in sub-row to correct address
-        *rowAddress++ = numSubRowSynapses;
-
-        // The next sub-row will want to write its delay details
-        // here so cache its pointer and uint32_t *synapticMatrixBaseAddress, its starting delay
-        previousSubRowDelayAddress = rowAddress;
-        previousSubRowStartDelay = startDelay;
-
-        // BUT, incase they don't zero delay extension entries
-        *rowAddress++ = 0;
-        *rowAddress++ = 0;
-
-        // As sub-row has now been potentially truncated to fit
-        // within ragged matrix, calculate new pointer to end index
-        const uint16_t *subRowEndIndex = subRowStartIndex + numSubRowSynapses;
-
-        // Write row
-        unsigned int rowWords = WriteRow(rowAddress, startDelay,
-                                         subRowStartIndex, subRowEndIndex,
-                                         indices, delays, weights);
-
-        // If this is the first delay sub-row, advance the
-        // ragged matrix past the padded row and update row
-        // address so it writes to the start of the delay matrix
-        if(firstSubRow)
-        {
-          raggedMatrixAddress += (NumHeaderWords + maxRowWords);
-          rowAddress = delayMatrixAddress;
-        }
-        // Otherwise, advance the delay matrix address past
-        // the sub-row and update row-address so it writes here
-        else
-        {
-          delayMatrixAddress += (NumHeaderWords + rowWords);
-          rowAddress = delayMatrixAddress;
-        }
+        sortedRowIndices[i] = (uint16_t)i;
       }
 
-      // Advance to next sub-row
-      subRowStartIndex = newSubRowStartIndex;
+      // First sub-row starts at next ragged address
+      uint32_t *rowAddress = raggedMatrixAddress;
+
+      // There is no previous sub-row at this point
+      uint32_t *previousSubRowDelayAddress = NULL;
+      uint32_t previousSubRowStartDelay = 0;
+
+      // Loop through possible sub-row delay ranges
+      uint16_t *subRowStartIndex = &sortedRowIndices[0];
+      uint16_t *subRowEndIndex = &sortedRowIndices[numIndices];
+      for(int32_t startDelay = 0; subRowStartIndex != subRowEndIndex; startDelay += MaxDTCMDelaySlots)
+      {
+        // Is this the first sub-row?
+        const bool firstSubRow = (startDelay == 0);
+        const int32_t endDelay = startDelay + MaxDTCMDelaySlots;
+
+        // Indirectly partition the delays to determine which are in current sub-row
+        uint16_t *newSubRowStartIndex = std::partition(subRowStartIndex, subRowEndIndex,
+          [delays, endDelay](uint16_t i)
+          {
+            return delays[i] < endDelay;
+          }
+        );
+
+        // Calculate the number of synapses in this section of the sub-row
+        unsigned int numSubRowSynapses = newSubRowStartIndex - subRowStartIndex;
+
+        // If there are any synapses in the sub-row or
+        // this is the first sub-row - which is always written
+        if(numSubRowSynapses > 0 || firstSubRow)
+        {
+          LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tSub-row (%08x) with delay [%u, %u) - %u synapses",
+            rowAddress, startDelay, endDelay, numSubRowSynapses);
+
+          // If this is the first sub-row and we have exceeded
+          // the maximum number of synapses per ragged-row
+          if(firstSubRow && numSubRowSynapses > maxRowSynapses)
+          {
+            LOG_PRINT(LOG_LEVEL_WARN, "Generated matrix with %u synapses in first sub-row when maximum is %u",
+                      numSubRowSynapses, maxRowSynapses);
+
+            // Reduce number of synapses to maximum
+            numSubRowSynapses = maxRowSynapses;
+          }
+
+          // If this row is going to go past end of memory allocated for matrix
+          if(rowAddress > endAddress)
+          {
+            LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
+            return false;
+          }
+
+          // If this isn't the first sub-row
+          if(!firstSubRow)
+          {
+            // Build a row offset-length object based on this row's number of
+            // synapses and its offset from the start of the matrix
+            RowOffsetLength rowOffsetLength(numSubRowSynapses,
+                                            rowAddress - synapticMatrixBaseAddress);
+
+            // Write row's delay offset and the word representation of it's
+            // offset and length to the correct part of the previous sub-row
+            previousSubRowDelayAddress[0] = startDelay - previousSubRowStartDelay;
+            previousSubRowDelayAddress[1] = rowOffsetLength.GetWord();
+          }
+
+          // Write number of indices in sub-row to correct address
+          *rowAddress++ = numSubRowSynapses;
+
+          // The next sub-row will want to write its delay details
+          // here so cache its pointer and uint32_t *synapticMatrixBaseAddress, its starting delay
+          previousSubRowDelayAddress = rowAddress;
+          previousSubRowStartDelay = startDelay;
+
+          // BUT, incase they don't zero delay extension entries
+          *rowAddress++ = 0;
+          *rowAddress++ = 0;
+
+          // As sub-row has now been potentially truncated to fit
+          // within ragged matrix, calculate new pointer to end index
+          const uint16_t *subRowEndIndex = subRowStartIndex + numSubRowSynapses;
+
+          // Write row
+          unsigned int rowWords = WriteRow(rowAddress, startDelay,
+                                          subRowStartIndex, subRowEndIndex,
+                                          indices, delays, weights);
+
+          // If this is the first delay sub-row, advance the
+          // ragged matrix past the padded row and update row
+          // address so it writes to the start of the delay matrix
+          if(firstSubRow)
+          {
+            raggedMatrixAddress += (NumHeaderWords + maxRowWords);
+            rowAddress = delayMatrixAddress;
+          }
+          // Otherwise, advance the delay matrix address past
+          // the sub-row and update row-address so it writes here
+          else
+          {
+            delayMatrixAddress += (NumHeaderWords + rowWords);
+            rowAddress = delayMatrixAddress;
+          }
+        }
+
+        // Advance to next sub-row
+        subRowStartIndex = newSubRowStartIndex;
+      }
     }
   }
 
