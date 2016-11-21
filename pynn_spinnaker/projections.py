@@ -143,31 +143,40 @@ class Projection(common.Projection, ContextMixin):
         synaptic_matrices = self.post._read_synaptic_matrices(
             self.pre, self._synapse_cluster_type, names)
 
-        # Stack all rows together into single mega-row
-        all_rows = np.hstack(
-            row for matrix in synaptic_matrices for row in matrix)
+        # If there are no synaptic matrices i.e. this
+        # projection got entirely optimised out
+        if len(synaptic_matrices) == 0:
+            # Initialize all attribute arrays to NaN indicating no connections
+            attribute_arrays = tuple(
+                np.empty((self.pre.size, self.post.size)) * np.nan
+                for name in names
+                if name != "presynaptic_index" and name != "postsynaptic_index")
+        else:
+            # Stack all rows together into single mega-row
+            all_rows = np.hstack(
+                row for matrix in synaptic_matrices for row in matrix)
 
-        # Count connections and build mask array of the pairs
-        # of neurons between which there are no connections
-        connection_bins = (self.pre.size, self.post.size)
-        no_connection_mask = np.histogram2d(all_rows["presynaptic_index"],
-                                            all_rows["postsynaptic_index"],
-                                            connection_bins)[0] == 0
+            # Count connections and build mask array of the pairs
+            # of neurons between which there are no connections
+            connection_bins = (self.pre.size, self.post.size)
+            no_connection_mask = np.histogram2d(all_rows["presynaptic_index"],
+                                                all_rows["postsynaptic_index"],
+                                                connection_bins)[0] == 0
 
-        # Build a tuple containing the sum of each connection
-        # property (skipping over the pre and postsynaptic indices)
-        attribute_arrays = tuple(
-            scipy.stats.binned_statistic_2d(all_rows["presynaptic_index"],
-                                            all_rows["postsynaptic_index"],
-                                            all_rows[name],
-                                            "sum", connection_bins)[0]
-            for name in names
-            if name != "presynaptic_index" and name != "postsynaptic_index")
+            # Build a tuple containing the sum of each connection
+            # property (skipping over the pre and postsynaptic indices)
+            attribute_arrays = tuple(
+                scipy.stats.binned_statistic_2d(all_rows["presynaptic_index"],
+                                                all_rows["postsynaptic_index"],
+                                                all_rows[name],
+                                                "sum", connection_bins)[0]
+                for name in names
+                if name != "presynaptic_index" and name != "postsynaptic_index")
 
-        # Loop through each attribute array and set the
-        # value to NaN wherever there is no connection
-        for a in attribute_arrays:
-            a[no_connection_mask] = np.nan
+            # Loop through each attribute array and set the
+            # value to NaN wherever there is no connection
+            for a in attribute_arrays:
+                a[no_connection_mask] = np.nan
 
         # Return the tuple of attribute arrays
         return attribute_arrays
