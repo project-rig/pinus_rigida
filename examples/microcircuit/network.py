@@ -19,8 +19,8 @@ class Network:
         self.w = create_weight_matrix()
         model = getattr(sim, 'IF_curr_exp')
         script_rng = NumpyRNG(seed=6508015, parallel_safe=parallel_safe)
-        if simulator == "pynn_spinnaker":
-            script_rng = sim.NativeRNG(script_rng)
+        #if simulator == "pynn_spinnaker":
+        #    script_rng = sim.NativeRNG(script_rng)
             
         distr = RandomDistribution('normal', [V0_mean, V0_sd], rng=script_rng)
 
@@ -96,6 +96,7 @@ class Network:
         if sim.rank() == 0:
             print('w: %s' % self.w)
 
+        self.projections = []
         for target_layer in layers :
             for target_pop in pops :
                 target_index = structure[target_layer][target_pop]
@@ -134,12 +135,13 @@ class Network:
                             w_sd=weight * w_rel_234
                         else:
                             w_sd=abs(weight * w_rel)
-                        FixedTotalNumberConnect(sim, self.pops[source_layer][source_pop],
+                        p = FixedTotalNumberConnect(sim, self.pops[source_layer][source_pop],
                                                 self.pops[target_layer][target_pop],\
                                                 K_full[target_index][source_index] * K_scaling,
                                                 weight, w_sd,
                                                 d_mean[source_pop], d_sd[source_pop],
                                                 script_rng)
+                        self.projections.append(p)
 
 
 def create_weight_matrix():
