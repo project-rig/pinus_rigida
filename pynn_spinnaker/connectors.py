@@ -11,6 +11,8 @@ import scipy
 from spinnaker import lazy_param_map
 import lazyarray as la
 
+from pyNN.random import RandomDistribution
+
 # Import classes
 from pyNN.connectors import (AllToAllConnector,
                              FixedProbabilityConnector,
@@ -92,10 +94,18 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     # --------------------------------------------------------------------------
     def _estimate_max_row_synapses(self, pre_slice, post_slice,
                                    pre_size, post_size):
-        # Each connection is made with probability p_connect
-        # Return the row-length that 99.99% of rows will be shorter than
+        N = len(post_slice)
+        M = pre_size * post_size
+
+        # If scipy.stats.<dist>.ppf(p, **params) gives the (100*p)th percentile of
+        # the number of synapses in this subrow, then
+        # scipy.stats.<dist>.ppf(p**K, **params) gives the (100*p)th percentile of
+        # the maximum number of synapses in a subrow of this matrix
+        K = float(N) / M
+
+        # Each possible connection is made with probability p_connect
         return int(scipy.stats.binom.ppf(
-            0.9999, len(post_slice), self.p_connect))
+            0.9999**K, N, self.p_connect))
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
@@ -189,13 +199,25 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
         # Each pre-synaptic neuron connects to n of the M=post_size
         # post-synaptic neurons.
         # Determining which of those n connections are within this post_slice is
-        # a matter of sampling N=len(post_slice) times without replacement.
+        # a matter of sampling N=len(post_slice) times with or without replacement.
         # The number within the row and post_slice are
-        # hypergeometrically distributed.
+        # binomially or hypergeometrically distributed.
 
-        # Return the row-length that 99.99% of rows will be shorter than
-        return int(scipy.stats.hypergeom.ppf(
-            0.9999, M=post_size, n=self.n, N=len(post_slice)))
+        N = len(post_slice)
+        M = post_size
+
+        # If scipy.stats.<dist>.ppf(p, **params) gives the (100*p)th percentile of
+        # the number of synapses in this subrow, then
+        # scipy.stats.<dist>.ppf(p**K, **params) gives the (100*p)th percentile of
+        # the maximum number of synapses in a subrow of this matrix
+        K = float(N) / (M * pre_size)
+
+        if self.n == 0:
+            return 0
+        elif self.with_replacement:
+            return int(scipy.stats.binom.ppf(0.9999**K, n=self.n, p=float(N)/M))
+        else:
+            return int(scipy.stats.hypergeom.ppf(0.9999**K, M=M, N=N, n=self.n)))
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
@@ -223,6 +245,33 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
     # --------------------------------------------------------------------------
     def _estimate_max_row_synapses(self, pre_slice, post_slice,
                                    pre_size, post_size):
+        # Each post-synaptic neuron connects to n of the M=pre_size
+        # pre-synaptic neurons.
+
+        N = len(post_slice)
+        M = pre_size
+
+        # If scipy.stats.<dist>.ppf(p, **params) gives the (100*p)th percentile of
+        # the number of synapses in this subrow, then
+        # scipy.stats.<dist>.ppf(p**K, **params) gives the (100*p)th percentile of
+        # the maximum number of synapses in a subrow of this matrix
+        K = float(N) / (M * pre_size)
+
+        if self.n == 0:
+            return 0
+        elif self.with_replacement:
+            # In the with replacement case, in each column, the number of connections
+            # that end up in this row are distributed as Binom(n, 1/pre_size).
+            # The number that end up in the sub-row are a sum of binomials, or
+            # Binom(n*len(post_slice), 1/pre_size).
+            return int(scipy.stats.binom.ppf(0.9999**K, n=self.n * N, p=1.0/pre_size))
+        else:
+            # In the without replacement case, the number of connections that end up
+            # in a single column of this row is distributed as Bernoulli(n/pre_size).
+            # The number that end up in this sub-row are distributed as
+            # Binom(len(post_slice), n/pre_size).
+            return int(scipy.stats.binom.ppf(0.9999**K, n=len(post_slice), p=self.n/float(pre_size))
+
         # Calculate the probability that any of the
         # n synapses in the column will be within this row
         prob_in_row = float(self.n) / pre_size
@@ -260,19 +309,25 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         # There are n connections amongst the M=pre_size*post_size possible
         # connections.
         # Determining which of those n connections are within this row and
-        # post_slice is a matter of sampling N=len(post_slice) times without
-        # replacement. The number within the row and post_slice are
-        # hypergeometrically distributed.
+        # post_slice is a matter of sampling N=len(post_slice) times with
+        # or without replacement. The number within the row and post_slice are
+        # binomially or hypergeometrically distributed.
 
         M = pre_size * post_size
         N = len(post_slice)
 
+        # If scipy.stats.<dist>.ppf(p, **params) gives the (100*p)th percentile of
+        # the number of synapses in this subrow, then
+        # scipy.stats.<dist>.ppf(p**K, **params) gives the (100*p)th percentile of
+        # the maximum number of synapses in a subrow of this matrix
+        K = float(N) / M
+
         if self.n == 0:
             return 0
         elif self.with_replacement:
-            return int(scipy.stats.binom.ppf(0.9999**(float(N)/M), n=self.n, p=float(N)/M))
+            return int(scipy.stats.binom.ppf(0.9999**K, n=self.n, p=float(N)/M))
         else:
-            return int(scipy.stats.hypergeom.ppf(0.9999**(float(N)/M), M=M, N=N, n=self.n))
+            return int(scipy.stats.hypergeom.ppf(0.9999**K, M=M, N=N, n=self.n))
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
