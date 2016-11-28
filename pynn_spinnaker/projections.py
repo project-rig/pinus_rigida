@@ -362,7 +362,7 @@ class Projection(common.Projection, ContextMixin):
         return max_cols, max_sub_rows, max_sub_row_length
 
     def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
-                                              pre_rate, **kwargs):
+                                              **kwargs):
         # Use connector to estimate mean number of synapses in each row
         mean_row_synapses =  self._connector._estimate_mean_row_synapses(
             pre_slice, post_slice, self.pre.size, self.post.size)
@@ -402,7 +402,7 @@ class Projection(common.Projection, ContextMixin):
                     logger.warn("Delay distribution likely to result "
                                 "in delays below simulation timestep of %f",
                                 self._simulator.state.dt)
-                    mean_row_lower = self._simulator.state.dts
+                    mean_row_lower = self._simulator.state.dt
 
                 # Determine the number of sub-rows required for this range
                 delay_range = mean_row_upper - mean_row_lower
@@ -415,7 +415,8 @@ class Projection(common.Projection, ContextMixin):
                     num_sub_rows += 1
 
                 # Divide mean number of synapses in row evenly between sub-rows
-                mean_sub_row_synapses = mean_row_synapses // num_sub_rows
+                mean_sub_row_synapses = int(math.ceil(
+                    float(mean_row_synapses) / float(num_sub_rows)))
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
@@ -438,16 +439,18 @@ class Projection(common.Projection, ContextMixin):
             raise NotImplementedError()
 
         # Use synapse type to estimate CPU cost of processing sub row
+        pre_rate = self.pre.spinnaker_config.mean_firing_rate
+        post_rate = self.post.spinnaker_config.mean_firing_rate
         row_cpu_cost = self.synapse_type._get_row_cpu_cost(mean_sub_row_synapses,
                                                            pre_rate=pre_rate,
+                                                           post_rate=post_rate,
                                                            **kwargs)
         # Multiply this by the number of required subrows
         row_cpu_cost *= num_sub_rows
 
         # Scale row CPU cycles by number of presynaptic
         # neurons and their firing rate
-        return (row_cpu_cost * self.pre.spinnaker_config.mean_firing_rate *
-                len(pre_slice))
+        return (row_cpu_cost * pre_rate * len(pre_slice))
 
     def _allocate_out_buffers(self, placements, allocations,
                               machine_controller):

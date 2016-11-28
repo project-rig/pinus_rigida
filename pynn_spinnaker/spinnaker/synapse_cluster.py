@@ -222,9 +222,7 @@ class SynapseCluster(object):
 
                     # Estimate CPU cycles required to process sub-matrix
                     cpu_cycles = proj._estimate_spike_processing_cpu_cycles(
-                        pre_vertex.neuron_slice, post_slice,
-                        pre_rate=proj.pre.spinnaker_config.mean_firing_rate,
-                        post_rate=proj.post.spinnaker_config.mean_firing_rate)
+                        pre_vertex.neuron_slice, post_slice)
 
                     # Estimate size of matrix
                     synaptic_matrix = self.regions[Regions.synaptic_matrix]
