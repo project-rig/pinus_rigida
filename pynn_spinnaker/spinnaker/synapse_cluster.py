@@ -360,9 +360,13 @@ class SynapseCluster(object):
                     pre_pop_on_chip_proj[pre_pop] = incoming_from_pre
 
                     # Loop through projections to generate on chip and update
-                    # weight range based on maximum weight estimates
+                    # weight range based on minimum and maximum weight estimate
+                    # **NOTE** this is important e.g. for
+                    # distributed inhibitory weights
                     for proj in incoming_from_pre:
-                        weight_range.update(proj._max_weight_estimate)
+                        weight_min, weight_max = proj._weight_range_estimate
+                        weight_range.update(weight_min)
+                        weight_range.update(weight_max)
                 # Otherwise
                 else:
                     # Create list of lists to contain matrix rows
@@ -416,7 +420,7 @@ class SynapseCluster(object):
 
             # Calculate where the weight format fixed-point lies
             weight_fixed_point = weight_range.fixed_point
-            logger.debug("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
+            logger.info("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
 
             # Loop through synapse verts in this postsynaptic slice
             for v in post_slice_verts:
