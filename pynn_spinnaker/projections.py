@@ -513,7 +513,7 @@ class Projection(common.Projection, ContextMixin):
                 type(self.synapse_type) is self._static_synapse_class)
 
     @property
-    def _max_weight_estimate(self):
+    def _weight_range_estimate(self):
         # Extract weight parameters
         weights = self.synapse_type.native_parameters["weight"]
 
@@ -528,10 +528,10 @@ class Projection(common.Projection, ContextMixin):
             assert isinstance(rng, NativeRNG)
 
             # Return estimated maximum value of distribution
-            return rng._estimate_dist_max_value(distribution, parameters)
+            return rng._estimate_dist_range(distribution, parameters)
         # Otherwise, if it's a scalar, return it
         elif is_scalar(weights.base_value):
-            return weights.base_value
+            return (weights.base_value, weights.base_value)
         # Otherwise assert
         else:
             assert False
