@@ -420,7 +420,7 @@ class SynapseCluster(object):
 
             # Calculate where the weight format fixed-point lies
             weight_fixed_point = weight_range.fixed_point
-            logger.info("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
+            logger.debug("\t\t\t\tWeight fixed point:%u", weight_fixed_point)
 
             # Loop through synapse verts in this postsynaptic slice
             for v in post_slice_verts:
