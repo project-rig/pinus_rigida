@@ -145,6 +145,17 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
             numSubRowSynapses = maxRowSynapses;
           }
 
+          // If the resulting sub-row is too long for
+          // the synapse processor's delay buffer
+          if(numSubRowSynapses > 1024)
+          {
+            LOG_PRINT(LOG_LEVEL_WARN, "Generated matrix with %u synapses in row when only 1024 are supported",
+                      numSubRowSynapses);
+
+            // Reduce number of synapses to maximum
+            numSubRowSynapses = 1024;
+          }
+
           // If this isn't the first sub-row
           if(!firstSubRow)
           {
@@ -180,8 +191,8 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
                                            subRowStartIndex, subRowEndIndex,
                                            indices, delays, weights);
 
-          // If this row is going to go past end of memory allocated for matrix
-          if(rowAddress > endAddress)
+          // If this row went past end of memory allocated for matrix
+          if((rowAddress + NumHeaderWords + rowWords) > endAddress)
           {
             LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
             return false;
