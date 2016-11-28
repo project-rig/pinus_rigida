@@ -280,8 +280,11 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
         pre_fraction = float(len(pre_slice)) / float(pre_size)
         post_fraction = float(len(post_slice)) / float(post_size)
 
-        # Multiply these by the total number of synapses
-        return int(pre_fraction * post_fraction * float(self.n) / float(pre_size))
+        # Multiply these by the total number of synapses to scale n into 2D
+        # slice of matrix and then divide by the number of presynaptic neurons
+        # in slice to get number of synapses per row
+        return int((pre_fraction * post_fraction * float(self.n)) /
+                   float(len(pre_slice)))
 
     def _get_projection_initial_state(self, pre_size, post_size):
         return {'n': self.n, 'N': pre_size * post_size,
