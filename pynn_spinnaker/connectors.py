@@ -217,7 +217,7 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
         elif self.with_replacement:
             return int(scipy.stats.binom.ppf(0.9999**K, n=self.n, p=float(N)/M))
         else:
-            return int(scipy.stats.hypergeom.ppf(0.9999**K, M=M, N=N, n=self.n)))
+            return int(scipy.stats.hypergeom.ppf(0.9999**K, M=M, N=N, n=self.n))
 
     def _estimate_mean_row_synapses(self, pre_slice, post_slice,
                                     pre_size, post_size):
@@ -270,7 +270,7 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
             # in a single column of this row is distributed as Bernoulli(n/pre_size).
             # The number that end up in this sub-row are distributed as
             # Binom(len(post_slice), n/pre_size).
-            return int(scipy.stats.binom.ppf(0.9999**K, n=len(post_slice), p=self.n/float(pre_size))
+            return int(scipy.stats.binom.ppf(0.9999**K, n=len(post_slice), p=self.n/float(pre_size)))
 
         # Calculate the probability that any of the
         # n synapses in the column will be within this row
