@@ -1,6 +1,7 @@
 #pragma once
 
-// Standard includes
+// Standard include
+#include <algorithm>
 #include <cstdint>
 
 // Common includes
@@ -77,10 +78,19 @@ protected:
 
   int32_t ClampWeight(int32_t weight) const
   {
-    // If weights aren't signed and weight is negative, zero
+    if(IsSignedWeight())
+    {
+      return std::max<int32_t>(INT16_MIN,
+                               std::min<int32_t>(INT16_MAX, weight));
+    }
+    // Otherwise, if weights aren't signed and weight is negative, zero
     // **NOTE** negative weights caused by inhibitory
     // weights should have been already flipped in host
-    return (!IsSignedWeight() && weight < 0) ? 0 : weight;
+    else
+    {
+      return std::max<int32_t>(0,
+                               std::min<int32_t>(UINT16_MAX, weight));
+    }
   }
 
   int32_t ClampDelay(int32_t delay) const
