@@ -77,5 +77,9 @@ class DelayBuffer(Region):
         logger.debug("\t\tDelay rows per-second:%f, per timestep:%u",
                      delay_rows_per_second, delay_rows_per_timestep)
 
+        # Check that delay rows per timestep
+        # can be indexed with an 8-bit counter
+        assert delay_rows_per_timestep < 256
+
         # Clamp this above 1 to ensure that memory is always allocated
         return max(1, delay_rows_per_timestep)
