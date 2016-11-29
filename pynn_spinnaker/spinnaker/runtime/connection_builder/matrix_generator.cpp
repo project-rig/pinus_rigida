@@ -110,10 +110,10 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
       // Loop through possible sub-row delay ranges
       uint16_t *subRowStartIndex = &sortedRowIndices[0];
       uint16_t *subRowEndIndex = &sortedRowIndices[numIndices];
-      for(int32_t startDelay = 0; subRowStartIndex != subRowEndIndex; startDelay += MaxDTCMDelaySlots)
+      for(int32_t startDelay = 1; subRowStartIndex != subRowEndIndex; startDelay += MaxDTCMDelaySlots)
       {
         // Is this the first sub-row?
-        const bool firstSubRow = (startDelay == 0);
+        const bool firstSubRow = (startDelay == 1);
         const int32_t endDelay = startDelay + MaxDTCMDelaySlots;
 
         // Indirectly partition the delays to determine which are in current sub-row
@@ -145,11 +145,15 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
             numSubRowSynapses = maxRowSynapses;
           }
 
-          // If this row is going to go past end of memory allocated for matrix
-          if(rowAddress > endAddress)
+          // If the resulting sub-row is too long for
+          // the synapse processor's delay buffer
+          if(numSubRowSynapses > 1024)
           {
-            LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
-            return false;
+            LOG_PRINT(LOG_LEVEL_WARN, "Generated matrix with %u synapses in row when only 1024 are supported",
+                      numSubRowSynapses);
+
+            // Reduce number of synapses to maximum
+            numSubRowSynapses = 1024;
           }
 
           // If this isn't the first sub-row
@@ -183,9 +187,16 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
           const uint16_t *subRowEndIndex = subRowStartIndex + numSubRowSynapses;
 
           // Write row
-          unsigned int rowWords = WriteRow(rowAddress, startDelay,
-                                          subRowStartIndex, subRowEndIndex,
-                                          indices, delays, weights);
+          unsigned int rowWords = WriteRow(rowAddress, startDelay - 1,
+                                           subRowStartIndex, subRowEndIndex,
+                                           indices, delays, weights);
+
+          // If this row went past end of memory allocated for matrix
+          if((rowAddress + NumHeaderWords + rowWords) > endAddress)
+          {
+            LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
+            return false;
+          }
 
           // If this is the first delay sub-row, advance the
           // ragged matrix past the padded row and update row

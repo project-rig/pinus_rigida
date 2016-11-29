@@ -366,7 +366,7 @@ class SynapticMatrix(Region):
 
         # Build data type for rows
         dtype = np.dtype(
-            [(n, np.float32 if n == "weight" or n == "delay" else np.uint32)
+            [(n, np.float64 if n == "weight" or n == "delay" else np.uint32)
              for n in names])
         logger.debug("\tUsing row dtype:%s, weight fixed point:%u",
                      dtype, post_s_vert.weight_fixed_point)
