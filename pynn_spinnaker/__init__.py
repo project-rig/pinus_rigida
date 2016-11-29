@@ -17,7 +17,7 @@ from pyNN.common.control import (DEFAULT_MAX_DELAY, DEFAULT_TIMESTEP,
                                  DEFAULT_MIN_DELAY)
 from pyNN.recording import *
 
-import profiling
+from rig_cpp_common import profiling
 import simulator
 
 from .standardmodels.cells import *
