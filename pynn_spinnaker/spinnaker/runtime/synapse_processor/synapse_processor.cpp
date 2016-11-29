@@ -61,6 +61,7 @@ RingBuffer g_RingBuffer;
 DelayBuffer g_DelayBuffer;
 KeyLookup g_KeyLookup;
 SpikeInputBuffer g_SpikeInputBuffer;
+DelayRowBuffer g_DelayRowBuffer;
 Statistics<StatWordMax> g_Statistics;
 SynapseType g_Synapse;
 SDRAMBackPropagationInput g_SDRAMBackPropagationInput;
@@ -70,9 +71,6 @@ uint32_t g_AppWords[AppWordMax];
 uint32_t *g_OutputBuffers[2] = {NULL, NULL};
 
 uint32_t *g_SynapticMatrixBaseAddress = NULL;
-
-uint g_CurrentDelayRowIndex = 0;
-bool g_DelayRowBufferFetched = false;
 
 uint g_Tick = 0;
 
@@ -241,20 +239,17 @@ void SetupNextDMARowRead()
 {
   Profiler::TagDisableFIQ<ProfilerTagSetupNextDMARowRead> p;
 
-  // If a delay row buffer is present for this tick and all rows in it haven't been processed
-  // **NOTE** this should be higher priority as they MUST be processed this tick
+  // If there are any delay rows left to be processed
   uint32_t key;
-  if(g_DelayRowBufferFetched && g_CurrentDelayRowIndex < g_DelayBuffer.GetRowCount(g_Tick))
+  DelayBuffer::R delayRow;
+  if(g_DelayRowBuffer.Pop(delayRow))
   {
-    // Get next delay row from buffer
-    auto delayRow = g_DelayBuffer.GetRow(g_CurrentDelayRowIndex++);
-
     // Convert number of synapses to words and get address from synaptic matrix base
     unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
     uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
 
-    LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row index:%u, synapse:%u, words:%u, address:%08x",
-              g_CurrentDelayRowIndex - 1, delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
+    LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row synapse:%u, words:%u, address:%08x",
+              delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
 
     // Store SDRAM address of row in buffer
     // so it can be written back if required
@@ -398,8 +393,6 @@ void DMATransferDone(uint, uint tag)
     g_Synapse.ProcessRow(g_Tick, dmaCurrentRowBuffer.m_Data, dmaCurrentRowBuffer.m_SDRAMAddress, dmaCurrentRowBuffer.m_Flush,
                          addWeightLambda, addDelayRowLambda, writeBackRowLambda);
     Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
-
-
   }
   else if(tag == DMATagOutputWrite)
   {
@@ -445,9 +438,11 @@ void DMATransferDone(uint, uint tag)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "DMA read of delay buffer for tick %u complete", g_Tick);
 
-    // Set flag to show that row buffer has been
-    // fetched and start DMA row fetch pipeline
-    g_DelayRowBufferFetched = true;
+    // Process the delay buffer that's been
+    // fetched, adding rows to the delay buffer
+    g_Statistics[StatWordDelayBuffersNotProcessed] += g_DelayBuffer.ProcessDMABuffer(g_Tick, g_DelayRowBuffer);
+
+    // Start DMA row fetch pipeline
     DMAStartRowFetchPipeline();
   }
   else if(tag != DMATagRowWrite)
@@ -465,22 +460,6 @@ void UserEvent(uint, uint)
 void TimerTick(uint tick, uint)
 {
   Profiler::TagDisableIRQFIQ<ProfilerTagTimerTick> p;
-
-  // If all delay rows weren't processed last timer tick
-  const unsigned int nonProcessedRows = g_DelayBuffer.GetRowCount(g_Tick) - g_CurrentDelayRowIndex;
-  if(nonProcessedRows != 0)
-  {
-    LOG_PRINT(LOG_LEVEL_TRACE, "%u delay rows were processed last timer tick",
-              nonProcessedRows);
-    g_Statistics[StatWordDelayBuffersNotProcessed] += nonProcessedRows;
-  }
-
-  // Clear the delay buffer for the last tick
-  g_DelayBuffer.Clear(g_Tick);
-
-  // Reset delay rows counter and fetched flag
-  g_DelayRowBufferFetched = false;
-  g_CurrentDelayRowIndex = 0;
 
   // Cache tick
   // **NOTE** ticks start at 1

@@ -125,15 +125,25 @@ public:
     }
   }
 
-  void Clear(unsigned int tick)
+  template<typename C>
+  unsigned int ProcessDMABuffer(unsigned int tick, C &circularBuffer)
   {
+    // Loop through delay rows
+    unsigned int numRowsNotProcessed = 0;
+    for(unsigned int i = 0; i < GetRowCount(tick); i++)
+    {
+      // If we can't add this entry to circular buffer, increment count
+      if(!circularBuffer.Push(m_DMABuffer[i]))
+      {
+        numRowsNotProcessed++;
+      }
+    }
+
     // Reset count for this delay slot
     m_RowCount[tick & m_DelayMask] = 0;
-  }
 
-  R GetRow(unsigned int index) const
-  {
-    return m_DMABuffer[index];
+    // Return counter
+    return numRowsNotProcessed;
   }
 
   unsigned int GetRowCount(unsigned int tick) const
