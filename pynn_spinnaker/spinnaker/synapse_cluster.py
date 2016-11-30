@@ -134,9 +134,9 @@ class SynapseCluster(object):
         "timer_event_overflows",
     )
 
-    def __init__(self, sim_timestep_ms, timer_period_us, sim_ticks,
-                 max_delay_ms, config, post_pop_size, synapse_model,
-                 receptor_index, synaptic_projections,
+    def __init__(self, sim_timestep_ms, timer_period_us, realtime_proportion,
+                 sim_ticks, max_delay_ms, config, post_pop_size,
+                 synapse_model, receptor_index, synaptic_projections,
                  vertex_load_applications, vertex_run_applications,
                  vertex_resources, post_synaptic_width):
         # Dictionary of regions
@@ -183,6 +183,16 @@ class SynapseCluster(object):
 
         # Cache synapse model
         self.synapse_model = synapse_model
+
+        # Calculate the constant overhead for each
+        # simulation timestep and thus the number
+        # of cycles available for row processing
+        constant_overhead = (self.synapse_model._constant_cpu_overhead *
+                             (1000.0 / sim_timestep_ms))
+        core_cpu_cycles = 200E6 - constant_overhead
+
+        # Scale CPU cycles by realtime proportion
+        core_cpu_cycles /= realtime_proportion
 
         # Loop through the post-slices
         generate_matrix_on_chip = False
@@ -236,7 +246,7 @@ class SynapseCluster(object):
                     # If adding this projection would overtax the
                     # processor or overflow the 16mb limit on synaptic
                     # data imposed by the key lookup data structure
-                    if ((vert_cpu_cycles + cpu_cycles) >= 200E6
+                    if ((vert_cpu_cycles + cpu_cycles) >= core_cpu_cycles
                         or (vert_sdram_bytes + sdram_bytes) > (16 * 1024 * 1024)):
                         # Add current synapse vertex to list
                         self.verts.append(vert)
