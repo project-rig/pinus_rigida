@@ -433,7 +433,7 @@ class State(common.control.BaseState):
             self._wait_for_transition(placements, allocations,
                                     AppState.init, AppState.exit,
                                     len(vertex_load_applications),
-                                    60.0)
+                                    600.0)
 
             # Stop after running loader if required
             if self.stop_after_loader:
