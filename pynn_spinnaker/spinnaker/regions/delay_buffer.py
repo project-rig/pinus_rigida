@@ -79,7 +79,10 @@ class DelayBuffer(Region):
 
         # Check that delay rows per timestep
         # can be indexed with an 8-bit counter
-        assert delay_rows_per_timestep < 256
+        if delay_rows_per_timestep >= 256:
+            logger.warn("Maximum of 255 delay rows supported by timestep - %u estimated",
+                        delay_rows_per_timestep)
+            delay_rows_per_timestep = 255
 
         # Clamp this above 1 to ensure that memory is always allocated
         return max(1, delay_rows_per_timestep)
