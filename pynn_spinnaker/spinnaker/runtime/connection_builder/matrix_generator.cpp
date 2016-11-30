@@ -56,6 +56,8 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\tRow %u", i);
 
     // Generate postsynaptic indices for row
+    // **TODO** these can be 16 bit and thus we can 
+    // have twice as many to allow for more multapses
     uint32_t indices[1024];
     LOG_PRINT(LOG_LEVEL_TRACE, "\t\t\t\tGenerating indices");
     const unsigned int numIndices = connectorGenerator->Generate(
@@ -192,7 +194,7 @@ bool ConnectionBuilder::MatrixGenerator::Base::Generate(uint32_t *synapticMatrix
                                            indices, delays, weights);
 
           // If this row went past end of memory allocated for matrix
-          if((rowAddress + NumHeaderWords + rowWords) > endAddress)
+          if((rowAddress + rowWords) > endAddress)
           {
             LOG_PRINT(LOG_LEVEL_ERROR, "Matrix overflowed memory allocated for it");
             return false;
