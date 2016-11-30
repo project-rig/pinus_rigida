@@ -239,10 +239,11 @@ void SetupNextDMARowRead()
 {
   Profiler::TagDisableFIQ<ProfilerTagSetupNextDMARowRead> p;
 
-  // If there are any delay rows left to be processed
+  // If there are more delay rows than spikes left to be processed
   uint32_t key;
   DelayBuffer::R delayRow;
-  if(g_DelayRowBuffer.Pop(delayRow))
+  if(g_DelayRowBuffer.GetAllocated() > g_SpikeInputBuffer.GetAllocated() &&
+    g_DelayRowBuffer.Pop(delayRow))
   {
     // Convert number of synapses to words and get address from synaptic matrix base
     unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
@@ -282,7 +283,7 @@ void SetupNextDMARowRead()
 
     // Then clear these bit(s)
     key &= ~g_AppWords[AppWordFlushMask];
-      
+
     // Decode key to get address and length of destination synaptic row
     unsigned int rowWords;
     uint32_t *rowAddress;
