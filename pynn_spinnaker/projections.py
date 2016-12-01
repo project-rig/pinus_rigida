@@ -51,9 +51,13 @@ def eval_mixture_cdf(ps, dists, k):
 def eval_mixture_of_maxes_cdf(ps, vals, dist, k):
     return sum(p * dist.cdf(k)**val for p, val in zip(ps, vals))
 
+def eval_mixture_of_mins_cdf(ps, vals, dist, k):
+    return sum(p * 1-(1-dist.cdf(k))**val for p, val in zip(ps, vals))
+
 # Do binary search over continuous val_range for the boundary
 # between f(k) <= v and f(k) > v
-def continuous_bisect_fun_left(f, v, val_range):
+def continuous_bisect_fun_left(f, v, val_lower, val_upper):
+    val_range = [val_lower, val_upper]
     k = 0.5 * sum(val_range)
     for i in xrange(32):
         val_range[int(f(k) > v)] = k
@@ -392,10 +396,16 @@ class Projection(common.Projection, ContextMixin):
                     upper_delay_bound = continuous_bisect_fun_left(
                         lambda k: eval_mixture_of_maxes_cdf(
                             row_synapses_ps, row_synapses_range,
-                            delay_dist,k),
-                        quantile,
-                        [lower, upper])
-                    extension_delay_range = upper_delay_bound - max_row_delay
+                            delay_dist, k),
+                        quantile, lower_bound, upper_bound)
+                    lower_delay_bound = continuous_bisect_fun_left(
+                        lambda k: eval_mixture_of_mins_cdf(
+                            row_synapses_ps, row_synapses_range,
+                            delay_dist, k),
+                        quantile, lower_bound, upper_bound)
+                    lower_delay_bound = max(max_row_delay, lower_delay_bound)
+
+                    extension_delay_range = upper_delay_bound - lower_delay_bound
 
                     # Convert this to a maximum number of sub-rows
                     max_sub_rows = max(1, int(math.ceil(extension_delay_range /
