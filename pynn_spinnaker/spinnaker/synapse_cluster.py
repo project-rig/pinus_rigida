@@ -130,6 +130,7 @@ class SynapseCluster(object):
         "input_buffer_overflows",
         "key_lookup_fails",
         "delay_buffer_overflows",
+        "delay_buffer_fetch_fails",
         "task_queue_full",
         "timer_event_overflows",
     )

@@ -24,8 +24,8 @@ public:
   //-----------------------------------------------------------------------------
   typedef RowOffsetLength<S> R;
 
-  DelayBufferBase() : m_DelayMask(0), m_BufferSize(0), m_SDRAMRowBuffers(NULL),
-    m_RowCount(NULL), m_DMABuffer(NULL)
+  DelayBufferBase() : m_DelayMask(0), m_BufferSize(0), m_FetchTick(UINT32_MAX),
+    m_SDRAMRowBuffers(NULL), m_RowCount(NULL), m_DMABuffer(NULL)
   {
   }
 
@@ -104,46 +104,57 @@ public:
     }
   }
 
-  void Fetch(unsigned int tick, uint tag)
+  bool Fetch(unsigned int tick, uint tag)
   {
-    // If there are any rows in this tick's buffer
+    // If a previous row fetch is ongoing
     unsigned int rowCount = GetRowCount(tick);
-    if(rowCount > m_BufferSize)
+    if(m_FetchTick != UINT32_MAX)
+    {
+      LOG_PRINT(LOG_LEVEL_TRACE, "Cannot fetch delay row - previous fetch still in progress");
+      return false;
+    }
+    // Otherwise, if row count is invalid
+    else if(rowCount > m_BufferSize)
     {
       LOG_PRINT(LOG_LEVEL_ERROR, "Cannot read %u rows) into DMA buffer of size %u",
                 rowCount, m_BufferSize);
+      return false;
     }
+    // Otherwise, if there are any rows in this tick's buffer
     else if(rowCount > 0)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "DMA reading %u entry delay row buffer for tick %u",
                 rowCount, tick);
 
       // Start DMA of current tick's delay buffer into DMA buffer
+      m_FetchTick = tick;
       spin1_dma_transfer(tag,
                         m_SDRAMRowBuffers[tick & m_DelayMask], m_DMABuffer,
                         DMA_READ, rowCount * sizeof(R));
     }
+    return true;
   }
 
-  template<typename C>
-  unsigned int ProcessDMABuffer(unsigned int tick, C &circularBuffer)
+  template<typename P>
+  void ProcessDMABuffer(P processDelayRowFunction)
   {
-    // Loop through delay rows
-    unsigned int numRowsNotProcessed = 0;
-    for(unsigned int i = 0; i < GetRowCount(tick); i++)
+    if(m_FetchTick == UINT32_MAX)
     {
-      // If we can't add this entry to circular buffer, increment count
-      if(!circularBuffer.Push(m_DMABuffer[i]))
-      {
-        numRowsNotProcessed++;
-      }
+      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot process delay row - it hasn't been fetched");
+      rt_error(RTE_ABORT);
     }
+    else
+    {
+      // Loop through delay rows and call processing function
+      for(unsigned int i = 0; i < GetRowCount(m_FetchTick); i++)
+      {
+        processDelayRowFunction(m_DMABuffer[i]);
+      }
 
-    // Reset count for this delay slot
-    m_RowCount[tick & m_DelayMask] = 0;
-
-    // Return counter
-    return numRowsNotProcessed;
+      // Reset count for this delay slot
+      m_RowCount[m_FetchTick & m_DelayMask] = 0;
+      m_FetchTick = UINT32_MAX;
+    }
   }
 
   unsigned int GetRowCount(unsigned int tick) const
@@ -160,6 +171,9 @@ private:
 
   // How big is each delay buffer
   unsigned int m_BufferSize;
+
+  // Which tick was delay buffer fetched for
+  uint32_t m_FetchTick;
 
   // Pointers to heads of row buffers for each slot
   R **m_SDRAMRowBuffers;

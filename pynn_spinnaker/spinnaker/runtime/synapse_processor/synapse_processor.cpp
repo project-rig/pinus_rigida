@@ -5,6 +5,7 @@
 
 // Rig CPP common includes
 #include "rig_cpp_common/config.h"
+#include "rig_cpp_common/disable_interrupts.h"
 #include "rig_cpp_common/log.h"
 #include "rig_cpp_common/profiler.h"
 #include "rig_cpp_common/spinnaker.h"
@@ -249,6 +250,15 @@ void SetupNextDMARowRead()
     unsigned int delayRowWords = g_Synapse.GetRowWords(delayRow.GetNumSynapses());
     uint32_t *delayRowAddress = g_SynapticMatrixBaseAddress + delayRow.GetWordOffset();
 
+    // Check row will fit in buffer
+    if(delayRowWords > SynapseType::MaxRowWords)
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "%u word delay row requested at %08x",
+                delayRowWords, delayRowAddress);
+      rt_error(RTE_ABORT);
+      return;
+    }
+
     LOG_PRINT(LOG_LEVEL_TRACE, "Setting up DMA read for delay row synapse:%u, words:%u, address:%08x",
               delayRow.GetNumSynapses(), delayRowWords, delayRowAddress);
 
@@ -297,6 +307,15 @@ void SetupNextDMARowRead()
       // so it can be written back if required
       DMANextRowBuffer().m_SDRAMAddress = rowAddress;
       DMANextRowBuffer().m_Flush = flush;
+
+      // Check row will fit in buffer
+      if(rowWords > SynapseType::MaxRowWords)
+      {
+        LOG_PRINT(LOG_LEVEL_ERROR, "Spike key %08x translated to %u word row at %08x",
+                  key, rowWords, rowAddress);
+        rt_error(RTE_ABORT);
+        return;
+      }
 
       // Start a DMA transfer to fetch this synaptic row into next buffer
       g_Statistics[StatRowRequested]++;
@@ -391,8 +410,12 @@ void DMATransferDone(uint, uint tag)
 
     // Process the current row, using this function to apply
     Profiler::WriteEntryDisableFIQ(Profiler::Enter | ProfilerTagProcessRow);
-    g_Synapse.ProcessRow(g_Tick, dmaCurrentRowBuffer.m_Data, dmaCurrentRowBuffer.m_SDRAMAddress, dmaCurrentRowBuffer.m_Flush,
-                         addWeightLambda, addDelayRowLambda, writeBackRowLambda);
+    if(!g_Synapse.ProcessRow(g_Tick, dmaCurrentRowBuffer.m_Data, dmaCurrentRowBuffer.m_SDRAMAddress, dmaCurrentRowBuffer.m_Flush,
+      addWeightLambda, addDelayRowLambda, writeBackRowLambda))
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Cannot process row");
+      rt_error(RTE_ABORT);
+    }
     Profiler::WriteEntryDisableFIQ(Profiler::Exit | ProfilerTagProcessRow);
   }
   else if(tag == DMATagOutputWrite)
@@ -408,7 +431,10 @@ void DMATransferDone(uint, uint tag)
       g_Tick, DMATagBackPropagationRead))
     {
       // **NOTE** this will only cause a DMA if the buffer has any entries
-      g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
+      if(!g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead))
+      {
+        g_Statistics[StatWordDelayBufferFetchFail]++;
+      }
     }
   }
   else if(tag == DMATagBackPropagationRead)
@@ -432,19 +458,34 @@ void DMATransferDone(uint, uint tag)
       g_Tick, DMATagBackPropagationRead))
     {
       // **NOTE** this will only cause a DMA if the buffer has any entries
-      g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead);
+      if(!g_DelayBuffer.Fetch(g_Tick, DMATagDelayBufferRead))
+      {
+        g_Statistics[StatWordDelayBufferFetchFail]++;
+      }
     }
   }
   else if(tag == DMATagDelayBufferRead)
   {
     LOG_PRINT(LOG_LEVEL_TRACE, "DMA read of delay buffer for tick %u complete", g_Tick);
 
-    // Process the delay buffer that's been
-    // fetched, adding rows to the delay buffer
-    g_Statistics[StatWordDelayBuffersNotProcessed] += g_DelayBuffer.ProcessDMABuffer(g_Tick, g_DelayRowBuffer);
+    // Create lambda function to add delay row to circular queue
+    auto addDelayRowLambda =
+      [](DelayBuffer::R rowOffset)
+      {
+        if(!g_DelayRowBuffer.Push(rowOffset))
+        {
+          g_Statistics[StatWordDelayBuffersNotProcessed]++;
+        }
+      };
+
+    // Process delay buffer using lambda function
+    g_DelayBuffer.ProcessDMABuffer(addDelayRowLambda);
 
     // Start DMA row fetch pipeline
-    DMAStartRowFetchPipeline();
+    {
+      DisableFIQ d;
+      DMAStartRowFetchPipeline();
+    }
   }
   else if(tag != DMATagRowWrite)
   {
