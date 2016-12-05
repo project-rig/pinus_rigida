@@ -70,8 +70,6 @@ SpikeRecording g_SpikeRecording;
 AnalogueRecording g_AnalogueRecording[Neuron::RecordingChannelMax + IntrinsicPlasticity::RecordingChannelMax];
 Statistics<StatWordMax> g_Statistics;
 
-unsigned int g_InputBufferBeingProcessed = UINT_MAX;
-
 uint g_Tick = 0;
 
 //----------------------------------------------------------------------------
@@ -396,19 +394,24 @@ static void DMATransferDone(uint, uint tag)
                             input, receptorType);
       };
 
-    // Apply input in DMA buffer
-    Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
-    g_InputBuffer.Process(g_InputBufferBeingProcessed,
-                          applyInputLambda);
-    Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
-
-    // Advance to next input buffer
-    g_InputBufferBeingProcessed++;
-
-    // If there aren't any more input buffers to DMA, start neuron update
-    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick, DMATagInputRead))
+    // If the tick has completed without all inputs being processed and neurons updated
+    if(g_InputBuffer.GetFetchTick() != g_Tick)
     {
-      UpdateNeurons();
+      LOG_PRINT(LOG_LEVEL_ERROR, "Timer tick completed without all inputs being processed");
+      rt_error(RTE_ABORT);
+    }
+    else
+    {
+      // Apply input in DMA buffer
+      Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
+      g_InputBuffer.ProcessDMABuffer(applyInputLambda);
+      Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
+
+      // Attempt to fetch next input buffer - if there aren't any, start neuron update
+      if(g_InputBuffer.Fetch(DMATagInputRead))
+      {
+        UpdateNeurons();
+      }
     }
   }
   else if(tag == DMATagBackPropagationWrite)
@@ -417,7 +420,7 @@ static void DMATransferDone(uint, uint tag)
   }
   else
   {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Dma transfer done with unknown tag %u", tag);
+    LOG_PRINT(LOG_LEVEL_ERROR, "DMA transfer done with unknown tag %u", tag);
   }
 }
 //-----------------------------------------------------------------------------
@@ -462,11 +465,8 @@ static void TimerTick(uint tick, uint)
     }
     Profiler::WriteEntry(Profiler::Exit | ProfilerTagSynapseShape);
 
-    // Start at first input buffer
-    g_InputBufferBeingProcessed = 0;
-
-    // If there aren't any input buffers to DMA, start neuron update
-    if(g_InputBuffer.Fetch(g_InputBufferBeingProcessed, g_Tick, DMATagInputRead))
+    // Attempt to fetch first input buffer - if there aren't any, start neuron update
+    if(g_InputBuffer.FetchFirst(g_Tick, DMATagInputRead))
     {
       UpdateNeurons();
     }

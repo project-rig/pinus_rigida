@@ -21,7 +21,8 @@ template<typename T>
 class InputBufferBase
 {
 public:
-  InputBufferBase() : m_InputBuffers(NULL), m_NumInputBuffers(0), m_DMABuffer(NULL)
+  InputBufferBase() : m_InputBuffers(NULL), m_NumInputBuffers(0),
+    m_FetchTick(UINT_MAX), m_FetchInputBufferIndex(0), m_DMABuffer(NULL)
   {
   }
 
@@ -63,17 +64,17 @@ public:
     return true;
   }
 
-  bool Fetch(unsigned int inputBufferIndex, uint tick, uint tag)
+  bool Fetch(uint tag)
   {
     // If there are input buffers outstanding
-    if(inputBufferIndex < m_NumInputBuffers)
+    if(m_FetchInputBufferIndex < m_NumInputBuffers)
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\tStarting DMA of input buffer index:%u (%u)",
-                inputBufferIndex, (tick + 1) % 2);
+                m_FetchInputBufferIndex, (m_FetchTick + 1) % 2);
 
       // Start DMA into input buffer
-      const auto &inputBuffer = m_InputBuffers[inputBufferIndex];
-      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffers[(tick + 1) % 2]),
+      const auto &inputBuffer = m_InputBuffers[m_FetchInputBufferIndex];
+      spin1_dma_transfer(tag, const_cast<T*>(inputBuffer.m_Buffers[(m_FetchTick + 1) % 2]),
                          m_DMABuffer, DMA_READ, inputBuffer.m_NumNeurons * sizeof(T));
       return false;
     }
@@ -85,14 +86,24 @@ public:
     }
   }
 
+  bool FetchFirst(uint tick, uint tag)
+  {
+    // Update fetch tick and input buffer index to first one
+    m_FetchTick = tick;
+    m_FetchInputBufferIndex = 0;
+
+    // Fetch input buffer
+    return Fetch(tag);
+  }
+
   template<typename G>
-  void Process(unsigned int inputBufferIndex, G applyInputFunction)
+  void ProcessDMABuffer(G applyInputFunction)
   {
     // Get corresponding input buffer
-    const auto &inputBuffer = m_InputBuffers[inputBufferIndex];
+    const auto &inputBuffer = m_InputBuffers[m_FetchInputBufferIndex];
 
     LOG_PRINT(LOG_LEVEL_TRACE, "\tApplying input buffer:%u to start neuron:%u, num neurons:%u, receptor:%u with left shift:%d",
-      inputBufferIndex, inputBuffer.m_StartNeuron, inputBuffer.m_NumNeurons, inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
+      m_FetchInputBufferIndex, inputBuffer.m_StartNeuron, inputBuffer.m_NumNeurons, inputBuffer.m_ReceptorType, inputBuffer.m_LeftShiftToS1615);
 
     // If input buffer needs to be right-shifted to S1615
     const T *dmaEntry = m_DMABuffer;
@@ -131,9 +142,17 @@ public:
 #if LOG_LEVEL <= LOG_LEVEL_TRACE
     io_printf(IO_BUF, "\n");
 #endif
+
+    // Advance to next input buffer
+    m_FetchInputBufferIndex++;
   }
 
+  uint GetFetchTick() const
+  {
+    return m_FetchTick;
+  }
 private:
+
   //-----------------------------------------------------------------------------
   // Buffer
   //-----------------------------------------------------------------------------
@@ -151,6 +170,9 @@ private:
   //-----------------------------------------------------------------------------
   Buffer *m_InputBuffers;
   unsigned int m_NumInputBuffers;
+
+  uint m_FetchTick;
+  unsigned int m_FetchInputBufferIndex;
 
   T *m_DMABuffer;
 };
