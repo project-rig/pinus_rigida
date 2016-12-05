@@ -17,7 +17,7 @@ namespace Common
 class SpikeRecording
 {
 public:
-  SpikeRecording() : m_NumWords(0), m_CurrentBit(0), m_IndicesToRecord(NULL), m_RecordBuffer(NULL), m_RecordSDRAM(NULL) {}
+  SpikeRecording() : m_NumWords(0), m_CurrentBit(0), m_IndicesToRecord(NULL), m_RecordBuffer(0), m_RecordSDRAM(NULL) {}
 
   //-----------------------------------------------------------------------------
   // Public API
@@ -50,18 +50,6 @@ public:
     m_RecordSDRAM = region;
     LOG_PRINT(LOG_LEVEL_INFO, "\tRecording starting at %08x", m_RecordSDRAM);
 
-    // If we need to record anything
-    if(m_NumWords > 0)
-    {
-      // Allocate local record buffer
-      m_RecordBuffer = (uint32_t*)spin1_malloc(m_NumWords * sizeof(uint32_t));
-      if(m_RecordBuffer == NULL)
-      {
-        LOG_PRINT(LOG_LEVEL_ERROR, "Unable to allocate local record buffer");
-        return false;
-      }
-    }
-
     // Reset
     Reset();
 
@@ -84,10 +72,19 @@ public:
       LOG_PRINT(LOG_LEVEL_TRACE, "\t\tRecording neuron:%u, spikes:%u",
                 neuron, spiked ? 1 : 0);
 
-      // If it's spiked, set current bitm_SDRAMBuffers
+      // If it's spiked, set current bit
+      const unsigned int currentBitInWord = m_CurrentBit & 31;
       if(spiked)
       {
-        BitField::SetBit(m_RecordBuffer, m_CurrentBit);
+        m_RecordBuffer |= (1 << currentBitInWord);
+      }
+
+      // If this is the last bit of the word
+      if(currentBitInWord == 31)
+      {
+        // Write the now complete word to SDRAM and zero it
+        *m_RecordSDRAM++ = m_RecordBuffer;
+        m_RecordBuffer = 0;
       }
 
       // Increment current bit
@@ -97,37 +94,17 @@ public:
 
   void Reset()
   {
+    // If last word of record buffer hasn't already been written to SDRAM, do so
+    if((m_CurrentBit & 31) != 0 && m_NumWords > 0)
+    {
+      *m_RecordSDRAM++ = m_RecordBuffer;
+    }
+
     // Reset current bit
     m_CurrentBit = 0;
 
     // Zero recording buffer
-    BitField::Clear(m_RecordBuffer, m_NumWords);
-  }
-
-  void TransferBuffer(uint tag)
-  {
-    LOG_PRINT(LOG_LEVEL_TRACE, "\tTransferring record buffer to SDRAM:%08x",
-      m_RecordSDRAM);
-#if LOG_LEVEL <= LOG_LEVEL_TRACE
-    BitField::PrintBits(IO_BUF, m_RecordBuffer, m_NumWords);
-    io_printf(IO_BUF, "\n");
-#endif
-
-    // Use DMA to transfer record buffer to SDRAM
-    if(m_NumWords > 0)
-    {
-      spin1_dma_transfer(tag, m_RecordSDRAM,
-                         m_RecordBuffer, DMA_WRITE,
-                         m_NumWords * sizeof(uint32_t));
-
-      // Advance SDRAM pointer
-      m_RecordSDRAM += m_NumWords;
-    }
-  }
-
-  bool IsReset() const
-  {
-    return (m_CurrentBit == 0);
+    m_RecordBuffer = 0;
   }
 
 private:
@@ -143,8 +120,8 @@ private:
   // Bit field specifying which neurons to record
   uint32_t *m_IndicesToRecord;
 
-  // Buffer into which one timestep worth of spiking data is written
-  uint32_t *m_RecordBuffer;
+  // Buffer into which each word of spiking data is built
+  uint32_t m_RecordBuffer;
 
   // Pointer in SDRAM to write next buffer to
   uint32_t *m_RecordSDRAM;
