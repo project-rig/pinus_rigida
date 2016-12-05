@@ -180,7 +180,7 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
 
         # There are n connections amongst the M=post_size possible
         # connections per row
-        .
+
         # If the connections are made with replacement, then each of the n
         # connections has an independent p=float(N)/M probability of being
         # selected, and the number of synapses in the sub-row is binomially
@@ -269,7 +269,7 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
 
         # There are n connections amongst the M=pre_size*post_size possible
         # connections
-        .
+
         # If the connections are made with replacement, then each of the n
         # connections has an independent p=float(N)/M probability of being
         # selected, and the number of synapses in the sub-row is binomially

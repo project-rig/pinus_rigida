@@ -354,11 +354,11 @@ class Projection(common.Projection, ContextMixin):
                 # and the probability of getting that value
                 p_limit = 1e-9
                 row_synapses_range = np.arange(int(row_synapses_dist.ppf(p_limit)), int(row_synapses_dist.ppf(1-p_limit)) + 1)
-                row_synapses_ps = row_synapses.pmf(row_synapses_range)
+                row_synapses_ps = row_synapses_dist.pmf(row_synapses_range)
 
                 # Create a list of component distributions for the mixture distribution, one for each
                 # plausible value for the number of synapses per row
-                row_dists = [scipy.stats.binom(n=n, p=prob_first_sub_row) for n in row_synapses_range]
+                row_dists = [scipy.stats.binom(n=n, p=prob_first_sub_row) if n > 0 else scipy.stats.randint(0, 1) for n in row_synapses_range]
                 # We want to compute dist.ppf(quantile) where dist is the mixture distribution.
                 # Compute upper and lower limits on this value.
                 row_range = [int(row_dists[0].ppf(quantile)), int(row_dists[-1].ppf(1-p_limit)) + 1]
@@ -374,7 +374,7 @@ class Projection(common.Projection, ContextMixin):
                 max_cols = bisect_left(cdfs, quantile, row_range[0], row_range[1])
 
                 # As above, but for an upper bound on the number of synapses not in the first delay row
-                row_dists = [scipy.stats.binom(n=n, p=1-prob_first_sub_row) for n in row_synapses_range]
+                row_dists = [scipy.stats.binom(n=n, p=1-prob_first_sub_row) if n > 0 else scipy.stats.randint(0, 1) for n in row_synapses_range]
                 row_range = [int(row_dists[0].ppf(quantile)), int(row_dists[-1].ppf(1-p_limit)) + 1]
                 cdfs = la.larray(lambda k: eval_mixture_cdf(row_synapses_ps, row_dists, k),
                                  shape=(row_range[1],))
