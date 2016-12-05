@@ -41,7 +41,6 @@ namespace
 enum DMATag
 {
   DMATagInputRead,
-  DMATagSpikeRecordingWrite,
   DMATagBackPropagationWrite
 };
 
@@ -277,14 +276,6 @@ void UpdateNeurons()
 {
   Profiler::Tag<ProfilerTagUpdateNeurons> p;
 
-  // If spike recording isn't reset, DMA to write previous time steps spikes is outstanding,
-  if(!g_SpikeRecording.IsReset())
-  {
-    LOG_PRINT(LOG_LEVEL_ERROR, "Updating neurons with previous spike recorder transfer in progress");
-    rt_error(RTE_ABORT);
-    return;
-  }
-
   // Loop through neurons
   auto *neuronMutableState = g_NeuronMutableState;
   const uint16_t *neuronImmutableStateIndex = g_NeuronImmutableStateIndices;
@@ -375,7 +366,7 @@ void UpdateNeurons()
   }
 
   // Transfer spike recording and back propagation buffers to SDRAM
-  g_SpikeRecording.TransferBuffer(DMATagSpikeRecordingWrite);
+  g_SpikeRecording.Reset();
   g_BackPropagationOutput.TransferBuffer(g_Tick, DMATagBackPropagationWrite);
 
   // Loop through all analogue recording regions and
@@ -419,10 +410,6 @@ static void DMATransferDone(uint, uint tag)
     {
       UpdateNeurons();
     }
-  }
-  else if(tag == DMATagSpikeRecordingWrite)
-  {
-    g_SpikeRecording.Reset();
   }
   else if(tag == DMATagBackPropagationWrite)
   {
