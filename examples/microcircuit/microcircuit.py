@@ -46,11 +46,6 @@ end_sim = time.time()
 if sim.rank() == 0 :
     print('Simulation took %g s' % (end_sim - start_sim,))
 
-for proj in n.projections:
-    weights = proj.get(["weight", "delay"], format="list")
-    with open("weights_%s_%s.pkl" % (proj.pre.label, proj.post.label), "w") as f:
-        pickle.dump(weights, f)
- 
 start_writing = time.time()
 for layer in n.pops :
     for pop in n.pops[layer] :
