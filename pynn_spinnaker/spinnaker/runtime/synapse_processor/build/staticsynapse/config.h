@@ -5,8 +5,8 @@
 #include "../../../common/row_offset_length.h"
 namespace SynapseProcessor
 {
-  typedef Common::CircularBuffer<uint32_t, 256> SpikeInputBuffer;
-  typedef Common::CircularBuffer<RowOffsetLength<10>, 256> DelayRowBuffer;
+  typedef Common::CircularBuffer<uint32_t, 512> SpikeInputBuffer;
+  typedef Common::CircularBuffer<RowOffsetLength<10>, 512> DelayRowBuffer;
 }
 
 // Synapse processor includes
