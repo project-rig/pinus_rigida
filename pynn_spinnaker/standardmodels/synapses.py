@@ -225,8 +225,8 @@ class SpikePairRule(synapses.SpikePairRule):
                                       num_entries=256, time_shift=0)),
         ("tau_minus", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                        num_entries=256, time_shift=0)),
-        ("a_plus", "i4", lazy_param_map.s32_fixed_point),
-        ("a_minus", "i4", lazy_param_map.s32_fixed_point),
+        ("a_plus", "u4", lazy_param_map.u032),
+        ("a_minus", "u4", lazy_param_map.u032),
     ]
 
     _comparable_param_names = ("tau_plus", "tau_minus", "A_plus", "A_minus")
