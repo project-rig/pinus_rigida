@@ -291,7 +291,7 @@ class SynapticMatrix(Region):
         return sub_matrix_props, sub_matrix_projs
 
     def read_sub_matrix(self, pre_n_vert, post_s_vert, names,
-                        region_mem, sim_timestep_ms):
+                        region_mem, sim_timestep_ms, is_inhibitory):
         # Find the matrix properties and placement of sub-matrix
         # associated with pre-synaptic neuron vertex
         vert_matrix_prop, vert_matrix_placement = next((
@@ -341,13 +341,17 @@ class SynapticMatrix(Region):
         logger.debug("\tUsing row dtype:%s, weight fixed point:%u",
                      dtype, post_s_vert.weight_fixed_point)
 
+        # Downloaded weights should be negated
+        # if they are unsigned and inhibitory
+        negate_weights = (not self.signed_weight and is_inhibitory)
+
         # Loop through matrix rows
         synapses = []
         for i, r in enumerate(matrix_words):
             # Read row
             row = self._read_row(i, r, pre_n_vert.neuron_slice,
                                  post_s_vert.post_neuron_slice,
-                                 weight_to_float, dtype)
+                                 weight_to_float, dtype, negate_weights)
 
             # If delays are required, scale into simulation timesteps
             if "delay" in dtype.names:
@@ -375,7 +379,7 @@ class SynapticMatrix(Region):
                 # Read next extension row
                 row = self._read_row(i, ext_row_data, pre_n_vert.neuron_slice,
                                     post_s_vert.post_neuron_slice,
-                                    weight_to_float, dtype)
+                                    weight_to_float, dtype, negate_weights)
 
                 # If delays are required, add total extended delay
                 # and scale into simulation timesteps
@@ -395,7 +399,7 @@ class SynapticMatrix(Region):
     # Private methods
     # --------------------------------------------------------------------------
     def _read_row(self, pre_idx, row_words, pre_slice, post_slice,
-                  weight_to_float, dtype):
+                  weight_to_float, dtype, negate_weights):
         num_synapses = row_words[0]
 
         # Create empty array to hold synapses
@@ -413,6 +417,10 @@ class SynapticMatrix(Region):
         # Read synapses
         self._read_synapses(row_words[3:], weight_to_float, dtype, synapses)
 
+        # If weights are required and we should negate them, do so
+        if "weight" in dtype.names and negate_weights:
+            synapses["weight"] = -synapses["weight"]
+
         # If post-synaptic indices are required,
         # add post-synaptic slice start to them
         if "postsynaptic_index" in dtype.names:
@@ -421,7 +429,7 @@ class SynapticMatrix(Region):
         return next_row_delay, next_row_offset, next_row_length, synapses
 
     def _write_row(self, row, next_row, next_row_offset,
-                             float_to_weight, destination):
+                   float_to_weight, destination):
         # Write actual length of row (in synapses)
         num_synapses = len(row[1])
         destination[0] = num_synapses

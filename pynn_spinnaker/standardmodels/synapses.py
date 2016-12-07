@@ -253,8 +253,8 @@ class Vogels2011Rule(synapses.Vogels2011Rule):
         ("rho", "i4", lazy_param_map.s2011),
         ("tau", "256i2", partial(lazy_param_map.s411_exp_decay_lut,
                                  num_entries=256, time_shift=0)),
-        ("eta", "i4", lazy_param_map.s32_fixed_point),
-        ("eta", "i4", lazy_param_map.s32_fixed_point),
+        ("eta", "u4", lazy_param_map.u032),
+        ("eta", "u4", lazy_param_map.u032),
     ]
 
     _comparable_param_names = ("tau", "eta", "rho")
