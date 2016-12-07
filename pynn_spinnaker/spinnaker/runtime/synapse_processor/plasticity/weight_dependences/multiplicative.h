@@ -44,11 +44,11 @@ public:
     void ApplyDepression(S2011 depression, const Multiplicative<Weight> &weightDependence)
     {
       // Calculate scale
-      // **NOTE** this calculation must be done at runtime-defined weight
-      // fixed-point format
+      // **NOTE** because A2- is in S16.15 this leaves
+      // result in runtime-defined fixed point format
       int32_t scale = __smulbb(m_Weight - weightDependence.m_MinWeight,
                                weightDependence.m_A2Minus);
-      scale >>= weightDependence.m_WeightFixedPoint;
+      scale >>= 15;
 
       // Multiply scale by depression and subtract
       // **NOTE** using standard STDP fixed-point format handles format conversion
@@ -58,11 +58,11 @@ public:
     void ApplyPotentiation(S2011 potentiation, const Multiplicative<Weight> &weightDependence)
     {
       // Calculate scale
-      // **NOTE** this calculation must be done at runtime-defined weight
-      // fixed-point format
+      // **NOTE** because A2+ is in S16.15 this leaves
+      // result in runtime-defined fixed point format
       int32_t scale = __smulbb(weightDependence.m_MaxWeight - m_Weight,
                                weightDependence.m_A2Plus);
-      scale >>= weightDependence.m_WeightFixedPoint;
+      scale >>= 15;
 
       // Multiply scale by potentiation and add
       // **NOTE** using standard STDP fixed-point format handles format conversion
@@ -99,21 +99,11 @@ public:
     m_MaxWeight = *reinterpret_cast<int32_t*>(region++);
     m_WeightFixedPoint = weightFixedPoint;
 
-    // If weight fixed point is higher up representation than in the U032,
-    // shift U032 values of A2+ and A2- left by difference
-    if(weightFixedPoint > 32)
-    {
-      const unsigned int shiftLeft = weightFixedPoint - 32;
-      m_A2Plus = a2Plus << shiftLeft;
-      m_A2Minus = a2Minus << shiftLeft;
-    }
-    // Otherwise, shift U032 values of A2+ and A2- right by difference
-    else
-    {
-      const unsigned int shiftRight = 32 - weightFixedPoint;
-      m_A2Plus = a2Plus >> shiftRight;
-      m_A2Minus = a2Minus >> shiftRight;
-    }
+    // Shift A2+ and A2- down to S16.15 so they can be multiplied
+    // with weight using 16-bit DSP instructions
+    m_A2Plus = (int32_t)(a2Plus >> 17);
+    m_A2Minus = (int32_t)(a2Minus >> 17);
+
     LOG_PRINT(LOG_LEVEL_INFO, "\t\tA2+:%d, A2-:%d, Min weight:%d, Max weight:%d, Weight fixed point:%u",
               m_A2Plus, m_A2Minus, m_MinWeight, m_MaxWeight, m_WeightFixedPoint);
 
