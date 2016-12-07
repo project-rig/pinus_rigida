@@ -494,7 +494,8 @@ class SynapseCluster(object):
             [v.region_memory[Regions.statistics] for v in self.verts],
             self.statistic_names)
 
-    def read_synaptic_matrices(self, pre_pop, names, sim_timestep_ms):
+    def read_synaptic_matrices(self, pre_pop, names, sim_timestep_ms,
+                               is_inhibitory):
         # Get the synaptic matrix region
         region = self.regions[Regions.synaptic_matrix]
 
@@ -515,7 +516,8 @@ class SynapseCluster(object):
                 # Read associated sub-matrix
                 sub_matrices.append(
                     region.read_sub_matrix(pre_n_vert, post_s_vert,
-                                           names, region_mem, sim_timestep_ms))
+                                           names, region_mem,
+                                           sim_timestep_ms, is_inhibitory))
 
         return sub_matrices
 

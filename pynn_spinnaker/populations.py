@@ -219,10 +219,14 @@ class Population(common.Population):
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
     def _read_synaptic_matrices(self, pre_pop, synapse_type, names):
+        # Is the receptor type inhibitory
+        # **YUCK** this is not a great test
+        is_inhibitory = (synapse_type.receptor == "inhibitory")
+
         # Return synaptic weights from correct synapse cluster
         synapse_cluster = self._synapse_clusters[synapse_type]
         return synapse_cluster.read_synaptic_matrices(
-            pre_pop, names, float(self._simulator.state.dt))
+            pre_pop, names, float(self._simulator.state.dt), is_inhibitory)
 
     def _read_recorded_vars(self, vars_to_read):
         spike_times = {}
