@@ -118,7 +118,7 @@ def test_matrix_process(pre_size, pre_vert_size, post_slice, row_length,
         for pre_n_vert in incoming_connections[pre_pop]:
             # Read sub-matrix back
             synapses = np.hstack(synaptic_matrix_region.read_sub_matrix(
-                pre_n_vert, post_s_vert, names, fp, sim_timestep_ms))
+                pre_n_vert, post_s_vert, names, fp, sim_timestep_ms, False))
 
             # Loop through original rows we wrote
             orig_rows =\
