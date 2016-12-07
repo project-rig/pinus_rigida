@@ -249,8 +249,8 @@ class ConnectionBuilder(Region):
             # Apply parameter map to connector parameters and write to region
             fp.write(lazy_param_map.apply_attributes(
                 connector, connector._on_chip_param_map,
-                context=projection_state_dict[proj[0]], post_slice_size=len(post_vertex_slice),
-                pre_slice_size=len(prop.pre_n_slice)).tostring())
+                context=projection_state_dict[proj[0]], post_slice=post_vertex_slice,
+                pre_slice=prop.pre_n_slice).tostring())
 
             # Write delay parameter scaled to convert to timesteps and
             # with fixed point of zero to round to nearest timestep

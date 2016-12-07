@@ -29,8 +29,11 @@ from pyNN.connectors import (AllToAllConnector,
                              CloneConnector,
                              ArrayConnector)
 
-def _draw_num_connections(context, post_slice_size, pre_slice_size, **kwargs):
-    nsample = post_slice_size * pre_slice_size
+# TODO for handling allow_self_connections=False we need the allow_self
+# connections flag, to test if post_slice and pre_slice overlap,
+# and modify context['N']
+def _draw_num_connections(context, post_slice, pre_slice, **kwargs):
+    nsample = len(post_slice) * len(pre_slice)
 
     if context['n'] == 0:
         sample = 0
@@ -48,9 +51,9 @@ def _draw_num_connections(context, post_slice_size, pre_slice_size, **kwargs):
 
     return la.larray(sample, shape=(1,))
 
-def _submat_size(context, post_slice_size, pre_slice_size, **kwargs):
-    return la.larray(post_slice_size * pre_slice_size, shape=(1,))
-    return la.larray(sample, shape=(1,))
+# TODO for handling allow_self_connections=False, modify value here?
+def _submat_size(context, post_slice, pre_slice, **kwargs):
+    return la.larray(int(post_slice) * int(pre_slice), shape=(1,))
 
 # ----------------------------------------------------------------------------
 # AllToAllConnector
@@ -70,7 +73,8 @@ class AllToAllConnector(AllToAllConnector):
                                    pre_size, post_size):
         # We know the number of synapses per sub-row. Use a distribution that
         # can only return that value
-        num_synapses = len(post_slice)
+        num_synapses = len(post_slice) - int(pre_slice.overlaps(post_slice) \
+                                             and not self.allow_self_connections)
         return scipy.stats.randint(num_synapses, num_synapses + 1)
 
     def _get_projection_initial_state(self, pre_size, post_size):
@@ -95,7 +99,9 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
                                    pre_size, post_size):
         # There are len(post_slice) possible connections in the sub-row, each
         # formed with probability self.p_connect
-        return scipy.stats.binom(n=len(post_slice), p=self.p_connect)
+        n = len(post_slice) - int(pre_slice.overlaps(post_slice) \
+                                  and not self.allow_self_connections)
+        return scipy.stats.binom(n=n, p=self.p_connect)
 
     def _get_projection_initial_state(self, pre_size, post_size):
         return None
@@ -264,8 +270,10 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     # --------------------------------------------------------------------------
     def _row_synapses_distribution(self, pre_slice, post_slice,
                                    pre_size, post_size):
-        M = pre_size * post_size
-        N = len(post_slice)
+
+        M = pre_size * post_size - int(not self.allow_self_connections) * pre_size
+        N = len(post_slice) - int(pre_slice.overlaps(post_slice) \
+                                  and not self.allow_self_connections)
 
         # There are n connections amongst the M=pre_size*post_size possible
         # connections
