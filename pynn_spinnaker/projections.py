@@ -44,13 +44,19 @@ distribution = {
 def eval_mixture_cdf(ps, dists, k):
     return sum(p * dist.cdf(k) for p, dist in zip(ps, dists))
 
-# Sample a vector of length val from distribution dist
-# Evaluate the cdf of the maximum of the vector
-# The length of the vector is a random variable, taking values
-# in vals with probabilities in ps
+# The cdf of a mixture distribution
+# Vals is an array of integer values
+# The component distributions are the distributions of the maximum of
+# a vector of length val (for each val in vals) of variates from distribution
+# dist. The component distributions are weighted by the probabilities ps.
 def eval_mixture_of_maxes_cdf(ps, vals, dist, k):
     return sum(p * dist.cdf(k)**val for p, val in zip(ps, vals))
 
+# The cdf of a mixture distribution
+# Vals is an array of integer values
+# The component distributions are the distributions of the minimum of
+# a vector of length val (for each val in vals) of variates from distribution
+# dist. The component distributions are weighted by the probabilities ps.
 def eval_mixture_of_mins_cdf(ps, vals, dist, k):
     return sum(p * 1-(1-dist.cdf(k))**val for p, val in zip(ps, vals))
 
@@ -328,8 +334,8 @@ class Projection(common.Projection, ContextMixin):
         # If this projection has no synapses, so will all its sub-rows
         if max_row_synapses == 0:
             max_cols = 0
+            max_sub_row_synapses = 0
             max_sub_rows = 0
-            max_sub_row_length = 0
         # If parameter is randomly distributed
         elif isinstance(delay.base_value, RandomDistribution):
             dist_name = delay.base_value.name
@@ -380,11 +386,10 @@ class Projection(common.Projection, ContextMixin):
                                  shape=(row_range[1],))
                 max_sub_row_synapses = bisect_left(cdfs, quantile, row_range[0], row_range[1])
 
-                # If there are any synapses outside of first delay sub-row
+                # If there are no synapses outside of first delay sub-row
                 if max_sub_row_synapses == 0:
                     assert max_cols == max_row_synapses
                     max_sub_rows = 0
-                    max_sub_row_length = 0
                 else:
 
                     # The distribution over the number of synapses (row_synapses_dist)
@@ -405,22 +410,16 @@ class Projection(common.Projection, ContextMixin):
                         quantile, lower_bound, upper_bound)
                     lower_delay_bound = max(max_row_delay, lower_delay_bound)
 
-                    extension_delay_range = upper_delay_bound - lower_delay_bound
-
+                    max_extension_delay_range = upper_delay_bound - lower_delay_bound
                     # Convert this to a maximum number of sub-rows
-                    max_sub_rows = max(1, int(math.ceil(extension_delay_range /
+                    max_sub_rows = max(1, int(math.ceil(max_extension_delay_range /
                                                         max_row_delay)))
-
-                    # Divide mean number of synapses in row evenly between sub-rows
-                    max_sub_row_length = int(math.ceil(max_sub_row_synapses /
-                                                       max_sub_rows))
-
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
                 max_cols = max_row_synapses
                 max_sub_rows = 0
-                max_sub_row_length = 0
+                max_sub_row_synapses = 0
         # If parameter is a scalar
         elif is_scalar(delay.base_value):
             # If the delay is within the maximum row delay, then all
@@ -428,17 +427,17 @@ class Projection(common.Projection, ContextMixin):
             if delay.base_value <= max_row_delay:
                 max_cols = max_row_synapses
                 max_sub_rows = 0
-                max_sub_row_length = 0
+                max_sub_row_synapses = 0
             # Otherwise, the first sub-row will contain no synapses,
             # just a pointer forwards to the delay sub-row
             else:
                 max_cols = 0
                 max_sub_rows = 1
-                max_sub_row_length = max_row_synapses
+                max_sub_row_synapses = max_row_synapses
         else:
             raise NotImplementedError()
 
-        return max_cols, max_sub_rows, max_sub_row_length
+        return max_cols, max_sub_rows, max_sub_row_synapses
 
     def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
                                               pre_rate, **kwargs):
