@@ -48,7 +48,7 @@ class SynapticMatrix(Region):
         """Get the size requirements of the region in bytes.
 
         Parameters
-        ----------haha when
+        ----------
         sub_matrix_props : list of :py:class:`._SubMatrix`
             Properties of the sub matrices to be written
             to synaptic matrix region
