@@ -119,6 +119,14 @@ class Population(common.Population):
     # Public SpiNNaker methods
     # --------------------------------------------------------------------------
     def get_neural_profile_data(self):
+        """Downloads CPU profiling data from neural cluster associated with
+        this population.
+
+        Returns
+        -------
+        type
+            Explanation of anonymous return value of type ``type``.
+        """
         logger.info("Downloading neural profile for population %s",
                     self.label)
 

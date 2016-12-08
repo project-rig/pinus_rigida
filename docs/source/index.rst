@@ -9,9 +9,9 @@ Python
 .. toctree::
         :maxdepth: 2
 
-        python
+        python/index
 
-Indicies and Tables
+Indices and Tables
 -------------------
 
 * :ref:`genindex`

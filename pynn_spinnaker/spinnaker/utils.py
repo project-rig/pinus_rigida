@@ -27,6 +27,17 @@ InputBuffer = namedtuple("InputBuffer",
 # InputVertex
 # ----------------------------------------------------------------------------
 class InputVertex(object):
+    """Base class for vertices which provide input via SDRAM buffers
+    to a :py:class:`NeuralCluster`.
+
+    post_neuron_slice : :py:class:`UnitStrideSlice`
+        Slice of neurons this vertex provides input to.
+    weight_fixed_point : int
+        Input vertices output 32-bit fixed point values. Which bit is the
+        fixed-point located at in this representation?
+    receptor_index : int
+        What receptor index ("""
+
     def __init__(self, post_neuron_slice, receptor_index):
         self.post_neuron_slice = post_neuron_slice
         self.weight_fixed_point = None
@@ -71,6 +82,16 @@ class InputVertex(object):
 # UnitStrideSlice
 # ----------------------------------------------------------------------------
 class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
+    """In many places in the code we want to represent contiguous slices of
+    neurons. While we want to be able to use these as Python slices, they
+    are limited and annoying to work with so this class adds some
+    helpful functionality.
+
+    Attributes
+    ----------
+    python_slice : slice
+        This slice as a Python slice.
+    """
     # ------------------------------------------------------------------------
     # Magic methods
     # ------------------------------------------------------------------------
@@ -84,6 +105,18 @@ class UnitStrideSlice(namedtuple("UnitStrideSlice", ["start", "stop"])):
     # Public methods
     # ------------------------------------------------------------------------
     def overlaps(self, other):
+        """ Does this slice overlap with another slice?
+
+        Parameters
+        ----------
+        other : :py:class:`UnitStrideSlice`
+            Slice to test overlap against
+
+        Returns
+        -------
+        boolean
+            Do the two slices overlap?
+        """
         return (self.start < other.stop) and (self.stop > other.start)
 
     def intersection(self, other):
