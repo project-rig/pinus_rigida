@@ -17,13 +17,15 @@ from rig.bitfield import BitField
 # ----------------------------------------------------------------------------
 # Tests
 # ----------------------------------------------------------------------------
-@pytest.mark.parametrize("pre_size", [1000])
+@pytest.mark.parametrize("pre_size", [1000, 64])
 @pytest.mark.parametrize("post_size, post_slice",
                          [(5000, UnitStrideSlice(0, 1024)),
+                          (5000, UnitStrideSlice(0, 256)),
                           (5000, UnitStrideSlice(1024, 2048))])
 @pytest.mark.parametrize("connector",
                          [sim.AllToAllConnector(),
-                          sim.FixedProbabilityConnector(0.1)])
+                          sim.FixedProbabilityConnector(0.1),
+                          sim.FixedTotalNumberConnector(300000)])
 @pytest.mark.parametrize("delay", [0.1, 1.0,
                                    RandomDistribution("normal_clipped",
                                                       mu=1.5, sigma=0.75,
@@ -61,12 +63,12 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay, connector):
     synaptic_matrix_region = StaticSynapticMatrix(proj.synapse_type)
 
     # Estimate matrix dimensions
-    max_cols, max_sub_rows, max_sub_row_length =\
+    max_cols, max_sub_rows, max_sub_row_synapses =\
         proj._estimate_max_dims(UnitStrideSlice(0, pre_size), post_slice)
 
     # From this calculate max words
     max_size_words = synaptic_matrix_region.estimate_matrix_words(
-        pre_size, max_cols, max_sub_rows, max_sub_row_length)
+        pre_size, max_cols, max_sub_rows, max_sub_row_synapses)
 
     # Create list of lists to contain matrix rows
     sub_rows = [[] for _ in range(pre_size)]
@@ -96,4 +98,6 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay, connector):
 
     assert len(sub_matrix_props) == 1
     assert (sub_matrix_props[0].max_cols - 1) <= max_cols
+    assert (sub_matrix_props[0].max_cols - 1) * 2 > max_cols
     assert sub_matrix_props[0].size_words <= max_size_words
+    assert sub_matrix_props[0].size_words * 2 > max_size_words
