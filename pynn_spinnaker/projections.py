@@ -448,7 +448,7 @@ class Projection(common.Projection, ContextMixin):
             pre_slice, post_slice, self.pre.size, self.post.size)
 
         # Use distribution to estimate mean number of synapses in each row
-        mean_row_synapses = int(row_synapses_dist.mean())
+        mean_row_synapses = row_synapses_dist.mean()
 
          # Calculate maximum row delay
         max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
@@ -458,9 +458,9 @@ class Projection(common.Projection, ContextMixin):
         delay = self.synapse_type.native_parameters["delay"]
 
         # If this projection has no synapses, so will all its sub-rows
-        if mean_row_synapses == 0:
-            num_sub_rows = 1
-            mean_sub_row_synapses = 0
+        if mean_row_synapses == 0.0:
+            num_sub_rows = 1.0
+            mean_sub_row_synapses = 0.0
         # If parameter is randomly distributed
         elif isinstance(delay.base_value, RandomDistribution):
             dist_name = delay.base_value.name
@@ -489,34 +489,29 @@ class Projection(common.Projection, ContextMixin):
 
                 # Determine the number of sub-rows required for this range
                 delay_range = mean_row_upper - mean_row_lower
-                num_sub_rows = max(1, int(math.ceil(delay_range /
-                                                    max_row_delay)))
-
-                # If the lower bound is not within that supported by the first
-                # sub-row an extra sub-row will be required
-                if mean_row_lower > max_row_delay:
-                    num_sub_rows += 1
+                num_sub_rows = math.ceil((delay_range + 1.0 + min(mean_row_lower, max_row_delay)) \
+                               / max_row_delay)
 
                 # Divide mean number of synapses in row evenly between sub-rows
-                mean_sub_row_synapses = mean_row_synapses // num_sub_rows
+                mean_sub_row_synapses = mean_row_synapses / num_sub_rows
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
 
                 mean_sub_row_synapses = mean_row_synapses
-                num_sub_rows = 1
+                num_sub_rows = 1.0
         # If parameter is a scalar
         elif is_scalar(delay.base_value):
             # If the delay is within the maximum row delay, then all
             # the synapses in the row can be represented in a single sub-row
             if delay.base_value <= max_row_delay:
-                num_sub_rows = 1
+                num_sub_rows = 1.0
                 mean_sub_row_synapses = mean_row_synapses
             # Otherwise, the first sub-row will contain no synapses,
             # just a pointer forwards to the delay sub-row
             else:
-                num_sub_rows = 2
-                mean_sub_row_synapses = int((1 + mean_row_synapses) / 2.0)
+                num_sub_rows = 2.0
+                mean_sub_row_synapses = 0.5 * mean_row_synapses
         else:
             raise NotImplementedError()
 
