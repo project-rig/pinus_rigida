@@ -1,5 +1,5 @@
 Python components of PyNN SpiNNaker
------------------------------------
+***********************************
 PyNN populations :py:class:`~pynn_spinnaker.Population` are first divided into
 a :py:class:`~pynn_spinnaker.spinnaker.neural_cluster.NeuralCluster` representing
 the neurons which make up the population and a
