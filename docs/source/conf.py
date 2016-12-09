@@ -57,7 +57,12 @@ extensions = [
     'sphinx.ext.doctest',
     'sphinx.ext.linkcode',
     'numpydoc',
+    'breathe',
 ]
+
+# Point breathe at Doxygen C++ documentation and use this as the default
+breathe_projects = { "pynn_spinnaker": "../build/xml" }
+breathe_default_project = "pynn_spinnaker"
 
 # Fixes autosummary errors
 numpydoc_show_class_members = False
@@ -117,7 +122,7 @@ exclude_patterns = []
 
 # If true, sectionauthor and moduleauthor directives will be shown in the
 # output. They are ignored by default.
-#show_authors = False
+#show_authors = Falsecpp
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
