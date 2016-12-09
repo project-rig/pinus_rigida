@@ -81,10 +81,14 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay, connector):
     proj.post._mask_local = np.zeros((post_size,), dtype=bool)
     proj.post._mask_local[post_slice.python_slice] = True
 
+    proj._simulator.state.num_processes = int(np.ceil(post_size / float(len(post_slice))))
+
     # Build projection
     proj._build(matrix_rows=sub_rows,
                 weight_range=weight_range,
                 directly_connect=False)
+
+    proj._simulator.state.num_processes = 1
 
     # Convert rows to numpy and add to dictionary
     pre_pop_sub_rows = {pre: [np.asarray(r, dtype=row_dtype)
@@ -98,6 +102,6 @@ def test_estimate_max_dims(pre_size, post_size, post_slice, delay, connector):
 
     assert len(sub_matrix_props) == 1
     assert (sub_matrix_props[0].max_cols - 1) <= max_cols
-    assert (sub_matrix_props[0].max_cols - 1) * 2 > max_cols
+    assert (sub_matrix_props[0].max_cols - 1) * 3 >= max_cols
     assert sub_matrix_props[0].size_words <= max_size_words
-    assert sub_matrix_props[0].size_words * 2 > max_size_words
+    assert sub_matrix_props[0].size_words * 3 >= max_size_words
