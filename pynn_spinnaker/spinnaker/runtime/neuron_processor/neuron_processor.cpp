@@ -402,13 +402,13 @@ static void DMATransferDone(uint, uint tag)
     }
     else
     {
-      // Apply input in DMA buffer
+      // Apply input in DMA buffer and start fetching next buffer if necessary
       Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
-      g_InputBuffer.ProcessDMABuffer(applyInputLambda);
+      bool allProcessed = g_InputBuffer.ProcessDMABuffer(applyInputLambda, DMATagInputRead);
       Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
 
-      // Attempt to fetch next input buffer - if there aren't any, start neuron update
-      if(g_InputBuffer.Fetch(DMATagInputRead))
+      // If all buffers are processed, start neuron update
+      if(allProcessed)
       {
         UpdateNeurons();
       }
