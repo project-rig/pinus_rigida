@@ -78,6 +78,14 @@ class SpikeRecording(Region):
     # Public API
     # --------------------------------------------------------------------------
     def read_spike_times(self, vertex_slice, region_memory):
+        """
+        Returns
+        -------
+        {:py:class:`~pynn_spinnaker.spinnaker.utils.UnitStrideSlice`: {int: :py:class:`~numpy.ndarray`}}
+            A dictionary mapping the slices associated with each underlying
+            vertex of the neural cluster to a dictionary mapping neuron indices
+            to spike times.
+        """
         # Get the indices within this vertes that were recorded
         vertex_indices = self.indices_to_record[vertex_slice.python_slice]
 

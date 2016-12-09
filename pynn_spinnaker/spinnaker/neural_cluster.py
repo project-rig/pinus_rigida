@@ -64,16 +64,6 @@ class Vertex(object):
         a particular connection is in.
     region_memory : {name: file-like}
         When the vertex has been loaded onto the SpiNNaker machine this
-    routing_key : int
-        The key that should be used to route both spikes and 'flush'
-        events from this vertex.
-    routing_mask : int
-        The mask that should be used to route both spikes and 'flush'
-        events from this vertex.
-    spike_tx_key : int
-        The key this vertex should use to transmit spikes.
-    flush_tx_key : int
-        The key this vertex should use to transmit 'flush' events.
     """
     def __init__(self, parent_keyspace, neuron_slice, pop_index, vert_index):
         """
@@ -117,7 +107,7 @@ class Vertex(object):
     def __str__(self):
         return "<neuron slice:%s>" % (str(self.neuron_slice))
 
-    # ------------------------------------------------------------------------
+    # -----------------------------------------------"""-------------------------
     # Public methods
     # ------------------------------------------------------------------------
     def get_back_prop_in_buffer(self, post_slice):
@@ -132,17 +122,17 @@ class Vertex(object):
 
         Parameters
         ----------
-            post_slice : :py:class:`~pynn_spinnaker.spinnaker.utils.UnitStrideSlice`
-                Slice of neurons which synapse processor
-                requires the spiking activity for.
+        post_slice : :py:class:`~pynn_spinnaker.spinnaker.utils.UnitStrideSlice`
+            Slice of neurons which synapse processor
+            requires the spiking activity for.
         Returns
         -------
-            ([int], int, int, int)
-                Tuple containing:
-                    1. List of pointers to the two buffers
-                    2. Length of each buffer in words
-                    3. Index of bit within the bit-field where processing should begin
-                    4. Index of bit within the bit-field where processing should stop
+        ([int], int, int, int)
+            Tuple containing:
+                1. List of pointers to the two buffers
+                2. Length of each buffer in words
+                3. Index of bit within the bit-field where processing should begin
+                4. Index of bit within the bit-field where processing should stop
         """
         # Check the slices involved overlap and that this
         # neuron vertex actually has back propagation buffers
@@ -178,14 +168,33 @@ class Vertex(object):
     # ------------------------------------------------------------------------
     @property
     def spike_tx_key(self):
+        """
+        Returns
+        -------
+        int
+            The key this vertex should use to transmit spikes.
+        """
         return self._spike_keyspace.get_value(tag="transmission")
 
     @property
     def flush_tx_key(self):
+        """
+        Returns
+        -------
+        int
+            The key this vertex should use to transmit 'flush' events.
+        """
         return self._flush_keyspace.get_value(tag="transmission")
 
     @property
     def routing_key(self):
+        """
+        Returns
+        -------
+        int
+            The key that should be used to route both spikes and 'flush'
+            events from this vertex.
+        """
         # Check that routing key for the spike and flush keyspace are the same
         spike_key = self._spike_keyspace.get_value(tag="routing")
         flush_key = self._flush_keyspace.get_value(tag="routing")
@@ -196,6 +205,13 @@ class Vertex(object):
 
     @property
     def routing_mask(self):
+        """
+        Returns
+        -------
+        int
+            The mask that should be used to route both spikes and 'flush'
+            events from this vertex.
+        """
         # Check that routing mask for the spike and flush keyspace are the same
         spike_mask = self._spike_keyspace.get_mask(tag="routing")
         flush_mask = self._flush_keyspace.get_mask(tag="routing")
@@ -203,7 +219,6 @@ class Vertex(object):
 
         # Return the spike mask (arbitarily)
         return spike_mask
-
 
 # -----------------------------------------------------------------------------
 # NeuralCluster
@@ -216,6 +231,11 @@ class NeuralCluster(object):
 
     Attributes
     ----------
+    regions : {:py:class:`Regions`: :py:class:`rig_cpp_common.regions.region.Region`}
+        Dictionary of regions that must be written to memory for each
+        neuron processor that makes up this neural cluster.
+    verts : [:py:class:`Vertex`]
+        List of vertices that make up this neural cluster.
 
     """
     # Tag names, corresponding to those defined in neuron_processor.h
@@ -227,7 +247,11 @@ class NeuralCluster(object):
 
     # Names of statistics
     statistic_names = (
-        "task_queue_full",
+        "task_queue_full",        """Estimates the SDRAM required by a core simulating a slice of the
+        neurons in this neural cluster.
+
+
+        """
         "timer_event_overflows",
     )
 
@@ -237,6 +261,13 @@ class NeuralCluster(object):
                  vertex_load_applications, vertex_run_applications,
                  vertex_resources, keyspace, post_synaptic_width,
                  requires_back_prop, pop_size):
+        """
+        Parameters
+        ----------
+        pop_id : integer
+            Global index of the population whose neurons this vertex
+            is responsible for simulating - used for generating unique keys
+        """
         # Create standard regions
         self.regions = {}
         self.regions[Regions.system] = System(timer_period_us, sim_ticks)
@@ -324,6 +355,24 @@ class NeuralCluster(object):
     # --------------------------------------------------------------------------
     def allocate_out_buffers(self, placements, allocations,
                              machine_controller):
+        """Allocates output SDRAM buffers required for back propagation output.
+        Both neural clusters and synapse clusters have output buffers the other
+        needs access to so allocating these in a separate phase is necessary.
+
+        Parameters
+        ----------
+        placements : {vertex: (x, y), ...}
+            A dictionary from vertices to the chip coordinate produced by
+            placement.
+        allocations : {vertex: {resource: slice, ...}, ...}
+            A dictionary from vertices to the resources allocated to it. Resource
+            allocations are dictionaries from resources to a :py:class:`slice`
+            defining the range of the given resource type allocated to the vertex.
+            These :py:class:`slice` objects have `start` <= `end` and `step` set to
+            None.
+        machine_controller : :py:class:`rig.machine_control.machine_controller.MachineController`
+            Machine controller used to interact with the SpiNNaker machine.
+        """
         # Loop through vertices
         for v in self.verts:
             # Get placement and allocation
@@ -402,6 +451,16 @@ class NeuralCluster(object):
                                                logger)
 
     def read_recorded_spikes(self):
+        """
+        Downloads spike times recording during the preceding simulation from SpiNNaker.
+
+        Returns
+        -------
+        {:py:class:`~pynn_spinnaker.spinnaker.utils.UnitStrideSlice`: {int: :py:class:`~numpy.ndarray`}}
+            A dictionary mapping the slices associated with each underlying
+            vertex of the neural cluster to a dictionary mapping neuron indices
+            to spike times.
+        """
         # Loop through all neuron vertices and read spike times into dictionary
         spike_times = {}
         region = self.regions[Regions.spike_recording]
@@ -412,6 +471,24 @@ class NeuralCluster(object):
         return spike_times
 
     def read_recorded_signal(self, channel):
+        """
+        Downloads 'analogue' signals e.g. membrane voltage
+        recording during the preceding simulation from SpiNNaker.
+
+        Parameters
+        ----------
+        channel : int
+            Index of the channel to download - This is the index of
+            the 'recordable' in the cell type
+
+        Returns
+        -------
+        {:py:class:`~pynn_spinnaker.spinnaker.utils.UnitStrideSlice`: {int: :py:class:`~numpy.ndarray`}}
+            A dictionary mapping the slices associated with each underlying
+            vertex of the neural cluster to a dictionary mapping neuron indices
+            to time-varying analogue signal values.
+
+        """
         # Get index of channelread_profile
         region_index = Regions(Regions.analogue_recording_start + channel)
         region = self.regions[region_index]
@@ -447,11 +524,6 @@ class NeuralCluster(object):
     # Private methods
     # --------------------------------------------------------------------------
     def _estimate_sdram(self, vertex_slice):
-        """Estimates the SDRAM required by a core simulating a slice of the
-        neurons in this neural cluster.
-
-
-        """
         # Begin with size of spike recording region
         sdram = self.regions[Regions.spike_recording].sizeof(vertex_slice);
 

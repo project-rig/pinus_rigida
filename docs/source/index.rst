@@ -3,17 +3,17 @@ PyNN SpiNNaker - Rig backend for PyNN 0.8
 
 
 
-Python run on host machine
-==========================
+Python host machine software
+============================
 .. toctree::
-        :maxdepth: 2
+        :maxdepth: 3
 
         python/index
 
-C++ run on SpiNNaker
-====================
+C++ SpiNNaker runtime
+=====================
 .. toctree::
-        :maxdepth: 2
+        :maxdepth: 3
 
         cpp/index
 
