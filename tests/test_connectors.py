@@ -70,12 +70,19 @@ def test_row_synapses_distribution(pre_size, post_size, post_slice, connector):
     actual_max_row_synapses = max(synapse_counts)
     actual_range = np.arange(actual_max_row_synapses + 1)
     expected_frequencies = row_synapses_distribution.pmf(actual_range)
+    actual_frequencies = actual_frequencies[expected_frequencies > 0]
+    expected_frequencies = expected_frequencies[expected_frequencies > 0]
 
-    # Check that the synapses-per-sub-row histogram matches the distribution
-    chisquare_statistic, p = sp.chisquare(actual_frequencies, expected_frequencies)
-    assert p > 0.05
+    if expected_frequencies.size == 1:
+        assert expected_frequencies[0] == 1.0
+        assert actual_frequencies[0] == 1.0
+    else:
+        # Check that the synapses-per-sub-row histogram matches the distribution
+        chisquare_statistic, p = sp.chisquare(actual_frequencies, expected_frequencies)
 
-    estimated_max_row_synapses_ = row_synapses_distribution.ppf(0.9999**(1.0/pre_size))
+        assert p > 0.05
+
+    estimated_max_row_synapses = row_synapses_distribution.ppf(0.9999**(1.0/pre_size))
     estimated_mean_row_synapses = row_synapses_distribution.mean()
     actual_mean_row_synapses = sum(synapse_counts) / float(pre_size)
 

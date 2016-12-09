@@ -121,8 +121,8 @@ class OneToOneConnector(OneToOneConnector):
                                    pre_size, post_size):
         # We know the number of synapses per sub-row. Use a distribution that
         # can only return that value
-        num_synapses = 1 if pre_slice.overlaps(post_slice) else 0
-        return scipy.stats.randint(num_synapses, num_synapses + 1)
+        p = pre_slice.intersection(post_slice) / float(len(pre_slice))
+        return scipy.stats.bernoulli(p)
 
     def _get_projection_initial_state(self, pre_size, post_size):
         return None
