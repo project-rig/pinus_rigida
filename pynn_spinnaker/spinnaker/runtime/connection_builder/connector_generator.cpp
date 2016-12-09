@@ -1,5 +1,8 @@
 #include "connector_generator.h"
 
+// Standard includes
+#include <algorithm>
+
 // Rig CPP common includes
 #include "rig_cpp_common/log.h"
 #include "rig_cpp_common/random/mars_kiss64.h"
@@ -166,6 +169,9 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
                            numPostNeurons, rng);
     }
   }
+
+  // Clamp numInRow down to buffer size
+  numInRow = std::min<unsigned int>(numInRow, 1024);
 
   // Sample from the possible connections in this row numInRow times
   if (m_WithReplacement)
