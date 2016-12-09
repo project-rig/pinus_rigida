@@ -22,7 +22,7 @@ class InputBufferBase
 {
 public:
   InputBufferBase() : m_InputBuffers(NULL), m_NumInputBuffers(0),
-    m_FetchTick(UINT_MAX), m_FetchInputBufferIndex(0), m_DMABuffer({NULL, NULL})
+    m_FetchTick(UINT_MAX), m_FetchInputBufferIndex(0), m_DMABuffer{NULL, NULL}
   {
   }
 
@@ -137,10 +137,11 @@ public:
     return allFetched;
   }
 
-  uint GetFetchTick() const
+  bool AreBuffersOutstanding() const
   {
-    return m_FetchTick;
+    return (m_FetchInputBufferIndex < m_NumInputBuffers);
   }
+
 private:
   //-----------------------------------------------------------------------------
   // Private methods
@@ -148,7 +149,7 @@ private:
   bool Fetch(uint tag)
   {
     // If there are input buffers outstanding
-    if(m_FetchInputBufferIndex < m_NumInputBuffers)
+    if(AreBuffersOutstanding())
     {
       LOG_PRINT(LOG_LEVEL_TRACE, "\tStarting DMA of input buffer index:%u (%u)",
                 m_FetchInputBufferIndex, (m_FetchTick + 1) % 2);

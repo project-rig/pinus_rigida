@@ -394,24 +394,15 @@ static void DMATransferDone(uint, uint tag)
                             input, receptorType);
       };
 
-    // If the tick has completed without all inputs being processed and neurons updated
-    if(g_InputBuffer.GetFetchTick() != g_Tick)
-    {
-      LOG_PRINT(LOG_LEVEL_ERROR, "Timer tick completed without all inputs being processed");
-      rt_error(RTE_ABORT);
-    }
-    else
-    {
-      // Apply input in DMA buffer and start fetching next buffer if necessary
-      Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
-      bool allProcessed = g_InputBuffer.ProcessDMABuffer(applyInputLambda, DMATagInputRead);
-      Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
+    // Apply input in DMA buffer and start fetching next buffer if necessary
+    Profiler::WriteEntry(Profiler::Enter | ProfilerTagApplyBuffer);
+    bool allProcessed = g_InputBuffer.ProcessDMABuffer(applyInputLambda, DMATagInputRead);
+    Profiler::WriteEntry(Profiler::Exit | ProfilerTagApplyBuffer);
 
-      // If all buffers are processed, start neuron update
-      if(allProcessed)
-      {
-        UpdateNeurons();
-      }
+    // If all buffers are processed, start neuron update
+    if(allProcessed)
+    {
+      UpdateNeurons();
     }
   }
   else if(tag == DMATagBackPropagationWrite)
@@ -465,6 +456,15 @@ static void TimerTick(uint tick, uint)
     }
     Profiler::WriteEntry(Profiler::Exit | ProfilerTagSynapseShape);
 
+    // If there are still input buffers outstanding, 
+    // fetching another would be a risky business so crash out
+    if(g_Tick != 0 && g_InputBuffer.AreBuffersOutstanding())
+    {
+      LOG_PRINT(LOG_LEVEL_ERROR, "Input buffer fetches still outstanding");
+      rt_error(RTE_ABORT);
+      return;
+    }
+    
     // Attempt to fetch first input buffer - if there aren't any, start neuron update
     if(g_InputBuffer.FetchFirst(g_Tick, DMATagInputRead))
     {
