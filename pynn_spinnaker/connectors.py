@@ -73,8 +73,8 @@ class AllToAllConnector(AllToAllConnector):
                                    pre_size, post_size):
         # We know the number of synapses per sub-row. Use a distribution that
         # can only return that value
-        num_synapses = len(post_slice) - int(pre_slice.overlaps(post_slice) \
-                                             and not self.allow_self_connections)
+        num_synapses = len(post_slice)
+
         return scipy.stats.randint(num_synapses, num_synapses + 1)
 
     def _get_projection_initial_state(self, pre_size, post_size):
@@ -99,8 +99,8 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
                                    pre_size, post_size):
         # There are len(post_slice) possible connections in the sub-row, each
         # formed with probability self.p_connect
-        n = len(post_slice) - int(pre_slice.overlaps(post_slice) \
-                                  and not self.allow_self_connections)
+        n = len(post_slice)
+
         return scipy.stats.binom(n=n, p=self.p_connect)
 
     def _get_projection_initial_state(self, pre_size, post_size):
@@ -271,9 +271,8 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     def _row_synapses_distribution(self, pre_slice, post_slice,
                                    pre_size, post_size):
 
-        M = pre_size * post_size - int(not self.allow_self_connections) * pre_size
-        N = len(post_slice) - int(pre_slice.overlaps(post_slice) \
-                                  and not self.allow_self_connections)
+        M = pre_size * post_size
+        N = len(post_slice)
 
         # There are n connections amongst the M=pre_size*post_size possible
         # connections
