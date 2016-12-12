@@ -89,7 +89,7 @@ def test_row_synapses_distribution(pre_size, post_size, post_slice, connector):
     # Check estimated maximum is greater or equal than actual maximum
     assert estimated_max_row_synapses >= actual_max_row_synapses
     # Check estimated maximum isn't TOO big
-    assert estimated_max_row_synapses <= actual_max_row_synapses * 2
+    assert estimated_max_row_synapses <= actual_max_row_synapses * 3
 
     # Check estimated mean is approximately correct
     assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
