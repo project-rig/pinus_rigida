@@ -221,7 +221,7 @@ class SynapseCluster(object):
                                  str(pre_vertex.neuron_slice))
 
                     # Estimate max dimensions of sub-matrix
-                    max_cols, max_sub_rows, max_sub_row_length =\
+                    max_cols, max_sub_rows, max_total_sub_row_length =\
                         proj._estimate_max_dims(pre_vertex.neuron_slice,
                                                 post_slice)
 
@@ -239,7 +239,7 @@ class SynapseCluster(object):
                     synaptic_matrix = self.regions[Regions.synaptic_matrix]
                     sdram_bytes = synaptic_matrix.estimate_matrix_words(
                         len(pre_vertex.neuron_slice), max_cols,
-                        max_sub_rows, max_sub_row_length) * 4
+                        max_sub_rows, max_total_sub_row_length) * 4
 
                     logger.debug("\t\t\t\t\t\tCPU cycles:%u, SDRAM:%u bytes",
                                  cpu_cycles, sdram_bytes)

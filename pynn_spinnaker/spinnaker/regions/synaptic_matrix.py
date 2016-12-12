@@ -146,7 +146,7 @@ class SynapticMatrix(Region):
     # Public methods
     # --------------------------------------------------------------------------
     def estimate_matrix_words(self, num_pre, max_cols, max_sub_rows,
-                              max_sub_row_length):
+                              max_total_sub_row_length):
         # Because of the number of bits available for storing
         # max_cols, rows with 0 synapses cannot be represented
         max_cols = max(1, max_cols)
@@ -155,13 +155,12 @@ class SynapticMatrix(Region):
         # the ragged portion of the synaptic matrix
         ragged_words = self._get_num_row_words(max_cols)
 
-        # Calculate the maximum size in words of the delays
-        # sub-rows associated with any pre-synaptic neuron
-        delay_words = (max_sub_rows *
-                       self._get_num_row_words(max_sub_row_length))
+        # Estimate the number of words requires for the sub-rows
+        ext_words = self._estimate_num_ext_words(max_sub_rows,
+                                                 max_total_sub_row_length)
 
         # Calculate final size
-        return num_pre * (ragged_words + delay_words)
+        return num_pre * (ragged_words + ext_words)
 
     def partition_matrices(self, post_vertex_slice, pre_pop_sub_rows,
                            incoming_connections):
@@ -289,7 +288,7 @@ class SynapticMatrix(Region):
             # Loop through presynaptic vertices
             for pre_n_vert in pre_n_verts:
                 # Estimate max dimensions of sub-matrix
-                max_cols, max_sub_rows, max_sub_row_length =\
+                max_cols, max_sub_rows, max_total_sub_row_length =\
                     proj._estimate_max_dims(pre_n_vert.neuron_slice,
                                             post_vertex_slice)
 
@@ -298,7 +297,7 @@ class SynapticMatrix(Region):
                     # Estimate the maximum size of this in SDRAM
                     size_words = self.estimate_matrix_words(
                         len(pre_n_vert.neuron_slice), max_cols,
-                        max_sub_rows, max_sub_row_length)
+                        max_sub_rows, max_total_sub_row_length)
 
                     # Estimate the maximum number of delay rows the
                     # synapse processor handling this sub-matrix

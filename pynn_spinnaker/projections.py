@@ -12,6 +12,8 @@ import logging
 import math
 import numpy as np
 import scipy
+from bisect import bisect_left
+import lazyarray as la
 from rig import machine
 
 # Import classes
@@ -36,6 +38,40 @@ distribution = {
                                        "a": (low - mu) / sigma,
                                        "b": (high - mu) / sigma}),
 }
+
+# The cdf of the mixture distribution which has component distributions
+# dists weighted as ps
+def eval_mixture_cdf(ps, dists, k):
+    return sum(p * dist.cdf(k) for p, dist in zip(ps, dists))
+
+# The cdf of a mixture distribution
+# Vals is an array of integer values
+# The component distributions are the distributions of the maximum of
+# a vector of length val (for each val in vals) of variates from distribution
+# dist. The component distributions are weighted by the probabilities ps.
+def eval_mixture_of_maxes_cdf(ps, vals, dist, k):
+    return sum(p * dist.cdf(k)**val for p, val in zip(ps, vals))
+
+# The cdf of a mixture distribution
+# Vals is an array of integer values
+# The component distributions are the distributions of the minimum of
+# a vector of length val (for each val in vals) of variates from distribution
+# dist. The component distributions are weighted by the probabilities ps.
+def eval_mixture_of_mins_cdf(ps, vals, dist, k):
+    return sum(p * 1-(1-dist.cdf(k))**val for p, val in zip(ps, vals))
+
+# Do binary search over continuous val_range for the boundary
+# between f(k) <= v and f(k) > v
+def continuous_bisect_fun_left(f, v, val_lower, val_upper):
+    val_range = [val_lower, val_upper]
+    k = 0.5 * sum(val_range)
+    for i in xrange(32):
+        val_range[int(f(k) > v)] = k
+        next_k = 0.5 * sum(val_range)
+        if next_k == k:
+            break
+        k = next_k
+    return k
 
 # --------------------------------------------------------------------------
 # SynapseClusterType
@@ -273,9 +309,20 @@ class Projection(common.Projection, ContextMixin):
         return direct_weights
 
     def _estimate_max_dims(self, pre_slice, post_slice):
-        # Calculate maximum synapses per row
-        max_row_synapses = self._connector._estimate_max_row_synapses(
+
+        # The number of synapses per row within this post_slice are
+        # distributed as follows
+        row_synapses_dist = self._connector._row_synapses_distribution(
             pre_slice, post_slice, self.pre.size, self.post.size)
+
+        # dist.ppf(0.9999) gives a value such that the distribution yields a value less than that
+        # value with probability 0.9999
+        # dist.ppf(0.9999 ** k) gives a value such that if we sample from the distribution k
+        # times, the value will be less than that value with probability 0.9999
+        quantile = 0.9999 ** (float(len(post_slice)) / (self.pre.size * self.post.size))
+
+        # Calculate maximum synapses per row
+        max_row_synapses = int(row_synapses_dist.ppf(quantile))
 
         # Calculate maximum row delay
         max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
@@ -287,8 +334,8 @@ class Projection(common.Projection, ContextMixin):
         # If this projection has no synapses, so will all its sub-rows
         if max_row_synapses == 0:
             max_cols = 0
+            max_sub_row_synapses = 0
             max_sub_rows = 0
-            max_sub_row_length = 0
         # If parameter is randomly distributed
         elif isinstance(delay.base_value, RandomDistribution):
             dist_name = delay.base_value.name
@@ -298,50 +345,81 @@ class Projection(common.Projection, ContextMixin):
             if dist_name in distribution:
                 # Get scipy distribution object and convert PyNN
                 # params into suitable form to pass to it
-                dist = distribution[dist_name][0]
-                params = distribution[dist_name][1](**pynn_params)
+                delay_dist = distribution[dist_name][0](**distribution[dist_name][1](**pynn_params))
 
-                # Calculate the probability of a
+                # Calculate the probability of a given
                 # synapse being in the first sub-row
-                prob_first_sub_row = dist.cdf(max_row_delay, **params)
+                prob_first_sub_row = delay_dist.cdf(max_row_delay)
 
-                # Draw from the binomial distribution to determine an upper
-                # bound on the number of synapses this will represent
-                row_probability = 0.9999 ** (1.0 / float(len(pre_slice)))
-                max_cols = int(scipy.stats.binom.ppf(row_probability,
-                                                     max_row_synapses,
-                                                     prob_first_sub_row))
+                # The number of synapses ending up in the first delay sub-row
+                # is distributed as Binomial(n, p=prob_first_sub_row), where n
+                # is distributed as row_synapses_dist
+                # I.e., this is a mixture distribution
 
-                # Draw from the binomial distribution again to determine an
-                # upper bound on the number of synapses in subsequent sub-rows
-                max_sub_row_synapses = scipy.stats.binom.ppf(
-                    row_probability, max_row_synapses, 1.0 - prob_first_sub_row)
+                # Calculate the range of plausible values for the number of synapses in the row
+                # and the probability of getting that value
+                p_limit = 1e-9
+                row_synapses_range = np.arange(int(row_synapses_dist.ppf(p_limit)), int(row_synapses_dist.ppf(1-p_limit)) + 1)
+                row_synapses_ps = row_synapses_dist.pmf(row_synapses_range)
 
-                # If there are any synapses outside of first delay sub-row
+                # Create a list of component distributions for the mixture distribution, one for each
+                # plausible value for the number of synapses per row
+                row_dists = [scipy.stats.binom(n=n, p=prob_first_sub_row) if n > 0 else scipy.stats.randint(0, 1) for n in row_synapses_range]
+                # We want to compute dist.ppf(quantile) where dist is the mixture distribution.
+                # Compute upper and lower limits on this value.
+                row_range = [int(row_dists[0].ppf(quantile)), int(row_dists[-1].ppf(1-p_limit)) + 1]
+                # Create a lazily-evaluated array of cdf(k) for each k in the range. Note that the cdf
+                # of a mixture distribution is a weighted sum of the cdfs of the component distributions
+                cdfs = la.larray(lambda k: eval_mixture_cdf(row_synapses_ps, row_dists, k),
+                                 shape=(row_range[1],))
+                # Use binary search to find the first value k such that dist.cdf(k) is greater than
+                # or equal to quantile. I.e., compute dist.ppf(quantile)
+                # Max cols is an upper bound on the number of synapses in the first delay row,
+                # such that with probability 0.9999 this value will not be exceeded within
+                # the whole projection
+                max_cols = bisect_left(cdfs, quantile, row_range[0], row_range[1])
+
+                # As above, but for an upper bound on the number of synapses not in the first delay row
+                row_dists = [scipy.stats.binom(n=n, p=1-prob_first_sub_row) if n > 0 else scipy.stats.randint(0, 1) for n in row_synapses_range]
+                row_range = [int(row_dists[0].ppf(quantile)), int(row_dists[-1].ppf(1-p_limit)) + 1]
+                cdfs = la.larray(lambda k: eval_mixture_cdf(row_synapses_ps, row_dists, k),
+                                 shape=(row_range[1],))
+                max_sub_row_synapses = bisect_left(cdfs, quantile, row_range[0], row_range[1])
+
+                # If there are no synapses outside of first delay sub-row
                 if max_sub_row_synapses == 0:
                     assert max_cols == max_row_synapses
                     max_sub_rows = 0
-                    max_sub_row_length = 0
                 else:
-                    # Calculate the maximum range of delays
-                    # this many synapses is likely to have
-                    max_probability = 0.9999 ** (1.0 / float(max_sub_row_synapses))
-                    extension_delay_range = dist.ppf(max_probability, **params) -\
-                        dist.ppf(1.0 - max_probability, **params)
 
+                    # The distribution over the number of synapses (row_synapses_dist)
+                    # tells us how many delays there are.
+                    # We want the max of **that many** delays
+                    # use row_synapses_range and row_synapses_ps
+                    lower_bound = delay_dist.ppf(p_limit)
+                    upper_bound = delay_dist.ppf(1-p_limit)
+                    upper_delay_bound = continuous_bisect_fun_left(
+                        lambda k: eval_mixture_of_maxes_cdf(
+                            row_synapses_ps, row_synapses_range,
+                            delay_dist, k),
+                        quantile, lower_bound, upper_bound)
+                    lower_delay_bound = continuous_bisect_fun_left(
+                        lambda k: eval_mixture_of_mins_cdf(
+                            row_synapses_ps, row_synapses_range,
+                            delay_dist, k),
+                        quantile, lower_bound, upper_bound)
+                    lower_delay_bound = max(max_row_delay, lower_delay_bound)
+
+                    max_extension_delay_range = upper_delay_bound - lower_delay_bound
                     # Convert this to a maximum number of sub-rows
-                    max_sub_rows = max(1, int(math.ceil(extension_delay_range /
+                    max_sub_rows = max(1, int(math.ceil(max_extension_delay_range /
                                                         max_row_delay)))
-
-                    # Divide mean number of synapses in row evenly between sub-rows
-                    max_sub_row_length = int(math.ceil(max_sub_row_synapses /
-                                                       max_sub_rows))
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
                 max_cols = max_row_synapses
                 max_sub_rows = 0
-                max_sub_row_length = 0
+                max_sub_row_synapses = 0
         # If parameter is a scalar
         elif is_scalar(delay.base_value):
             # If the delay is within the maximum row delay, then all
@@ -349,23 +427,27 @@ class Projection(common.Projection, ContextMixin):
             if delay.base_value <= max_row_delay:
                 max_cols = max_row_synapses
                 max_sub_rows = 0
-                max_sub_row_length = 0
+                max_sub_row_synapses = 0
             # Otherwise, the first sub-row will contain no synapses,
             # just a pointer forwards to the delay sub-row
             else:
                 max_cols = 0
                 max_sub_rows = 1
-                max_sub_row_length = max_row_synapses
+                max_sub_row_synapses = max_row_synapses
         else:
             raise NotImplementedError()
 
-        return max_cols, max_sub_rows, max_sub_row_length
+        return max_cols, max_sub_rows, max_sub_row_synapses
 
-    def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice,
-                                              **kwargs):
-        # Use connector to estimate mean number of synapses in each row
-        mean_row_synapses =  self._connector._estimate_mean_row_synapses(
+    def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice):
+
+        # The number of synapses per row within this post_slice are
+        # distributed as follows
+        row_synapses_dist = self._connector._row_synapses_distribution(
             pre_slice, post_slice, self.pre.size, self.post.size)
+
+        # Use distribution to estimate mean number of synapses in each row
+        mean_row_synapses = row_synapses_dist.mean()
 
          # Calculate maximum row delay
         max_row_delay = (float(self.synapse_type._max_dtcm_delay_slots) *
@@ -375,9 +457,9 @@ class Projection(common.Projection, ContextMixin):
         delay = self.synapse_type.native_parameters["delay"]
 
         # If this projection has no synapses, so will all its sub-rows
-        if mean_row_synapses == 0:
-            num_sub_rows = 1
-            mean_sub_row_synapses = 0
+        if mean_row_synapses == 0.0:
+            num_sub_rows = 1.0
+            mean_sub_row_synapses = 0.0
         # If parameter is randomly distributed
         elif isinstance(delay.base_value, RandomDistribution):
             dist_name = delay.base_value.name
@@ -406,35 +488,29 @@ class Projection(common.Projection, ContextMixin):
 
                 # Determine the number of sub-rows required for this range
                 delay_range = mean_row_upper - mean_row_lower
-                num_sub_rows = max(1, int(math.ceil(delay_range /
-                                                    max_row_delay)))
-
-                # If the lower bound is not within that supported by the first
-                # sub-row an extra sub-row will be required
-                if mean_row_lower > max_row_delay:
-                    num_sub_rows += 1
+                num_sub_rows = math.ceil((delay_range + 1.0 + min(mean_row_lower, max_row_delay)) \
+                                         / max_row_delay)
 
                 # Divide mean number of synapses in row evenly between sub-rows
-                mean_sub_row_synapses = int(math.ceil(
-                    float(mean_row_synapses) / float(num_sub_rows)))
+                mean_sub_row_synapses = mean_row_synapses / num_sub_rows
             else:
                 logger.warn("Cannot estimate delay sub-row distribution with %s",
                             dist_name)
 
                 mean_sub_row_synapses = mean_row_synapses
-                num_sub_rows = 1
+                num_sub_rows = 1.0
         # If parameter is a scalar
         elif is_scalar(delay.base_value):
             # If the delay is within the maximum row delay, then all
             # the synapses in the row can be represented in a single sub-row
             if delay.base_value <= max_row_delay:
-                num_sub_rows = 1
+                num_sub_rows = 1.0
                 mean_sub_row_synapses = mean_row_synapses
             # Otherwise, the first sub-row will contain no synapses,
             # just a pointer forwards to the delay sub-row
             else:
-                num_sub_rows = 2
-                mean_sub_row_synapses = int((1 + mean_row_synapses) / 2.0)
+                num_sub_rows = 2.0
+                mean_sub_row_synapses = 0.5 * mean_row_synapses
         else:
             raise NotImplementedError()
 
@@ -443,8 +519,7 @@ class Projection(common.Projection, ContextMixin):
         post_rate = self.post.spinnaker_config.mean_firing_rate
         row_cpu_cost = self.synapse_type._get_row_cpu_cost(mean_sub_row_synapses,
                                                            pre_rate=pre_rate,
-                                                           post_rate=post_rate,
-                                                           **kwargs)
+                                                           post_rate=post_rate)
         # Multiply this by the number of required subrows
         row_cpu_cost *= num_sub_rows
 

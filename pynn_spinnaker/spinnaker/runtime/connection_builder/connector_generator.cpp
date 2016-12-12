@@ -25,17 +25,16 @@ ConnectionBuilder::ConnectorGenerator::AllToAll::AllToAll(uint32_t *&region)
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::AllToAll::Generate(
   unsigned int row, unsigned int numPostNeurons,
-  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+  unsigned int postNeuronStart, unsigned int preNeuronStart,
   MarsKiss64 &, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to not
   // connect to if self connections are not allowed
-  const int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
+  const int columnRelativeToPost = (int)row + (int)preNeuronStart - (int)postNeuronStart;
 
   // Write indices
-  unsigned int i;
   unsigned int k = 0;
-  for(i = 0; i < numPostNeurons; i++)
+  for(unsigned int i = 0; i < numPostNeurons; i++)
   {
     if (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
     {
@@ -56,20 +55,20 @@ ConnectionBuilder::ConnectorGenerator::OneToOne::OneToOne(uint32_t *&)
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::OneToOne::Generate(
   unsigned int row, unsigned int numPostNeurons,
-  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+  unsigned int postNeuronStart, unsigned int preNeuronStart,
   MarsKiss64 &, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to
   // connect to
-  const int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
+  const int columnRelativeToPost = (int)row + (int)preNeuronStart - (int)postNeuronStart;
 
-  unsigned int k = 0;
   // If that index is within this slice, add index to row
-  if (columnRelativeToPost >= 0 || columnRelativeToPost < (int)numPostNeurons)
+  if (columnRelativeToPost >= 0 && columnRelativeToPost < (int)numPostNeurons)
   {
-    indices[k++] = (uint32_t)columnRelativeToPost;
+    indices[0] = (uint32_t)columnRelativeToPost;
+    return 1;
   }
-  return k;
+  return 0;
 }
 
 //-----------------------------------------------------------------------------
@@ -86,12 +85,12 @@ ConnectionBuilder::ConnectorGenerator::FixedProbability::FixedProbability(uint32
 //-----------------------------------------------------------------------------
 unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   unsigned int row, unsigned int numPostNeurons,
-  unsigned int vertexPostSlice, unsigned int vertexPreSlice,
+  unsigned int postNeuronStart, unsigned int preNeuronStart,
   MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
   // The column index on the diagonal for this row, i.e., the column to not
   // connect to if self connections are not allowed
-  const int columnRelativeToPost = (int)row + (int)vertexPreSlice - (int)vertexPostSlice;
+  const int columnRelativeToPost = (int)row + (int)preNeuronStart - (int)postNeuronStart;
 
   // Write indices
   unsigned int i;
@@ -99,9 +98,10 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
   for(i = 0; i < numPostNeurons; i++)
   {
     // If draw if less than probability, add index to row
-    if(rng.GetNext() < m_Probability && (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost))))
+    if(rng.GetNext() < m_Probability)
     {
-      indices[k++] = i;
+	  if (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
+		indices[k++] = i;
     }
   }
 
