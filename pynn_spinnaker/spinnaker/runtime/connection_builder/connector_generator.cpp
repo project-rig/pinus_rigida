@@ -6,9 +6,8 @@
 // Rig CPP common includes
 #include "rig_cpp_common/log.h"
 #include "rig_cpp_common/random/mars_kiss64.h"
-
-#include "../common/maths/hypergeometric.h"
-#include "../common/maths/binomial.h"
+#include "rig_cpp_common/maths/hypergeometric.h"
+#include "rig_cpp_common/maths/binomial.h"
 
 using namespace Common::Maths;
 
@@ -100,8 +99,10 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedProbability::Generate(
     // If draw if less than probability, add index to row
     if(rng.GetNext() < m_Probability)
     {
-	  if (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
-		indices[k++] = i;
+      if (m_AllowSelfConnections || !(columnRelativeToPost >= 0 && i == ((unsigned int) columnRelativeToPost)))
+      {
+        indices[k++] = i;
+      }
     }
   }
 
@@ -127,11 +128,10 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   unsigned int, unsigned int,
   MarsKiss64 &rng, uint32_t (&indices)[1024])
 {
-  unsigned int i, u01, j, numInRow;
-
   // Determine how many of the submatrix connections are within this row
   // If there are no connections left to allocate to a row,
   // then there are no connections in this row
+  unsigned int numInRow;
   if (m_ConnectionsInSubmatrix == 0)
   {
     numInRow = 0;
@@ -177,25 +177,25 @@ unsigned int ConnectionBuilder::ConnectorGenerator::FixedTotalNumber::Generate(
   if (m_WithReplacement)
   {
     // Sample them with replacement
-    for(i=0; i<numInRow; i++)
+    for(unsigned int i=0; i<numInRow; i++)
     {
-      u01 = (rng.GetNext() & 0x00007fff);
-      j = (u01 * numPostNeurons) >> 15;
+      const unsigned int u01 = (rng.GetNext() & 0x00007fff);
+      const unsigned int j = (u01 * numPostNeurons) >> 15;
       indices[i] = j;
     }
   }
   else
   {
     // Sample them without replacement using reservoir sampling
-    for(i=0; i<numInRow; i++)
+    for(unsigned int  i=0; i<numInRow; i++)
     {
       indices[i] = i;
     }
-    for(i=numInRow; i<numPostNeurons; i++)
+    for(unsigned int i=numInRow; i<numPostNeurons; i++)
     {
       // j = rand(0, i) (inclusive)
-      u01 = (rng.GetNext() & 0x00007fff);
-      j = (u01 * (i+1)) >> 15;
+      const unsigned int u01 = (rng.GetNext() & 0x00007fff);
+      const unsigned int j = (u01 * (i+1)) >> 15;
       if (j < numInRow)
       {
         indices[j] = i;
