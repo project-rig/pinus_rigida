@@ -435,9 +435,9 @@ class State(common.control.BaseState):
                                     len(vertex_load_applications),
                                     600.0)
 
-            # Stop after running loader if required
-            if self.stop_after_loader:
-                return
+        # Stop after running loader if required
+        if self.stop_after_loader:
+            return
 
         logger.info("Loading applications")
         self.machine_controller.load_application(run_app_map)
