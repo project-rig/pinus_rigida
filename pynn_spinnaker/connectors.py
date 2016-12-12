@@ -289,7 +289,7 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
 
         # scipy.stats.binom does not handle n=0
         if self.n == 0:
-            return sp.randint(0, 1)
+            return scipy.stats.randint(0, 1)
         elif self.with_replacement:
             return scipy.stats.binom(n=self.n, p=float(N)/M)
         else:
