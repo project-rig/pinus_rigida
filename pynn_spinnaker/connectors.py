@@ -53,7 +53,7 @@ def _draw_num_connections(context, post_slice, pre_slice, **kwargs):
 
 # TODO for handling allow_self_connections=False, modify value here?
 def _submat_size(context, post_slice, pre_slice, **kwargs):
-    return la.larray(int(post_slice) * int(pre_slice), shape=(1,))
+    return la.larray(len(post_slice) * len(pre_slice), shape=(1,))
 
 # ----------------------------------------------------------------------------
 # AllToAllConnector
