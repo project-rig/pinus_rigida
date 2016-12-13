@@ -25,6 +25,10 @@ namespace ConnectionBuilder
 //-----------------------------------------------------------------------------
 // GeneratorFactory
 //-----------------------------------------------------------------------------
+//! Implementation of the factory design pattern to create different types
+//! of object (all derived off B)
+//!   \tparam B   Base class of all the types this factory can create
+//!   \tparam N   Maximum number of class types this factory can support
 template<typename B, unsigned int N>
 class GeneratorFactory
 {
@@ -41,6 +45,15 @@ public:
   //----------------------------------------------------------------------------
   // Static methods
   //----------------------------------------------------------------------------
+  //! Create an object using the factory, initializing it using region data
+  //!   \param nameHash Hash of the object type to create
+  //!   \param region   Reference to pointer to data (normally located in
+  //!                   SDRAM) to pass to object's constructor
+  //!   \param memory   Because we want to minimize memory allocations, the
+  //!                   Factory creates objects using placement new. This is
+  //!                   the pointer to the area of memory (assumed to be
+  //!                   allocated using Allocate and thus the right size)
+  //!                   to placement new objects into.
   B* Create(uint32_t nameHash, uint32_t *&region, void *memory)
   {
     // Loop through table
@@ -59,6 +72,8 @@ public:
     return NULL;
   }
 
+  //! Allocate a block of memory, large enough for
+  //! any of the objects created by this factory
   void *Allocate()
   {
     // If there is any memory to allocate do so
@@ -74,6 +89,14 @@ public:
     }
   }
 
+  //! Register a new type of class with the factory (this is typically called
+  //! using the REGISTER_FACTORY_CLASS macro rather than directly)
+  //!   \param nameHash   Hash associated with this class
+  //!   \param function   Function to call to create object of this class
+  //!                     (typically a wrapper around the class's constructor
+  //!                     generated using ADD_FACTORY_CREATOR)
+  //!   \param classSize  How large are objects of this class in bytes
+  //!                     (as reported by sizeof)
   bool Register(uint32_t nameHash, CreateGeneratorFunction function,
                 unsigned int classSize)
   {
@@ -81,7 +104,7 @@ public:
     if(m_Count < N)
     {
       // Store function and hash in table
-      m_CreateGeneratorFunctions[m_Count] = function;
+      m_CreateGeneratorFunctions[m_Count] = function;ADD_FACTORY_CREATOR
       m_NameHashes[m_Count] = nameHash;
       m_Count++;
 
