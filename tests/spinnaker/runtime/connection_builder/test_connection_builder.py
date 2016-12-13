@@ -240,24 +240,27 @@ def test_microcircuit_projections(pop_size_1, pop_size_2, num_connections):
     proj, proj_data = _run_network(pop_size_1, pop_size_2, connector,
                                    sim.StaticSynapse(weight=0.0, delay=0.1),
                                    [], 0.1)
+    
+    if num_connections == 0:
+        assert len(proj_data) == 0
+    else:
+        # Build row-length histogram
+        row_length_histogram = binned_statistic(proj_data[0], proj_data[1],
+                                                statistic="count", bins=range(pop_size_1 + 1))[0]
 
-    # Build row-length histogram
-    row_length_histogram = binned_statistic(proj_data[0], proj_data[1],
-                                            statistic="count", bins=range(pop_size_2 + 1))[0]
+        # Test that the number of connections is correct
+        assert int(row_length_histogram.sum()) == num_connections
 
-    # Test that the number of connections is correct
-    assert int(row_length_histogram.sum()) == num_connections
+        # Computer max and mean
+        actual_max_row_synapses = np.amax(row_length_histogram)
+        actual_mean_row_synapses = np.average(row_length_histogram)
 
-    # Computer max and mean
-    actual_max_row_synapses = np.amax(row_length_histogram)
-    actual_mean_row_synapses = np.average(row_length_histogram)
+        # Check estimated maximum is greater or equal than actual maximum
+        assert estimated_max_row_synapses >= actual_max_row_synapses
 
-     # Check estimated maximum is greater or equal than actual maximum
-    assert estimated_max_row_synapses >= actual_max_row_synapses
+        # Check estimated maximum isn't TOO big
+        assert estimated_max_row_synapses <= actual_max_row_synapses * 3.0
 
-    # Check estimated maximum isn't TOO big
-    assert estimated_max_row_synapses <= actual_max_row_synapses * 3.0
-
-    # Check estimated mean is approximately correct
-    assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
-    assert estimated_mean_row_synapses >= (0.75 * actual_mean_row_synapses)
+        # Check estimated mean is approximately correct
+        assert estimated_mean_row_synapses <= (1.25 * actual_mean_row_synapses)
+        assert estimated_mean_row_synapses >= (0.75 * actual_mean_row_synapses)
