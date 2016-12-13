@@ -486,10 +486,28 @@ class Projection(common.Projection, ContextMixin):
                                 self._simulator.state.dt)
                     mean_row_lower = self._simulator.state.dt
 
-                # Determine the number of sub-rows required for this range
-                delay_range = mean_row_upper - mean_row_lower
-                num_sub_rows = math.ceil((delay_range + 1.0 + min(mean_row_lower, max_row_delay)) \
-                                         / max_row_delay)
+                # If the mean range of delays overlaps
+                # the obligatory first sub row
+                if mean_row_lower <= max_row_delay:
+                    # Move the mean lower delay down to the
+                    # minimum delay of the first sub-row
+                    mean_row_lower = self._simulator.state.dt
+
+                    # Determine the number of sub-rows required for this range
+                    delay_range = mean_row_upper - mean_row_lower
+                    num_sub_rows = math.ceil(
+                        (delay_range + self._simulator.state.dt) / max_row_delay)
+                # Otherwise
+                else:
+                    # Determine the number of sub-rows required for this range
+                    delay_range = mean_row_upper - mean_row_lower
+                    num_sub_rows = math.ceil(
+                        (delay_range + self._simulator.state.dt) / max_row_delay)
+
+                    # Add an extra sub-row to take into account the first sub-row
+                    num_sub_rows += 1
+
+                assert num_sub_rows > 0
 
                 # Divide mean number of synapses in row evenly between sub-rows
                 mean_sub_row_synapses = mean_row_synapses / num_sub_rows
