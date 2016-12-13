@@ -11,12 +11,15 @@ from pynn_spinnaker.spinnaker.utils import UnitStrideSlice
 # ----------------------------------------------------------------------------
 # Tests
 # ----------------------------------------------------------------------------
+# **NOTE** on host implementation of FixedTotalNumberConnector doesn't
+# handle slices that aren't an exact fraction of post_size correctly
+# hence the post_size of 1024*5 = 5120 - see issue #67
 @pytest.mark.parametrize("pre_size", [1000, 64])
 @pytest.mark.parametrize("post_size, post_slice",
-                         [(5000, UnitStrideSlice(0, 1024)),
-                          (5000, UnitStrideSlice(0, 256)),
-                          (5000, UnitStrideSlice(1024, 2048)),
-                          (5000, UnitStrideSlice(3976, 5000))])
+                         [(5120, UnitStrideSlice(0, 1024)),
+                          (5120, UnitStrideSlice(0, 256)),
+                          (5120, UnitStrideSlice(1024, 2048)),
+                          (5120, UnitStrideSlice(4096, 5120))])
 @pytest.mark.parametrize("connector",
                          [sim.AllToAllConnector(),
                           sim.OneToOneConnector(),
@@ -54,7 +57,8 @@ def test_row_synapses_distribution(pre_size, post_size, post_slice, connector):
     proj.post._mask_local[post_slice.python_slice] = True
 
     # Some connectors also use num_processes for partial connector building
-    proj._simulator.state.num_processes = 5
+    proj._simulator.state.num_processes = int(np.ceil(float(post_size) /
+                                                      float(len(post_slice))))
 
     # Build projection
     proj._build(matrix_rows=sub_rows,
