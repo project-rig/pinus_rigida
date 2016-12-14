@@ -475,7 +475,7 @@ class Projection(common.Projection, ContextMixin):
                 params = distribution[dist_name][1](**pynn_params)
 
                 # Get the mean upper and lower bounds of the row's delays
-                mean_probability = 0.5 ** (1.0 / float(mean_row_synapses))
+                mean_probability = 0.5 ** (1.0 / np.ceil(mean_row_synapses))
                 mean_row_upper = dist.ppf(mean_probability, **params)
                 mean_row_lower = dist.ppf(1.0 - mean_probability, **params)
 
