@@ -50,7 +50,8 @@ def eval_mixture_cdf(ps, dists, k):
 # a vector of length val (for each val in vals) of variates from distribution
 # dist. The component distributions are weighted by the probabilities ps.
 def eval_mixture_of_maxes_cdf(ps, vals, dist, k):
-    return sum(p * dist.cdf(k)**val for p, val in zip(ps, vals))
+    cdf_k = dist.cdf(k)
+    return sum(p * cdf_k**val for p, val in zip(ps, vals))
 
 # The cdf of a mixture distribution
 # Vals is an array of integer values
@@ -58,7 +59,8 @@ def eval_mixture_of_maxes_cdf(ps, vals, dist, k):
 # a vector of length val (for each val in vals) of variates from distribution
 # dist. The component distributions are weighted by the probabilities ps.
 def eval_mixture_of_mins_cdf(ps, vals, dist, k):
-    return sum(p * 1-(1-dist.cdf(k))**val for p, val in zip(ps, vals))
+    cdf_k = dist.cdf(k)
+    return sum(p * 1-(1-cdf_k)**val for p, val in zip(ps, vals))
 
 # Do binary search over continuous val_range for the boundary
 # between f(k) <= v and f(k) > v
