@@ -120,6 +120,10 @@ class Projection(common.Projection, ContextMixin):
         # Add projection to simulator
         self._simulator.state.projections.append(self)
 
+        # In many cases, the maximum dimensions of each equally-sized
+        # slice is going to be the same so we can cache them
+        self._max_dims_estimate_cache = {}
+
         # If pre-synaptic population in an assembly
         if isinstance(self.pre, common.Assembly):
             # Add this projection to each pre-population in
@@ -311,6 +315,13 @@ class Projection(common.Projection, ContextMixin):
         return direct_weights
 
     def _estimate_max_dims(self, pre_slice, post_slice):
+        # The key to look it up in the cache of maximum
+        # dimension estimates is a tuple of the lengths of each slice
+        cache_key =  (len(pre_slice), len(post_slice))
+
+        # If the connector is cachable return the cached values
+        if (self._connector._cachable and cache_key in self._max_dims_estimate_cache):
+            return self._max_dims_estimate_cache[cache_key]
 
         # The number of synapses per row within this post_slice are
         # distributed as follows
@@ -439,6 +450,11 @@ class Projection(common.Projection, ContextMixin):
         else:
             raise NotImplementedError()
 
+        # If the projection's connector is cachable,
+        # add the estimated dimensions to the cache
+        if self._connector._cachable:
+            self._max_dims_estimate_cache[cache_key] = (max_cols, max_sub_rows,
+                                                        max_sub_row_synapses)
         return max_cols, max_sub_rows, max_sub_row_synapses
 
     def _estimate_spike_processing_cpu_cycles(self, pre_slice, post_slice):
