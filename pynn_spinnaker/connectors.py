@@ -66,6 +66,9 @@ class AllToAllConnector(AllToAllConnector):
     # If this connector can be generated on chip, parameter map to use
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer)]
 
+    # Are the statistics of this connector the same across all slices
+    _cachable = True
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -92,6 +95,9 @@ class FixedProbabilityConnector(FixedProbabilityConnector):
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer),
                           ("p_connect", "u4", lazy_param_map.u032)]
 
+    # Are the statistics of this connector the same across all slices
+    _cachable = True
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -114,6 +120,9 @@ class OneToOneConnector(OneToOneConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = True
 
+    # Are the statistics of this connector the same across all slices
+    _cachable = False
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -134,6 +143,9 @@ class FromListConnector(FromListConnector):
     # Can suitable populations connected with this connector be connected
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
+
+    # Are the statistics of this connector the same across all slices
+    _cachable = False
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -174,6 +186,9 @@ class FixedNumberPostConnector(FixedNumberPostConnector):
     _directly_connectable = False
 
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer)]
+
+    # Are the statistics of this connector the same across all slices
+    _cachable = True
 
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
@@ -219,6 +234,9 @@ class FixedNumberPreConnector(FixedNumberPreConnector):
 
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer)]
 
+    # Are the statistics of this connector the same across all slices
+    _cachable = True
+
     # --------------------------------------------------------------------------
     # Internal SpiNNaker methods
     # --------------------------------------------------------------------------
@@ -260,6 +278,9 @@ class FixedTotalNumberConnector(FixedTotalNumberConnector):
     # using an in-memory buffer rather than by sending multicast packets
     _directly_connectable = False
 
+    # Are the statistics of this connector the same across all slices
+    _cachable = True
+    
     _on_chip_param_map = [("allow_self_connections", "u4", lazy_param_map.integer),
                           ("with_replacement", "u4", lazy_param_map.integer),
                           (_draw_num_connections, "u4"),
