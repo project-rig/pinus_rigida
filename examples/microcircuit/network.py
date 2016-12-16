@@ -19,8 +19,8 @@ class Network:
         self.w = create_weight_matrix()
         model = getattr(sim, 'IF_curr_exp')
         script_rng = NumpyRNG(seed=6508015, parallel_safe=parallel_safe)
-        #if simulator == "pynn_spinnaker":
-        #    script_rng = sim.NativeRNG(script_rng)
+        if simulator == "pynn_spinnaker":
+            script_rng = sim.NativeRNG(script_rng)
             
         distr = RandomDistribution('normal', [V0_mean, V0_sd], rng=script_rng)
 
