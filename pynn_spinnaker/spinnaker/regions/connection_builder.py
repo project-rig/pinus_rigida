@@ -96,6 +96,18 @@ def _get_native_rngs(chip_sub_matrix_projs):
 # ConnectionBuilder
 # ------------------------------------------------------------------------------
 class ConnectionBuilder(Region):
+    """ The connection builder region is used to provide extra data about
+    each SubMatrix a synapse processor will have access to to allow it to be
+    generated, on-chip using the connection builder executable.
+
+    Attributes
+    ----------
+    SeedWords : integer
+        How many seed words does the RNG require (always 4 as we currently
+        always use MarsKiss64)
+    sim_timestep_ms : float
+            How large are simulation time steps in milliseconds
+    """
     SeedWords = 4
 
     def __init__(self, sim_timestep_ms):

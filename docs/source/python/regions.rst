@@ -7,5 +7,8 @@ a :py:class:`~pynn_spinnaker.spinnaker.neural_cluster.CurrentInputCluster`
 used to configure these objects are also composed of regions.
 
 .. automodule:: pynn_spinnaker.spinnaker.regions
-  :members: AnalogueRecording
-  :undoc-members:
+  :members: AnalogueRecording, ConnectionBuilder, DelayBuffer,
+    ExtendedPlasticSynapticMatrix, Flush, HomogeneousParameterSpace,
+    InputBuffer, KeyLookupBinarySearch, Neuron, OutputBuffer, OutputWeight,
+    ParameterSpace, PlasticSynapticMatrix, SDRAMBackPropInput, SpikeRecording,
+    SpikeSourceArray, SpikeSourcePoisson, StaticSynapticMatrix, SynapticMatrix

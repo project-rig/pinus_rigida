@@ -15,8 +15,36 @@ from ..utils import calc_slice_bitfield_words
 # AnalogueRecording
 # ------------------------------------------------------------------------------
 class AnalogueRecording(Region):
+    """ Analogue recording regions are used to record single 'analogue'
+    time-varying variables e.g. membrane voltages for neurons. They also
+    support PyNN's options to only record a subset of neurons or record only
+    on a fraction of timesteps
+
+    Attributes
+    ----------
+    indices_to_record : :py:class:`~bitarray.bitarray`
+        bitarray specifiying which neurons to record from
+
+    record_ticks : integer
+        How often should we record this analogue value (simulation time steps)
+    """
     def __init__(self, indices_to_record, channel, record_sample_interval,
                  sim_timestep_ms, simulation_ticks):
+        """"
+        Parameters
+        ----------
+        indices_to_record : {integer : :py:class:`~bitarray.bitarray`}
+            Dictionary of bitarrays specifiying which neurons to record for each
+            recording channel.
+        channel : integer
+            Index of recording channel in cell_type.recordable
+        record_sample_interval : float
+            How often should we record this analogue value (milliseconds)
+        sim_timestep_ms : float
+            How large are simulation time steps in milliseconds
+        simulation_ticks : integer
+            How many time steps long is the simulation
+        """
         self.indices_to_record = indices_to_record[channel]
 
         # Convert recording sample intervals to ticks
@@ -87,6 +115,16 @@ class AnalogueRecording(Region):
     # --------------------------------------------------------------------------
     def read_signal(self, vertex_slice, region_memory):
         """
+        Read back the time-varying 'analogue' signal from SpiNNaker
+        
+        Parameters
+        ----------
+        vertex_slice : :py:func:`slice`
+            A slice object which indicates which rows, columns or other
+            elements of the region should be included.
+        region_memory : file-like
+            File-like for reading region data from
+
         Returns
         -------
         {:py:class:`~pynn_spinnaker.spinnaker.utils.UnitStrideSlice`: {int: :py:class:`~numpy.ndarray`}}

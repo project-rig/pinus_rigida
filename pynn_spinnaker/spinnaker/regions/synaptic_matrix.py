@@ -23,6 +23,21 @@ SubMatrix = namedtuple("SubMatrix", ["key", "mask", "pre_n_slice", "pre_slice_in
 # SynapticMatrix
 # ------------------------------------------------------------------------------
 class SynapticMatrix(Region):
+    """Base class for classes used for writing and reading synaptic matrices
+    stored in a standard data structure:
+
+    
+
+    Each row is stored with the following 3 word header specifying how many
+    synapses the row contains and, if there are subsequent sections of this row
+    with longer delays, how long to wait before fetching them and where
+    they are in SDRAM.
+
+    +--------------+-----------------------+------------------------------------------------------+
+    | Num synapses | Delay to next sub-row | Offset in words from start of matrix to next sub-row |
+    +--------------+-----------------------+------------------------------------------------------+
+    """
+
     # Number of bits for various synapse components
     IndexBits = 10
     DelayBits = 3
