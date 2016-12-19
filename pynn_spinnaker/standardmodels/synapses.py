@@ -33,8 +33,9 @@ class StaticSynapse(synapses.StaticSynapse):
     # SpiNNaker synapse processor of this type handle
     _max_post_neurons_per_core = 1024
 
-    # How many CPU cycles are spent doing non-row processing things
-    _constant_cpu_overhead = 3.85E6
+    # How many CPU cycles are spent doing
+    # non-row processing things every time step
+    _constant_cpu_overhead = 3.85E3
 
     # What format of synaptic matrix does this synapse type require
     _synaptic_matrix_region_class = regions.StaticSynapticMatrix
@@ -92,8 +93,9 @@ class STDPMechanism(synapses.STDPMechanism):
     # SpiNNaker synapse_processor of this type handle
     _max_post_neurons_per_core = 512
 
-    # How many CPU cycles are spent doing non-row processing things
-    _constant_cpu_overhead = 11.15E6
+    # How many CPU cycles are spent doing
+    # non-row processing things every time step
+    _constant_cpu_overhead = 11.15E3
 
     # What format of synaptic matrix does this synapse type require
     _synaptic_matrix_region_class = regions.PlasticSynapticMatrix
